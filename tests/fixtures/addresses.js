@@ -151,28 +151,66 @@ export const TEST_GRAPH_DATA = {
   ]
 };
 
-// Performance test data
+// Performance test data with improved generation
 export const PERFORMANCE_TEST_DATA = {
-  LARGE_ACCOUNT_SET: Array.from({ length: 1000 }, (_, i) => ({
-    address: `5Test${i.toString().padStart(44, '0')}`,
-    identity_display: `TestUser${i}`,
-    balance: (Math.random() * 10000000000000).toString(),
-    total_transfers_in: Math.floor(Math.random() * 100),
-    total_transfers_out: Math.floor(Math.random() * 100)
-  })),
+  // Generate accounts first to ensure they exist for foreign key relationships
+  get LARGE_ACCOUNT_SET() {
+    return Array.from({ length: 1000 }, (_, i) => ({
+      address: `5Test${i.toString().padStart(44, '0')}`,
+      identity_display: `TestUser${i}`,
+      balance: (Math.random() * 10000000000000).toString(),
+      total_transfers_in: 0, // Will be updated by triggers
+      total_transfers_out: 0, // Will be updated by triggers
+      first_seen_block: 1000000 + Math.floor(i / 10), // Realistic block progression
+      last_seen_block: null // Will be set by transfers
+    }));
+  },
   
-  LARGE_TRANSFER_SET: Array.from({ length: 10000 }, (_, i) => ({
-    hash: `0x${i.toString(16).padStart(64, '0')}`,
-    block_number: 1000000 + i,
-    timestamp: new Date(Date.now() - i * 12000).toISOString(),
-    from_address: `5Test${(i % 500).toString().padStart(44, '0')}`,
-    to_address: `5Test${((i + 1) % 500).toString().padStart(44, '0')}`,
-    value: (Math.random() * 1000000000000).toString(),
-    fee: '125000000',
-    success: Math.random() > 0.05, // 95% success rate
-    method: 'transfer',
-    section: 'balances'
-  }))
+  // Generate transfers that reference existing accounts (first 500 accounts)
+  get LARGE_TRANSFER_SET() {
+    return Array.from({ length: 10000 }, (_, i) => {
+      const fromIndex = i % 500; // Only use first 500 accounts
+      const toIndex = (i + 10) % 500; // Skip to avoid self-transfers and ensure valid target
+      return {
+        hash: `0x${i.toString(16).padStart(64, '0')}`,
+        block_number: 1000000 + i,
+        timestamp: new Date(Date.now() - i * 12000).toISOString(),
+        from_address: `5Test${fromIndex.toString().padStart(44, '0')}`,
+        to_address: `5Test${toIndex.toString().padStart(44, '0')}`,
+        value: (Math.random() * 1000000000000).toString(),
+        fee: '125000000',
+        success: Math.random() > 0.05, // 95% success rate
+        method: 'transfer',
+        section: 'balances'
+      };
+    });
+  },
+
+  // Helper method to get accounts subset for transfers
+  getAccountsForTransfers(count = 500) {
+    return this.LARGE_ACCOUNT_SET.slice(0, count);
+  },
+
+  // Generate transfers for a specific set of accounts (ensures referential integrity)
+  generateTransfersForAccounts(accounts, transferCount = 1000) {
+    const addressList = accounts.map(a => a.address);
+    return Array.from({ length: transferCount }, (_, i) => {
+      const fromIndex = i % addressList.length;
+      const toIndex = (i + 1) % addressList.length;
+      return {
+        hash: `0x${i.toString(16).padStart(64, '0')}`,
+        block_number: 1000000 + i,
+        timestamp: new Date(Date.now() - i * 12000).toISOString(),
+        from_address: addressList[fromIndex],
+        to_address: addressList[toIndex],
+        value: (Math.random() * 1000000000000).toString(),
+        fee: '125000000',
+        success: Math.random() > 0.05, // 95% success rate
+        method: 'transfer',
+        section: 'balances'
+      };
+    });
+  }
 };
 
 // Helper functions

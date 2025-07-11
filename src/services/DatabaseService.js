@@ -14,6 +14,20 @@ export class DatabaseService {
     this.dbPath = process.env.DATABASE_PATH || './data/analysis.db';
   }
 
+  // Utility method to safely convert values for SQLite binding
+  static sanitizeForSQLite(value) {
+    if (typeof value === 'boolean') {
+      return value ? 1 : 0;
+    }
+    if (value === undefined) {
+      return null;
+    }
+    if (typeof value === 'object' && value !== null) {
+      return JSON.stringify(value);
+    }
+    return value;
+  }
+
   async initialize() {
     try {
       // Ensure data directory exists
@@ -58,7 +72,17 @@ export class DatabaseService {
         updated_at = CURRENT_TIMESTAMP
       RETURNING *
     `);
-    return stmt.get(account);
+    
+    // Ensure proper parameter mapping and data types
+    const accountData = {
+      address: account.address,
+      publicKey: account.publicKey || account.public_key,
+      identityDisplay: account.identityDisplay || account.identity_display,
+      balance: account.balance,
+      firstSeenBlock: account.firstSeenBlock || account.first_seen_block
+    };
+    
+    return stmt.get(accountData);
   }
 
   updateAccountIdentity(address, identity) {
@@ -74,7 +98,20 @@ export class DatabaseService {
         updated_at = CURRENT_TIMESTAMP
       WHERE address = @address
     `);
-    return stmt.run({ address, ...identity });
+    
+    // Convert boolean to integer for SQLite compatibility
+    const identityData = {
+      address,
+      display: identity.display,
+      legal: identity.legal,
+      web: identity.web,
+      email: identity.email,
+      twitter: identity.twitter,
+      riot: identity.riot,
+      verified: typeof identity.verified === 'boolean' ? (identity.verified ? 1 : 0) : identity.verified
+    };
+    
+    return stmt.run(identityData);
   }
 
   searchAccounts(query, limit = 50) {
@@ -106,12 +143,27 @@ export class DatabaseService {
         hash, block_number, timestamp, from_address, to_address, 
         value, fee, success, method, section
       ) VALUES (
-        @hash, @blockNumber, @timestamp, @fromAddress, @toAddress,
+        @hash, @block_number, @timestamp, @from_address, @to_address,
         @value, @fee, @success, @method, @section
       )
       ON CONFLICT(hash) DO NOTHING
     `);
-    return stmt.run(transfer);
+    
+    // Ensure proper data types for SQLite binding
+    const transferData = {
+      hash: transfer.hash,
+      block_number: transfer.block_number || transfer.blockNumber,
+      timestamp: transfer.timestamp,
+      from_address: transfer.from_address || transfer.fromAddress,
+      to_address: transfer.to_address || transfer.toAddress,
+      value: transfer.value,
+      fee: transfer.fee,
+      success: typeof transfer.success === 'boolean' ? (transfer.success ? 1 : 0) : transfer.success,
+      method: transfer.method,
+      section: transfer.section
+    };
+    
+    return stmt.run(transferData);
   }
 
   getTransfers(address, options = {}) {

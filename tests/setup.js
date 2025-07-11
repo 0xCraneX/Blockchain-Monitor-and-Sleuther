@@ -11,35 +11,62 @@ const __dirname = dirname(__filename);
 // Test database path
 export const TEST_DB_PATH = './tests/test.db';
 
-// Create test database before all tests
-beforeAll(async () => {
-  // Ensure test directory exists
-  await fs.mkdir('./tests', { recursive: true });
-});
+// Skip global setup for integration tests to avoid conflicts
+const isIntegrationTest = process.env.VITEST_POOL_ID && 
+  (process.cwd().includes('integration') || process.argv.some(arg => arg.includes('integration')));
 
-// Clean up after each test
-beforeEach(async () => {
-  // Remove existing test database if it exists
-  try {
-    await fs.unlink(TEST_DB_PATH);
-  } catch (error) {
-    // File doesn't exist, that's fine
-  }
-});
+if (!isIntegrationTest) {
+  // Create test database before all tests
+  beforeAll(async () => {
+    // Ensure test directory exists
+    await fs.mkdir('./tests', { recursive: true });
+  });
+
+  // Clean up after each test
+  beforeEach(async () => {
+    // Remove existing test database if it exists
+    try {
+      await fs.unlink(TEST_DB_PATH);
+    } catch (error) {
+      // File doesn't exist, that's fine
+    }
+  });
+}
 
 // Clean up after all tests
-afterAll(async () => {
-  // Remove test database
-  try {
-    await fs.unlink(TEST_DB_PATH);
-  } catch (error) {
-    // Ignore errors
-  }
-});
+if (!isIntegrationTest) {
+  afterAll(async () => {
+    // Remove test database
+    try {
+      await fs.unlink(TEST_DB_PATH);
+    } catch (error) {
+      // Ignore errors
+    }
+  });
+}
 
 // Helper to create a fresh test database
-export async function createTestDatabase() {
-  const db = new Database(TEST_DB_PATH);
+export async function createTestDatabase(customPath = null) {
+  const dbPath = customPath || TEST_DB_PATH;
+  
+  // Ensure parent directory exists
+  const dir = path.dirname(dbPath);
+  await fs.mkdir(dir, { recursive: true });
+  
+  // Remove existing database file to ensure fresh start
+  try {
+    await fs.unlink(dbPath);
+    await fs.unlink(`${dbPath}-wal`).catch(() => {});
+    await fs.unlink(`${dbPath}-shm`).catch(() => {});
+  } catch (error) {
+    // Ignore if files don't exist
+  }
+  
+  const db = new Database(dbPath);
+  
+  // Configure for better test isolation
+  db.pragma('journal_mode = DELETE'); // Avoid WAL mode conflicts in tests
+  db.pragma('synchronous = FULL'); // Ensure data integrity
   
   // Read and execute schema
   const schemaPath = path.join(__dirname, '../src/database/schema.sql');
@@ -140,7 +167,12 @@ export function seedTestData(db) {
   `);
 
   for (const transfer of testTransfers) {
-    insertTransfer.run(transfer);
+    // Convert boolean to integer for SQLite compatibility
+    const transferData = {
+      ...transfer,
+      success: transfer.success ? 1 : 0
+    };
+    insertTransfer.run(transferData);
   }
 
   return { accounts: testAccounts, transfers: testTransfers };

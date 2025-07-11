@@ -33,6 +33,7 @@ const validate = (schema, property = 'query') => {
       res.status(400).json({
         error: {
           message: 'Validation error',
+          status: 400,
           details: error.errors
         }
       });

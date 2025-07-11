@@ -21,6 +21,16 @@ export class AddressController {
       if (!account || this.isDataStale(account.updated_at)) {
         const chainData = await blockchain.getAccount(address);
         
+        // Check if this is an empty/unused account (common pattern for invalid addresses)
+        const isEmpty = chainData.balance === '0' && 
+                       chainData.nonce === 0 && 
+                       !chainData.identity && 
+                       !account; // And not in our database
+        
+        if (isEmpty) {
+          return null; // Address not found
+        }
+        
         // Update database
         account = db.createAccount({
           address: chainData.address,

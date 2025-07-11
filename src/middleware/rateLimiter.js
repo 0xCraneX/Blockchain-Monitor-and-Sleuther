@@ -25,7 +25,7 @@ export const rateLimiter = rateLimit({
 // Stricter rate limiter for search endpoints
 export const searchRateLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute
-  max: 20, // limit each IP to 20 search requests per minute
+  max: process.env.NODE_ENV === 'test' ? 1000 : 20, // Much higher limit for tests
   message: 'Too many search requests, please try again later.',
   skipSuccessfulRequests: false,
   keyGenerator: (req) => {

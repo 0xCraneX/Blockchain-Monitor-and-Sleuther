@@ -112,10 +112,10 @@ describe('DatabaseService', () => {
     it('should create a new transfer', () => {
       const transfer = {
         hash: '0xnewtransfer123',
-        blockNumber: 1700000,
+        block_number: 1700000,
         timestamp: '2023-03-15T10:00:00Z',
-        fromAddress: '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY',
-        toAddress: '5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty',
+        from_address: '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY',
+        to_address: '5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty',
         value: '2000000000000',
         fee: '150000000',
         success: true,
@@ -130,10 +130,10 @@ describe('DatabaseService', () => {
     it('should ignore duplicate transfers', () => {
       const transfer = {
         hash: '0x123456789', // Already exists in seed data
-        blockNumber: 1500000,
+        block_number: 1500000,
         timestamp: '2023-01-15T10:00:00Z',
-        fromAddress: '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY',
-        toAddress: '5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty',
+        from_address: '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY',
+        to_address: '5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty',
         value: '1000000000000',
         fee: '125000000',
         success: true,
@@ -261,10 +261,14 @@ describe('DatabaseService', () => {
     });
 
     it('should get statistics for a metric', () => {
-      // Add some test statistics
-      dbService.updateStatistic('total_transfers', '100', '2023-03-13');
-      dbService.updateStatistic('total_transfers', '150', '2023-03-14');
-      dbService.updateStatistic('total_transfers', '200', '2023-03-15');
+      // Add some test statistics with recent dates
+      const today = new Date().toISOString().split('T')[0];
+      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      
+      dbService.updateStatistic('total_transfers', '100', twoDaysAgo);
+      dbService.updateStatistic('total_transfers', '150', yesterday);
+      dbService.updateStatistic('total_transfers', '200', today);
 
       const stats = dbService.getStatistics('total_transfers', 7);
       

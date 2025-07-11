@@ -26,7 +26,18 @@ export default defineConfig({
     },
     setupFiles: ['./tests/setup.js'],
     testTimeout: 10000,
-    hookTimeout: 10000
+    hookTimeout: 10000,
+    // Ensure tests run in sequence to avoid database conflicts
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        singleFork: true
+      }
+    },
+    // Isolate integration tests
+    sequence: {
+      shuffle: false
+    }
   },
   resolve: {
     alias: {
