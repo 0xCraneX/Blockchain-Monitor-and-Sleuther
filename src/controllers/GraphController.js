@@ -48,6 +48,7 @@ export class GraphController {
       // Validate address exists
       const centerAccount = this.db.getAccount(address);
       if (!centerAccount) {
+        logger.warn(`Address not found in database: ${address}`);
         return res.status(404).json({
           error: {
             code: 'ADDRESS_NOT_FOUND',
@@ -71,18 +72,31 @@ export class GraphController {
         riskThreshold: riskThreshold ? parseInt(riskThreshold) : null
       };
 
-      // Get graph data based on depth
+      // Get graph data based on depth - Use relationships as fallback
       let graphData;
-      if (depth === 1) {
-        graphData = this.graphQueries.getDirectConnections(address, {
-          minVolume,
-          limit: maxNodes
-        });
-      } else {
-        graphData = this.graphQueries.getMultiHopConnections(address, depth, {
-          minVolume,
-          limit: maxNodes
-        });
+      try {
+        if (depth === 1) {
+          graphData = this.graphQueries.getDirectConnections(address, {
+            minVolume,
+            limit: maxNodes
+          });
+        } else {
+          graphData = this.graphQueries.getMultiHopConnections(address, depth, {
+            minVolume,
+            limit: maxNodes
+          });
+        }
+        
+        logger.info(`Graph data retrieved: ${graphData.nodes.length} nodes, ${graphData.edges.length} edges`);
+        
+        // If no graph data, fallback to relationship-based graph
+        if (!graphData.nodes || graphData.nodes.length === 0) {
+          logger.info('No graph data from queries, falling back to relationships');
+          graphData = await this._buildGraphFromRelationships(address, { minVolume, limit: maxNodes });
+        }
+      } catch (error) {
+        logger.error('Error getting graph data from queries, using relationships fallback:', error);
+        graphData = await this._buildGraphFromRelationships(address, { minVolume, limit: maxNodes });
       }
 
       // Transform to D3.js format
@@ -1036,5 +1050,100 @@ export class GraphController {
       riskFactors,
       recommendation
     };
+  }
+
+  /**
+   * Build graph data from relationships API as fallback
+   * @private
+   */
+  async _buildGraphFromRelationships(address, options = {}) {
+    const { minVolume = '0', limit = 100 } = options;
+    
+    try {
+      logger.info(`Building graph from relationships for ${address}`);
+      
+      // Get relationships using the same method as the relationships API
+      const relationships = this.db.getRelationships(address, {
+        depth: 1,
+        minVolume,
+        limit
+      });
+      
+      const nodes = new Map();
+      const edges = [];
+      
+      // Add center node
+      const centerAccount = this.db.getAccount(address);
+      nodes.set(address, {
+        id: address,
+        address: address,
+        identity: centerAccount?.identity_display,
+        balance: centerAccount?.balance,
+        nodeType: 'center',
+        hopLevel: 0,
+        metrics: {
+          degree: relationships.length,
+          totalVolume: relationships.reduce((sum, rel) => 
+            BigInt(sum) + BigInt(rel.total_volume || '0'), BigInt(0)).toString()
+        }
+      });
+      
+      // Add connected nodes and edges
+      relationships.forEach((rel, index) => {
+        const connectedAddr = rel.connected_address;
+        
+        // Add connected node
+        if (!nodes.has(connectedAddr)) {
+          const connectedAccount = this.db.getAccount(connectedAddr);
+          nodes.set(connectedAddr, {
+            id: connectedAddr,
+            address: connectedAddr,
+            identity: connectedAccount?.identity_display,
+            balance: connectedAccount?.balance,
+            nodeType: 'regular',
+            hopLevel: 1,
+            riskScore: rel.risk_score || 0,
+            metrics: {
+              relationshipScore: 50 // Default score
+            }
+          });
+        }
+        
+        // Add edge
+        edges.push({
+          id: `${address}->${connectedAddr}`,
+          source: address,
+          target: connectedAddr,
+          volume: rel.total_volume,
+          transferCount: rel.outgoing_count + rel.incoming_count,
+          firstTransferTime: rel.first_interaction,
+          lastTransferTime: rel.last_interaction,
+          relationshipScore: 50, // Default score
+          direction: rel.outgoing_count > rel.incoming_count ? 'outgoing' : 'incoming'
+        });
+      });
+      
+      logger.info(`Built graph from relationships: ${nodes.size} nodes, ${edges.length} edges`);
+      
+      return {
+        nodes: Array.from(nodes.values()),
+        edges: edges,
+        metadata: {
+          centerAddress: address,
+          depth: 1,
+          source: 'relationships'
+        }
+      };
+      
+    } catch (error) {
+      logger.error('Error building graph from relationships:', error);
+      return {
+        nodes: [],
+        edges: [],
+        metadata: {
+          error: error.message
+        }
+      };
+    }
   }
 }

@@ -7,13 +7,16 @@
 
 class PolkadotAnalysisApp {
     constructor() {
+        // Hardcoded target address for analysis
+        const TARGET_ADDRESS = '13RBN6UF43sxkxUrd2H4QSJccvLNGr6HY4v3mN2WtW59WaNk';
+        
         // Application state
         this.state = {
-            currentAddress: null,
+            currentAddress: TARGET_ADDRESS,
             graphData: null,
             selectedNodes: new Set(),
             filters: {
-                depth: 2,
+                depth: 1,
                 maxNodes: 100,
                 minVolume: '0',
                 minBalance: '0',
@@ -24,7 +27,8 @@ class PolkadotAnalysisApp {
             },
             isLoading: false,
             searchResults: [],
-            investigations: []
+            investigations: [],
+            targetAddress: TARGET_ADDRESS
         };
         
         // Initialize components
@@ -183,9 +187,16 @@ class PolkadotAnalysisApp {
             
             // Check for URL parameters for direct address loading
             const urlParams = new URLSearchParams(window.location.search);
-            const address = urlParams.get('address');
+            const address = urlParams.get('address') || this.state.targetAddress;
             
             if (address) {
+                // Set search input to the target address
+                const searchInput = document.getElementById('address-search');
+                if (searchInput) {
+                    searchInput.value = address;
+                }
+                
+                // Load the target address graph automatically
                 await this.loadAddressGraph(address);
             }
             

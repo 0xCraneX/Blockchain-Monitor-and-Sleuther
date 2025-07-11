@@ -69,7 +69,7 @@ export const securityConfig = {
   csp: {
     development: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // Relaxed for dev
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://d3js.org", "https://cdn.socket.io"], // Allow external scripts for dev
       styleSrc: ["'self'", "'unsafe-inline'"],
       imgSrc: ["'self'", "data:", "https:", "blob:"],
       connectSrc: ["'self'", "ws://localhost:*", "wss://localhost:*", "https:"],

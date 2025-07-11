@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Frontend Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        iframe { width: 100%; height: 800px; border: 1px solid #ddd; }
+    </style>
+</head>
+<body>
+    <h1>Polkadot Analysis Tool - Frontend Test</h1>
+    
+    <div class="test">
+        <h3>API Tests</h3>
+        <p>Target Address: <code>13RBN6UF43sxkxUrd2H4QSJccvLNGr6HY4v3mN2WtW59WaNk</code></p>
+        <div id="api-tests"></div>
+    </div>
+    
+    <div class="test">
+        <h3>Frontend Application</h3>
+        <iframe src="/" title="Polkadot Analysis Tool"></iframe>
+    </div>
+
+    <script>
+        async function testAPI() {
+            const targetAddress = '13RBN6UF43sxkxUrd2H4QSJccvLNGr6HY4v3mN2WtW59WaNk';
+            const testsDiv = document.getElementById('api-tests');
+            
+            const tests = [
+                {
+                    name: 'Search API',
+                    url: `/api/addresses/search?q=${targetAddress}`
+                },
+                {
+                    name: 'Address Details',
+                    url: `/api/addresses/${targetAddress}`
+                },
+                {
+                    name: 'Relationships',
+                    url: `/api/addresses/${targetAddress}/relationships`
+                },
+                {
+                    name: 'Graph Data',
+                    url: `/api/graph/${targetAddress}?depth=1&maxNodes=20`
+                },
+                {
+                    name: 'Statistics',
+                    url: '/api/stats'
+                }
+            ];
+            
+            for (const test of tests) {
+                try {
+                    const response = await fetch(test.url);
+                    const data = await response.json();
+                    
+                    const result = document.createElement('div');
+                    result.className = response.ok ? 'success' : 'error';
+                    result.innerHTML = `
+                        <strong>${test.name}:</strong> 
+                        ${response.ok ? '✅ OK' : '❌ Error'} 
+                        (${response.status})
+                        <br>
+                        <small>Results: ${JSON.stringify(data).substring(0, 100)}...</small>
+                    `;
+                    testsDiv.appendChild(result);
+                } catch (error) {
+                    const result = document.createElement('div');
+                    result.className = 'error';
+                    result.innerHTML = `<strong>${test.name}:</strong> ❌ Error: ${error.message}`;
+                    testsDiv.appendChild(result);
+                }
+            }
+        }
+        
+        // Run tests when page loads
+        testAPI();
+    </script>
+</body>
+</html>
