@@ -27,10 +27,22 @@ export class DatabaseTestHelper {
     db.pragma('cache_size = 10000');
     db.pragma('temp_store = MEMORY');
     
-    // Execute schema
+    // Execute main schema
     const schemaPath = path.join(__dirname, '../../src/database/schema.sql');
     const schema = await fs.readFile(schemaPath, 'utf8');
     db.exec(schema);
+    
+    // Execute graph schema
+    const graphSchemaPath = path.join(__dirname, '../../src/database/graph-schema.sql');
+    const graphSchema = await fs.readFile(graphSchemaPath, 'utf8');
+    
+    // Remove ALTER TABLE statements as they fail if columns already exist
+    const cleanedGraphSchema = graphSchema
+      .split('\n')
+      .filter(line => !line.trim().startsWith('ALTER TABLE'))
+      .join('\n');
+    
+    db.exec(cleanedGraphSchema);
     
     return { db, dbPath };
   }
@@ -136,6 +148,18 @@ export class DatabaseTestHelper {
         section: 'balances'
       };
     });
+  }
+}
+
+// Helper functions for backward compatibility
+export async function createTestDatabase() {
+  const { db } = await DatabaseTestHelper.createIsolatedDatabase();
+  return db;
+}
+
+export async function cleanupTestDatabase(db) {
+  if (db && db.name) {
+    await DatabaseTestHelper.cleanupDatabase(db, db.name);
   }
 }
 

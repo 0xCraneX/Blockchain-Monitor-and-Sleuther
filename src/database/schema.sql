@@ -57,6 +57,8 @@ CREATE TABLE IF NOT EXISTS account_relationships (
     total_volume TEXT DEFAULT '0',
     first_transfer_block INTEGER,
     last_transfer_block INTEGER,
+    first_transfer_time TIMESTAMP,
+    last_transfer_time TIMESTAMP,
     relationship_type TEXT, -- 'direct', 'indirect', etc.
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

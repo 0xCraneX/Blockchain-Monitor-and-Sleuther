@@ -68,10 +68,44 @@ export async function createTestDatabase(customPath = null) {
   db.pragma('journal_mode = DELETE'); // Avoid WAL mode conflicts in tests
   db.pragma('synchronous = FULL'); // Ensure data integrity
   
-  // Read and execute schema
+  // Register custom REGEXP function for SQLite
+  db.function('REGEXP', (pattern, text) => {
+    if (!pattern || !text) return 0;
+    try {
+      const regex = new RegExp(pattern);
+      return regex.test(String(text)) ? 1 : 0;
+    } catch (error) {
+      console.warn('Invalid regex pattern:', pattern);
+      return 0;
+    }
+  });
+  
+  // Read and execute main schema
   const schemaPath = path.join(__dirname, '../src/database/schema.sql');
   const schema = await fs.readFile(schemaPath, 'utf8');
   db.exec(schema);
+  
+  // Read and execute graph schema
+  const graphSchemaPath = path.join(__dirname, '../src/database/graph-schema.sql');
+  try {
+    const graphSchema = await fs.readFile(graphSchemaPath, 'utf8');
+    // Execute statements one by one to handle ALTER TABLE gracefully
+    const statements = graphSchema.split(';').filter(s => s.trim());
+    for (const statement of statements) {
+      if (statement.trim()) {
+        try {
+          db.exec(statement + ';');
+        } catch (error) {
+          // Ignore errors for ALTER TABLE if column already exists
+          if (!error.message.includes('duplicate column name')) {
+            console.warn('Error executing graph schema statement:', error.message);
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.warn('Graph schema not found or error loading:', error.message);
+  }
   
   return db;
 }

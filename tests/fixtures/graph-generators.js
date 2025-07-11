@@ -480,3 +480,85 @@ export const GraphGenerators = {
     return { nodes, edges, relationships };
   }
 };
+
+// Helper functions for tests
+export async function generateLinearGraph(db, nodeCount, startIndex = 0) {
+  // Create nodes
+  for (let i = 0; i < nodeCount; i++) {
+    const address = `address_${startIndex + i}`;
+    db.prepare(`INSERT INTO accounts (address, balance) VALUES (?, ?)`).run(
+      address, '1000000000000');
+  }
+  
+  // Create linear connections
+  for (let i = 0; i < nodeCount - 1; i++) {
+    const from = `address_${startIndex + i}`;
+    const to = `address_${startIndex + i + 1}`;
+    db.prepare(`INSERT INTO account_relationships 
+      (from_address, to_address, total_volume, transfer_count, first_transfer_time, last_transfer_time) 
+      VALUES (?, ?, ?, ?, ?, ?)`).run(
+      from, to, '1000000000', 1, Date.now() / 1000 - 3600, Date.now() / 1000);
+  }
+}
+
+export async function generateCircularGraph(db, nodeCount, startIndex = 0) {
+  // Create nodes
+  for (let i = 0; i < nodeCount; i++) {
+    const address = `address_${startIndex + i}`;
+    db.prepare(`INSERT INTO accounts (address, balance) VALUES (?, ?)`).run(
+      address, '1000000000000');
+  }
+  
+  // Create circular connections
+  for (let i = 0; i < nodeCount; i++) {
+    const from = `address_${startIndex + i}`;
+    const to = `address_${startIndex + ((i + 1) % nodeCount)}`;
+    db.prepare(`INSERT INTO account_relationships 
+      (from_address, to_address, total_volume, transfer_count, first_transfer_time, last_transfer_time) 
+      VALUES (?, ?, ?, ?, ?, ?)`).run(
+      from, to, '1000000000', 1, Date.now() / 1000 - 3600, Date.now() / 1000);
+  }
+}
+
+export async function generateHubSpokeGraph(db, nodeCount, startIndex = 0) {
+  // Create hub
+  const hub = `address_${startIndex}`;
+  db.prepare(`INSERT INTO accounts (address, balance) VALUES (?, ?)`).run(
+    hub, '10000000000000');
+  
+  // Create spokes
+  for (let i = 1; i < nodeCount; i++) {
+    const spoke = `address_${startIndex + i}`;
+    db.prepare(`INSERT INTO accounts (address, balance) VALUES (?, ?)`).run(
+      spoke, '1000000000000');
+    
+    // Connect hub to spoke
+    db.prepare(`INSERT INTO account_relationships 
+      (from_address, to_address, total_volume, transfer_count, first_transfer_time, last_transfer_time) 
+      VALUES (?, ?, ?, ?, ?, ?)`).run(
+      hub, spoke, '1000000000', 1, Date.now() / 1000 - 3600, Date.now() / 1000);
+  }
+}
+
+export async function generateCompleteGraph(db, nodeCount, startIndex = 0) {
+  // Create nodes
+  for (let i = 0; i < nodeCount; i++) {
+    const address = `address_${startIndex + i}`;
+    db.prepare(`INSERT INTO accounts (address, balance) VALUES (?, ?)`).run(
+      address, '1000000000000');
+  }
+  
+  // Create complete connections (all nodes connected to all others)
+  for (let i = 0; i < nodeCount; i++) {
+    for (let j = 0; j < nodeCount; j++) {
+      if (i !== j) {
+        const from = `address_${startIndex + i}`;
+        const to = `address_${startIndex + j}`;
+        db.prepare(`INSERT INTO account_relationships 
+          (from_address, to_address, total_volume, transfer_count, first_transfer_time, last_transfer_time) 
+          VALUES (?, ?, ?, ?, ?, ?)`).run(
+          from, to, '1000000000', 1, Date.now() / 1000 - 3600, Date.now() / 1000);
+      }
+    }
+  }
+}

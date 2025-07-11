@@ -12,6 +12,24 @@ export default defineConfig({
       'followthedot-main/**',
       '**/node_modules/**'
     ],
+    // Transform ES modules from node_modules
+    server: {
+      deps: {
+        inline: [
+          // Add packages that need to be transformed here
+          // Common ES module packages that might cause issues
+          'p-queue',
+          'p-limit',
+          'got',
+          'node-fetch',
+          'chalk',
+          'd3',
+          'socket.io',
+          '@polkadot/api',
+          '@polkadot/util-crypto'
+        ]
+      }
+    },
     coverage: {
       reporter: ['text', 'json', 'html'],
       exclude: [

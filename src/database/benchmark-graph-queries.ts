@@ -333,7 +333,7 @@ class GraphQueryBenchmark {
         duration: performance.now() - startTime,
         memoryUsed: 0,
         rowsReturned: 0,
-        error: error.message
+        error: error instanceof Error ? error.message : String(error)
       };
       
       this.results.push(benchmarkResult);

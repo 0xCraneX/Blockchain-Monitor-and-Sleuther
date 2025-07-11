@@ -172,7 +172,7 @@ class PerformanceMonitor extends EventEmitter {
         rowsReturned: 0,
         memoryUsed: 0,
         cacheHit: false,
-        error: error.message
+        error: error instanceof Error ? error.message : String(error)
       };
       
       this.recordMetrics(metrics);
@@ -416,7 +416,14 @@ class PerformanceMonitor extends EventEmitter {
    * Get query recommendations based on performance data
    */
   getOptimizationRecommendations() {
-    const recommendations: any[] = [];
+    interface Recommendation {
+      queryId: string;
+      type: string;
+      severity: 'high' | 'medium' | 'low';
+      recommendation: string;
+      metrics: Record<string, any>;
+    }
+    const recommendations: Recommendation[] = [];
     
     for (const [queryId, metrics] of this.metrics) {
       if (metrics.length < 10) continue;
@@ -477,7 +484,7 @@ class PerformanceMonitor extends EventEmitter {
     }
     
     return recommendations.sort((a, b) => {
-      const severityOrder = { high: 0, medium: 1, low: 2 };
+      const severityOrder: Record<'high' | 'medium' | 'low', number> = { high: 0, medium: 1, low: 2 };
       return severityOrder[a.severity] - severityOrder[b.severity];
     });
   }
@@ -535,7 +542,10 @@ class PerformanceMonitor extends EventEmitter {
   private saveMetrics() {
     if (!this.isRecording) return;
     
-    const data = {
+    const data: {
+      timestamp: number;
+      metrics: Record<string, any>;
+    } = {
       timestamp: Date.now(),
       metrics: {}
     };

@@ -43,10 +43,68 @@ export class DatabaseService {
       this.db.pragma('foreign_keys = ON');
       this.db.pragma('journal_mode = WAL');
 
-      // Run schema
+      // Register custom REGEXP function for SQLite
+      this.db.function('REGEXP', (pattern, text) => {
+        if (!pattern || !text) return 0;
+        try {
+          const regex = new RegExp(pattern);
+          return regex.test(String(text)) ? 1 : 0;
+        } catch (error) {
+          logger.warn('Invalid regex pattern:', pattern);
+          return 0;
+        }
+      });
+
+      // Run main schema
       const schemaPath = path.join(__dirname, '../database/schema.sql');
       const schema = await fs.readFile(schemaPath, 'utf8');
       this.db.exec(schema);
+      
+      // Run graph schema
+      const graphSchemaPath = path.join(__dirname, '../database/graph-schema.sql');
+      try {
+        const graphSchema = await fs.readFile(graphSchemaPath, 'utf8');
+        // Execute statements one by one to handle ALTER TABLE gracefully
+        const statements = graphSchema.split(';').filter(s => s.trim());
+        for (const statement of statements) {
+          if (statement.trim()) {
+            try {
+              this.db.exec(statement + ';');
+            } catch (error) {
+              // Ignore errors for ALTER TABLE if column already exists
+              if (!error.message.includes('duplicate column name')) {
+                logger.warn('Error executing graph schema statement:', error.message);
+              }
+            }
+          }
+        }
+      } catch (error) {
+        logger.warn('Graph schema not found or error loading:', error.message);
+      }
+
+      // Run relationship scoring schema
+      const scoringSchemaPath = path.join(__dirname, '../database/relationship_scoring.sql');
+      try {
+        const scoringSchema = await fs.readFile(scoringSchemaPath, 'utf8');
+        // Execute statements one by one to handle ALTER TABLE and CREATE VIEW gracefully
+        const statements = scoringSchema.split(';').filter(s => s.trim());
+        for (const statement of statements) {
+          if (statement.trim()) {
+            try {
+              this.db.exec(statement + ';');
+            } catch (error) {
+              // Ignore errors for ALTER TABLE if column already exists or VIEW already exists
+              if (!error.message.includes('duplicate column name') && 
+                  !error.message.includes('already exists')) {
+                logger.warn('Error executing scoring schema statement:', error.message);
+              }
+            }
+          }
+        }
+        logger.info('Relationship scoring schema loaded successfully');
+      } catch (error) {
+        logger.warn('Relationship scoring schema not found or error loading:', error.message);
+      }
 
       logger.info('Database initialized successfully');
     } catch (error) {

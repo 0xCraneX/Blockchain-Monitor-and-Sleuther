@@ -1,6 +1,5 @@
 # Dependencies
 node_modules/
-package-lock.json
 yarn.lock
 
 # Environment
@@ -40,11 +39,14 @@ Thumbs.db
 # Testing
 coverage/
 .nyc_output/
+test-results/
+tests/temp/
 
 # Temporary
 tmp/
 temp/
 *.tmp
+.eslintcache
 
 # Electron
 out/
