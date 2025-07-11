@@ -1,0 +1,24 @@
+{
+  "$schema": "https://turborepo.org/schema.json",
+  "tasks": {
+    "prebuild": {
+      "cache": true
+    },
+    "build": {
+      "outputs": ["build/**"],
+      "dependsOn": ["^build"]
+    },
+    "build:watch": {
+      "cache": false
+    },
+    "clean": {
+      "cache": false
+    },
+    "link": {
+      "cache": false
+    },
+    "test": {
+      "inputs": ["**/*.spec.ts"]
+    }
+  }
+}
