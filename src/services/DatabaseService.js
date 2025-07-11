@@ -4,6 +4,12 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { logger } from '../utils/logger.js';
+import { 
+  DatabaseConnectionError, 
+  DatabaseError, 
+  RecordNotFoundError,
+  createDatabaseError 
+} from '../errors/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -12,6 +18,18 @@ export class DatabaseService {
   constructor() {
     this.db = null;
     this.dbPath = process.env.DATABASE_PATH || './data/analysis.db';
+    this.preparedStatements = new Map();
+    this.isInitialized = false;
+    this.connectionPool = {
+      maxConnections: 10,
+      activeConnections: 0,
+      maxIdleTime: 30000, // 30 seconds
+      lastActivity: Date.now()
+    };
+    
+    // Cleanup interval for prepared statements
+    this.cleanupInterval = null;
+    this.startCleanupMonitoring();
   }
 
   // Utility method to safely convert values for SQLite binding
@@ -394,11 +412,74 @@ export class DatabaseService {
     return this.db.transaction(fn)();
   }
 
+  // Start cleanup monitoring for prepared statements
+  startCleanupMonitoring() {
+    this.cleanupInterval = setInterval(() => {
+      try {
+        const currentTime = Date.now();
+        
+        // Update connection pool activity
+        this.connectionPool.lastActivity = currentTime;
+        
+        // Clear old prepared statements if needed
+        if (this.preparedStatements.size > 50) {
+          logger.debug('Cleaning up old prepared statements');
+          const oldSize = this.preparedStatements.size;
+          
+          // Keep only the most recently used statements
+          const entries = Array.from(this.preparedStatements.entries());
+          entries.sort((a, b) => (b[1].lastUsed || 0) - (a[1].lastUsed || 0));
+          
+          this.preparedStatements.clear();
+          entries.slice(0, 25).forEach(([key, value]) => {
+            this.preparedStatements.set(key, value);
+          });
+          
+          logger.debug(`Cleaned up prepared statements: ${oldSize} -> ${this.preparedStatements.size}`);
+        }
+        
+        // Update connection metrics
+        if (this.connectionPool.maxIdleTime && 
+            currentTime - this.connectionPool.lastActivity > this.connectionPool.maxIdleTime) {
+          logger.debug('Database connection idle for extended period');
+        }
+        
+      } catch (error) {
+        logger.error('Error during cleanup monitoring:', error);
+      }
+    }, 30000); // Run every 30 seconds
+    
+    logger.debug('Database cleanup monitoring started');
+  }
+
+  // Stop cleanup monitoring
+  stopCleanupMonitoring() {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
+      logger.debug('Database cleanup monitoring stopped');
+    }
+  }
+
   // Close database connection
   close() {
-    if (this.db) {
-      this.db.close();
-      logger.info('Database connection closed');
+    try {
+      // Stop cleanup monitoring
+      this.stopCleanupMonitoring();
+      
+      // Clear prepared statements cache
+      this.preparedStatements.clear();
+      
+      // Close database connection
+      if (this.db) {
+        this.db.close();
+        logger.info('Database connection closed');
+      }
+      
+      this.isInitialized = false;
+    } catch (error) {
+      logger.error('Error closing database:', error);
+      throw error;
     }
   }
 }

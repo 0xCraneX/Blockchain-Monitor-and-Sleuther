@@ -11,6 +11,15 @@ export class GraphWebSocket {
     this.addressSubscriptions = new Map(); // address -> Set of clientIds
     this.patternSubscriptions = new Set(); // clientIds subscribed to pattern alerts
     this.streamingSessions = new Map(); // clientId -> streaming session info
+    
+    // Memory management settings
+    this.maxSubscriptionsPerClient = 100;
+    this.maxStreamingSessions = 50;
+    this.maxPatternSubscriptions = 500;
+    this.cleanupInterval = null;
+    
+    // Start periodic cleanup
+    this.startPeriodicCleanup();
   }
 
   /**
@@ -86,13 +95,36 @@ export class GraphWebSocket {
         });
         return;
       }
+
+      // Check memory limits
+      const clientSubscriptions = this.subscribedClients.get(socket.id);
+      if (clientSubscriptions && clientSubscriptions.size >= this.maxSubscriptionsPerClient) {
+        socket.emit('error', {
+          type: 'subscription_limit_exceeded',
+          message: `Maximum ${this.maxSubscriptionsPerClient} subscriptions per client exceeded`
+        });
+        logger.warn(`GraphWebSocket: Client ${socket.id} exceeded subscription limit`);
+        return;
+      }
+
+      // Check if already subscribed
+      if (clientSubscriptions && clientSubscriptions.has(address)) {
+        socket.emit('subscription:confirmed', {
+          type: 'address',
+          address,
+          filters,
+          room: `address:${address}`,
+          timestamp: Date.now(),
+          note: 'Already subscribed'
+        });
+        return;
+      }
       
       // Add to address-specific room
       const roomName = `address:${address}`;
       socket.join(roomName);
       
       // Track subscription
-      const clientSubscriptions = this.subscribedClients.get(socket.id);
       clientSubscriptions.add(address);
       
       if (!this.addressSubscriptions.has(address)) {
@@ -181,6 +213,27 @@ export class GraphWebSocket {
    */
   handlePatternSubscription(socket) {
     try {
+      // Check memory limits
+      if (this.patternSubscriptions.size >= this.maxPatternSubscriptions) {
+        socket.emit('error', {
+          type: 'pattern_subscription_limit_exceeded',
+          message: `Maximum ${this.maxPatternSubscriptions} pattern subscriptions exceeded`
+        });
+        logger.warn(`GraphWebSocket: Pattern subscription limit exceeded`);
+        return;
+      }
+
+      // Check if already subscribed
+      if (this.patternSubscriptions.has(socket.id)) {
+        socket.emit('subscription:confirmed', {
+          type: 'patterns',
+          room: 'patterns:alerts',
+          timestamp: Date.now(),
+          note: 'Already subscribed'
+        });
+        return;
+      }
+
       socket.join('patterns:alerts');
       this.patternSubscriptions.add(socket.id);
       
@@ -532,6 +585,25 @@ export class GraphWebSocket {
         });
         return;
       }
+
+      // Check memory limits
+      if (this.streamingSessions.size >= this.maxStreamingSessions) {
+        socket.emit('error', {
+          type: 'streaming_limit_exceeded',
+          message: `Maximum ${this.maxStreamingSessions} concurrent streaming sessions exceeded`
+        });
+        logger.warn(`GraphWebSocket: Streaming session limit exceeded`);
+        return;
+      }
+
+      // Check if client already has an active stream
+      if (this.streamingSessions.has(socket.id)) {
+        socket.emit('error', {
+          type: 'stream_already_active',
+          message: 'Client already has an active streaming session'
+        });
+        return;
+      }
       
       const sessionId = streamId || `stream_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
@@ -716,8 +788,81 @@ export class GraphWebSocket {
       patternSubscriptions: this.patternSubscriptions.size,
       activeStreams: this.streamingSessions.size,
       totalAddressSubscriptions: Array.from(this.addressSubscriptions.values())
-        .reduce((sum, subs) => sum + subs.size, 0)
+        .reduce((sum, subs) => sum + subs.size, 0),
+      memoryLimits: {
+        maxSubscriptionsPerClient: this.maxSubscriptionsPerClient,
+        maxStreamingSessions: this.maxStreamingSessions,
+        maxPatternSubscriptions: this.maxPatternSubscriptions
+      }
     };
+  }
+
+  /**
+   * Start periodic cleanup of orphaned data
+   */
+  startPeriodicCleanup() {
+    // Run cleanup every 5 minutes
+    this.cleanupInterval = setInterval(() => {
+      this.performPeriodicCleanup();
+    }, 5 * 60 * 1000);
+  }
+
+  /**
+   * Perform periodic cleanup of memory leaks
+   */
+  performPeriodicCleanup() {
+    try {
+      let cleanedCount = 0;
+
+      // Clean orphaned address subscriptions
+      for (const [address, clientIds] of this.addressSubscriptions.entries()) {
+        const validClientIds = new Set();
+        for (const clientId of clientIds) {
+          if (this.subscribedClients.has(clientId)) {
+            validClientIds.add(clientId);
+          } else {
+            cleanedCount++;
+          }
+        }
+        
+        if (validClientIds.size === 0) {
+          this.addressSubscriptions.delete(address);
+        } else if (validClientIds.size !== clientIds.size) {
+          this.addressSubscriptions.set(address, validClientIds);
+        }
+      }
+
+      // Clean orphaned pattern subscriptions
+      const validPatternSubs = new Set();
+      for (const clientId of this.patternSubscriptions) {
+        if (this.subscribedClients.has(clientId)) {
+          validPatternSubs.add(clientId);
+        } else {
+          cleanedCount++;
+        }
+      }
+      this.patternSubscriptions = validPatternSubs;
+
+      // Clean orphaned streaming sessions
+      for (const [clientId, session] of this.streamingSessions.entries()) {
+        if (!this.subscribedClients.has(clientId) || 
+            Date.now() - session.startTime > 30 * 60 * 1000) { // 30 minute timeout
+          this.streamingSessions.delete(clientId);
+          cleanedCount++;
+        }
+      }
+
+      if (cleanedCount > 0) {
+        logger.info(`GraphWebSocket: Periodic cleanup removed ${cleanedCount} orphaned entries`);
+      }
+
+      // Log memory statistics
+      const stats = this.getSubscriptionStats();
+      logger.debug('GraphWebSocket: Memory stats', stats);
+
+    } catch (error) {
+      logger.error('GraphWebSocket: Error during periodic cleanup', error);
+    }
   }
 
   /**
@@ -743,6 +888,45 @@ export class GraphWebSocket {
       
     } catch (error) {
       logger.error('GraphWebSocket: Error broadcasting analytics', error);
+    }
+  }
+
+  /**
+   * Cleanup method for graceful shutdown
+   */
+  async cleanup() {
+    try {
+      logger.info('GraphWebSocket: Starting cleanup...');
+
+      // Stop periodic cleanup
+      if (this.cleanupInterval) {
+        clearInterval(this.cleanupInterval);
+        this.cleanupInterval = null;
+      }
+
+      // Perform final cleanup
+      this.performPeriodicCleanup();
+
+      // Clear all data structures
+      this.subscribedClients.clear();
+      this.addressSubscriptions.clear();
+      this.patternSubscriptions.clear();
+      this.streamingSessions.clear();
+
+      // Close all WebSocket connections if IO is available
+      if (this.io) {
+        this.io.emit('server_maintenance', {
+          message: 'Server is shutting down for maintenance',
+          timestamp: Date.now()
+        });
+        
+        // Give clients time to disconnect gracefully
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+
+      logger.info('GraphWebSocket: Cleanup completed');
+    } catch (error) {
+      logger.error('GraphWebSocket: Error during cleanup', error);
     }
   }
 }

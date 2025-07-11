@@ -109,43 +109,43 @@ export const securityConfig = {
 
   // Rate Limiting Configuration
   rateLimits: {
-    // Global rate limits
+    // Global rate limits - General API: 100 requests per minute
     global: {
       development: {
-        windowMs: 15 * 60 * 1000, // 15 minutes
-        max: 1000 // Higher limit for development
+        windowMs: 60 * 1000, // 1 minute 
+        max: 200 // More permissive for development
       },
       production: {
-        windowMs: 15 * 60 * 1000, // 15 minutes
-        max: 100
+        windowMs: 60 * 1000, // 1 minute
+        max: 100 // 100 requests per minute as specified
       },
       test: {
-        windowMs: 15 * 60 * 1000,
+        windowMs: 60 * 1000,
         max: 10000 // Very high for tests
       }
     },
 
     // API-specific limits
     api: {
-      // Graph queries (expensive operations)
+      // Graph queries (expensive operations) - 20 requests per minute
       graph: {
-        development: { windowMs: 5 * 60 * 1000, max: 50 },
-        production: { windowMs: 5 * 60 * 1000, max: 10 },
-        test: { windowMs: 5 * 60 * 1000, max: 1000 }
+        development: { windowMs: 60 * 1000, max: 40 }, // More permissive for development
+        production: { windowMs: 60 * 1000, max: 20 }, // 20 requests per minute as specified
+        test: { windowMs: 60 * 1000, max: 1000 }
       },
       
-      // Search operations
+      // Search operations - 50 requests per minute
       search: {
-        development: { windowMs: 60 * 1000, max: 100 },
-        production: { windowMs: 60 * 1000, max: 20 },
+        development: { windowMs: 60 * 1000, max: 100 }, // More permissive for development
+        production: { windowMs: 60 * 1000, max: 50 }, // 50 requests per minute as specified
         test: { windowMs: 60 * 1000, max: 1000 }
       },
       
       // Investigation operations
       investigations: {
-        development: { windowMs: 10 * 60 * 1000, max: 100 },
-        production: { windowMs: 10 * 60 * 1000, max: 20 },
-        test: { windowMs: 10 * 60 * 1000, max: 1000 }
+        development: { windowMs: 60 * 1000, max: 100 },
+        production: { windowMs: 60 * 1000, max: 50 },
+        test: { windowMs: 60 * 1000, max: 1000 }
       }
     }
   },

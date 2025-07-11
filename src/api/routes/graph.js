@@ -124,23 +124,7 @@ const validateAddress = (req, res, next) => {
 
 // Routes
 
-// Main graph endpoint
-router.get(
-  '/:address',
-  expensiveOperationLimiter,
-  validateAddress,
-  validate(graphQuerySchema),
-  async (req, res, next) => {
-    try {
-      const { graphController } = getServices(req);
-      await graphController.getGraph(req, res);
-    } catch (error) {
-      next(error);
-    }
-  }
-);
-
-// Shortest path endpoint
+// Shortest path endpoint (must be before /:address)
 router.get(
   '/path',
   rateLimiter,
@@ -155,7 +139,22 @@ router.get(
   }
 );
 
-// Node metrics endpoint
+// Progressive graph expansion endpoint (must be before /:address)
+router.get(
+  '/expand',
+  rateLimiter,
+  validate(expandQuerySchema),
+  async (req, res, next) => {
+    try {
+      const { graphController } = getServices(req);
+      await graphController.expandGraph(req, res);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Node metrics endpoint (specific route before /:address)
 router.get(
   '/metrics/:address',
   rateLimiter,
@@ -170,7 +169,7 @@ router.get(
   }
 );
 
-// Pattern detection endpoint
+// Pattern detection endpoint (specific route before /:address)
 router.get(
   '/patterns/:address',
   expensiveOperationLimiter,
@@ -186,15 +185,16 @@ router.get(
   }
 );
 
-// Progressive graph expansion endpoint
+// Main graph endpoint (must be last among parameterized routes)
 router.get(
-  '/expand',
-  rateLimiter,
-  validate(expandQuerySchema),
+  '/:address',
+  expensiveOperationLimiter,
+  validateAddress,
+  validate(graphQuerySchema),
   async (req, res, next) => {
     try {
       const { graphController } = getServices(req);
-      await graphController.expandGraph(req, res);
+      await graphController.getGraph(req, res);
     } catch (error) {
       next(error);
     }

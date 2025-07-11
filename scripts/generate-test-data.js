@@ -53,7 +53,7 @@ async function generateTestData() {
     db.db.exec('DELETE FROM transfers WHERE block_number >= 1000000');
     db.db.exec('DELETE FROM patterns');
     db.db.exec('DELETE FROM account_relationships');
-    db.db.exec('DELETE FROM accounts WHERE created_at > datetime("now", "-1 day")');
+    db.db.exec("DELETE FROM accounts WHERE created_at > datetime('now', '-1 day')");
     
     // Generate accounts
     console.log('\n📝 Creating test accounts...');
@@ -84,14 +84,13 @@ async function generateTestData() {
       
       if (from.address !== to.address) {
         db.createTransfer({
-          blockNumber: 1000000 + i * 10,
-          blockHash: '0x' + i.toString(16).padStart(64, '0'),
-          extrinsicHash: '0x' + (i * 2).toString(16).padStart(64, '0'),
-          fromAddress: from.address,
-          toAddress: to.address,
-          amount: Math.floor(Math.random() * 10000000000000).toString(),
+          block_number: 1000000 + i * 10,
+          hash: '0x' + (i * 2).toString(16).padStart(64, '0'),
+          from_address: from.address,
+          to_address: to.address,
+          value: Math.floor(Math.random() * 10000000000000).toString(),
           success: true,
-          timestamp: new Date(Date.now() - i * 3600000) // 1 hour apart
+          timestamp: new Date(Date.now() - i * 3600000).toISOString()
         });
       }
     }
@@ -105,14 +104,13 @@ async function generateTestData() {
         const to = circularAddresses[(i + 1) % circularAddresses.length];
         
         db.createTransfer({
-          blockNumber: 1001000 + round * 10 + i,
-          blockHash: '0xc' + (round * 10 + i).toString(16).padStart(63, '0'),
-          extrinsicHash: '0xc' + (round * 20 + i).toString(16).padStart(63, '0'),
-          fromAddress: from.address,
-          toAddress: to.address,
-          amount: '1000000000000', // Same amount (suspicious)
+          block_number: 1001000 + round * 10 + i,
+          hash: '0xc' + (round * 20 + i).toString(16).padStart(63, '0'),
+          from_address: from.address,
+          to_address: to.address,
+          value: '1000000000000', // Same amount (suspicious)
           success: true,
-          timestamp: new Date(Date.now() - round * 86400000 - i * 3600000)
+          timestamp: new Date(Date.now() - round * 86400000 - i * 3600000).toISOString()
         });
       }
     }
@@ -124,14 +122,13 @@ async function generateTestData() {
       const target = TEST_ADDRESSES[Math.floor(Math.random() * 8)];
       
       db.createTransfer({
-        blockNumber: 1002000 + i,
-        blockHash: '0xr' + i.toString(16).padStart(63, '0'),
-        extrinsicHash: '0xr' + (i * 2).toString(16).padStart(63, '0'),
-        fromAddress: mixer.address,
-        toAddress: target.address,
-        amount: '500000000000', // Small, consistent amounts
+        block_number: 1002000 + i,
+        hash: '0xr' + (i * 2).toString(16).padStart(63, '0'),
+        from_address: mixer.address,
+        to_address: target.address,
+        value: '500000000000', // Small, consistent amounts
         success: true,
-        timestamp: new Date(Date.now() - i * 60000) // 1 minute apart
+        timestamp: new Date(Date.now() - i * 60000).toISOString() // 1 minute apart
       });
     }
     
@@ -143,14 +140,13 @@ async function generateTestData() {
       
       if (whale.address !== target.address) {
         db.createTransfer({
-          blockNumber: 1003000 + i * 100,
-          blockHash: '0xw' + i.toString(16).padStart(63, '0'),
-          extrinsicHash: '0xw' + (i * 2).toString(16).padStart(63, '0'),
-          fromAddress: whale.address,
-          toAddress: target.address,
-          amount: (BigInt(1000000000000) * BigInt(100 + i * 50)).toString(), // Very large amounts
+          block_number: 1003000 + i * 100,
+          hash: '0xw' + (i * 2).toString(16).padStart(63, '0'),
+          from_address: whale.address,
+          to_address: target.address,
+          value: (BigInt(1000000000000) * BigInt(100 + i * 50)).toString(), // Very large amounts
           success: true,
-          timestamp: new Date(Date.now() - i * 7200000) // 2 hours apart
+          timestamp: new Date(Date.now() - i * 7200000).toISOString() // 2 hours apart
         });
       }
     }
@@ -192,33 +188,21 @@ async function generateTestData() {
     );
     console.log('✅ Added rapid transfer pattern');
     
-    // Update statistics
-    console.log('\n📊 Updating statistics...');
+    // Get statistics
+    console.log('\n📊 Getting statistics...');
     const stats = db.db.prepare(`
       SELECT 
         COUNT(DISTINCT address) as total_accounts,
-        COUNT(DISTINCT CASE WHEN from_address = address THEN to_address 
-                           WHEN to_address = address THEN from_address END) as total_relationships,
         COUNT(*) as total_transfers
-      FROM accounts
-      LEFT JOIN transfers ON accounts.address = transfers.from_address 
-                          OR accounts.address = transfers.to_address
+      FROM accounts, transfers
     `).get();
-    
-    db.updateStatistics({
-      totalAccounts: stats.total_accounts,
-      totalTransfers: stats.total_transfers,
-      totalRelationships: stats.total_relationships || 0,
-      lastUpdateTime: new Date()
-    });
     
     // Summary
     console.log('\n✅ Test data generation complete!\n');
     console.log('📊 Summary:');
-    console.log(`  - Accounts created: ${TEST_ADDRESSES.length}`);
-    console.log(`  - Transfers created: ${135}`);
+    console.log(`  - Accounts created: ${stats.total_accounts}`);
+    console.log(`  - Transfers created: ${stats.total_transfers}`);
     console.log(`  - Patterns detected: 2`);
-    console.log(`  - Database size: ${(db.db.prepare('SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size()').get().size / 1024 / 1024).toFixed(2)} MB`);
     
     console.log('\n🎉 You can now start the development server with: npm run dev');
     
