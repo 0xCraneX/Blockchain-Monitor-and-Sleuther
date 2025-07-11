@@ -1,0 +1,37 @@
+import { defineConfig } from 'vitest/config';
+import path from 'path';
+
+export default defineConfig({
+  test: {
+    globals: true,
+    environment: 'node',
+    include: ['tests/**/*.test.js'],
+    exclude: [
+      'node_modules/**',
+      'Hydration-sdk-master/**',
+      'followthedot-main/**',
+      '**/node_modules/**'
+    ],
+    coverage: {
+      reporter: ['text', 'json', 'html'],
+      exclude: [
+        'node_modules/',
+        'tests/',
+        '**/*.config.js',
+        'public/',
+        'migrations/',
+        'Hydration-sdk-master/',
+        'followthedot-main/'
+      ]
+    },
+    setupFiles: ['./tests/setup.js'],
+    testTimeout: 10000,
+    hookTimeout: 10000
+  },
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+      '@tests': path.resolve(__dirname, './tests')
+    }
+  }
+});
