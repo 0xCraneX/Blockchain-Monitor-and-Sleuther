@@ -1,0 +1,34 @@
+{
+  "timestamp": "2025-07-11T16:54:51.095Z",
+  "summary": {
+    "total": 17,
+    "passed": 0,
+    "failed": 16,
+    "warnings": 1,
+    "passRate": "0.0%"
+  },
+  "results": {
+    "passed": [],
+    "failed": [
+      "Server not reachable: fetch failed",
+      "Static asset /css/style.css failed: fetch failed",
+      "Static asset /js/client.js failed: fetch failed",
+      "Static asset /js/address-validator.js failed: fetch failed",
+      "Static asset /js/search.js failed: fetch failed",
+      "Addresses API failed: fetch failed",
+      "Graph API failed: fetch failed",
+      "Stats API failed: fetch failed",
+      "Relationships API failed: fetch failed",
+      "Address search failed: fetch failed",
+      "CORS test failed: fetch failed",
+      "Error handling test failed: fetch failed",
+      "Invalid address test failed: fetch failed",
+      "/api/addresses performance test failed",
+      "/api/stats performance test failed",
+      "/ performance test failed"
+    ],
+    "warnings": [
+      "WebSocket test inconclusive: fetch failed"
+    ]
+  }
+}

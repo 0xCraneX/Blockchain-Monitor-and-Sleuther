@@ -1,0 +1,57 @@
+{
+  "timestamp": "2025-07-11T16:50:33.789Z",
+  "summary": {
+    "total": 55,
+    "passed": 22,
+    "failed": 33,
+    "successRate": "40.00%"
+  },
+  "categories": {
+    "root": {
+      "total": 1,
+      "passed": 1,
+      "failed": 0
+    },
+    "addresses": {
+      "total": 21,
+      "passed": 14,
+      "failed": 7
+    },
+    "graph": {
+      "total": 21,
+      "passed": 0,
+      "failed": 21
+    },
+    "relationships": {
+      "total": 3,
+      "passed": 1,
+      "failed": 2
+    },
+    "investigations": {
+      "total": 3,
+      "passed": 2,
+      "failed": 1
+    },
+    "stats": {
+      "total": 1,
+      "passed": 1,
+      "failed": 0
+    },
+    "rateLimiting": {
+      "total": 1,
+      "passed": 1,
+      "failed": 0
+    },
+    "concurrent": {
+      "total": 1,
+      "passed": 0,
+      "failed": 1
+    },
+    "errorHandling": {
+      "total": 3,
+      "passed": 2,
+      "failed": 1
+    }
+  },
+  "apiBase": "http://[::1]:3000/api"
+}

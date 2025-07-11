@@ -1,0 +1,559 @@
+[36m=== Polkadot Analysis Tool API Test Suite ===[0m
+
+API Base URL: http://[::1]:3000/api
+Test Started: 2025-07-11T16:50:28.319Z
+
+[34m--- ROOT TESTS ---[0m
+
+[32m✓ GET /api - API Info[0m
+  Status: 200 OK (36ms)
+  Response: {
+  "name": "Polkadot Analysis Tool API",
+  "version": "1.0.0",
+  "endpoints": {
+    "addresses": "/api/addresses",
+    "graph": "/api/graph",
+    "relationships": "/api/relationships",
+    "investiga...
+
+
+[34m--- ADDRESSES TESTS ---[0m
+
+[32m✓ GET /api/addresses/search - Valid query[0m
+  Status: 200 OK (3ms)
+  Response: {
+  "query": "test",
+  "count": 0,
+  "results": []
+}...
+
+[32m✓ GET /api/addresses/search - Empty query[0m
+  Status: 400 Bad Request (3ms)
+  Response: {
+  "error": {
+    "message": "Validation error",
+    "status": 400,
+    "details": [
+      {
+        "code": "too_small",
+        "minimum": 1,
+        "type": "string",
+        "inclusive": true,
+  ...
+
+[32m✓ GET /api/addresses/search - Missing query param[0m
+  Status: 400 Bad Request (3ms)
+  Response: {
+  "error": {
+    "message": "Validation error",
+    "status": 400,
+    "details": [
+      {
+        "code": "invalid_type",
+        "expected": "string",
+        "received": "undefined",
+        "pa...
+
+[32m✓ GET /api/addresses/search - Long query[0m
+  Status: 200 OK (3ms)
+  Response: {
+  "query": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "count": 0,
+  "results": []
+}...
+
+[31m✗ GET /api/addresses/{address} - Valid (1A1zP1eP5Q...)[0m
+  Status: 400 Bad Request (3ms)
+  Expected: 200
+  Response: {
+  "error": {
+    "message": "Validation error",
+    "status": 400,
+    "details": [
+      {
+        "validation": "regex",
+        "code": "invalid_string",
+        "message": "Invalid",
+        "pa...
+
+[31m✗ GET /api/addresses/{address} - Valid (15oF4uVJwm...)[0m
+  Status: 404 Not Found (67ms)
+  Expected: 200
+  Response: {
+  "error": {
+    "message": "Address not found",
+    "status": 404
+  }
+}...
+
+[31m✗ GET /api/addresses/{address} - Valid (14E5nqKAp3...)[0m
+  Status: 404 Not Found (63ms)
+  Expected: 200
+  Response: {
+  "error": {
+    "message": "Address not found",
+    "status": 404
+  }
+}...
+
+[32m✓ GET /api/addresses/{address} - Invalid (invalid_address_123)[0m
+  Status: 400 Bad Request (3ms)
+  Response: {
+  "error": {
+    "message": "Validation error",
+    "status": 400,
+    "details": [
+      {
+        "validation": "regex",
+        "code": "invalid_string",
+        "message": "Invalid",
+        "pa...
+
+[32m✓ GET /api/addresses/{address} - Invalid (12345)[0m
+  Status: 400 Bad Request (3ms)
+  Response: {
+  "error": {
+    "message": "Validation error",
+    "status": 400,
+    "details": [
+      {
+        "validation": "regex",
+        "code": "invalid_string",
+        "message": "Invalid",
+        "pa...
+
+[31m✗ GET /api/addresses/{address} - Invalid ()[0m
+  Status: 404 Not Found (2ms)
+  Expected: 400
+  Response: "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot GET /api/addresses/</pre>\n</body>\n</html>\n"...
+
+[32m✓ GET /api/addresses/{address} - Invalid (null)[0m
+  Status: 400 Bad Request (3ms)
+  Response: {
+  "error": {
+    "message": "Validation error",
+    "status": 400,
+    "details": [
+      {
+        "validation": "regex",
+        "code": "invalid_string",
+        "message": "Invalid",
+        "pa...
+
+[32m✓ GET /api/addresses/{address} - Invalid (not-an-address)[0m
+  Status: 400 Bad Request (2ms)
+  Response: {
+  "error": {
+    "message": "Validation error",
+    "status": 400,
+    "details": [
+      {
+        "validation": "regex",
+        "code": "invalid_string",
+        "message": "Invalid",
+        "pa...
+
+[31m✗ GET /api/addresses/{address}/transfers - Valid address[0m
+  Status: 400 Bad Request (3ms)
+  Expected: 200
+  Response: {
+  "error": {
+    "message": "Validation error",
+    "status": 400,
+    "details": [
+      {
+        "validation": "regex",
+        "code": "invalid_string",
+        "message": "Invalid",
+        "pa...
+
+[32m✓ GET /api/addresses/{address}/transfers - Valid address[0m
+  Status: 200 OK (4ms)
+  Response: {
+  "address": "15oF4uVJwmo4TdGW7VfQxNLavjCXviqxT9S1MgbjMNHr6Sp5",
+  "count": 0,
+  "transfers": []
+}...
+
+[32m✓ GET /api/addresses/{address}/transfers - Valid address[0m
+  Status: 200 OK (3ms)
+  Response: {
+  "address": "14E5nqKAp3oAJcmzgZhUD2RcptBeUBScxKHgJKU4HPNcKVf3",
+  "count": 0,
+  "transfers": []
+}...
+
+[31m✗ GET /api/addresses/{address}/relationships - Valid address[0m
+  Status: 400 Bad Request (3ms)
+  Expected: 200
+  Response: {
+  "error": {
+    "message": "Validation error",
+    "status": 400,
+    "details": [
+      {
+        "validation": "regex",
+        "code": "invalid_string",
+        "message": "Invalid",
+        "pa...
+
+[32m✓ GET /api/addresses/{address}/relationships - Valid address[0m
+  Status: 200 OK (4ms)
+  Response: {
+  "address": "15oF4uVJwmo4TdGW7VfQxNLavjCXviqxT9S1MgbjMNHr6Sp5",
+  "count": 0,
+  "relationships": []
+}...
+
+[32m✓ GET /api/addresses/{address}/relationships - Valid address[0m
+  Status: 200 OK (3ms)
+  Response: {
+  "address": "14E5nqKAp3oAJcmzgZhUD2RcptBeUBScxKHgJKU4HPNcKVf3",
+  "count": 0,
+  "relationships": []
+}...
+
+[31m✗ GET /api/addresses/{address}/patterns - Valid address[0m
+  Status: 400 Bad Request (3ms)
+  Expected: 200
+  Response: {
+  "error": {
+    "message": "Validation error",
+    "status": 400,
+    "details": [
+      {
+        "validation": "regex",
+        "code": "invalid_string",
+        "message": "Invalid",
+        "pa...
+
+[32m✓ GET /api/addresses/{address}/patterns - Valid address[0m
+  Status: 200 OK (4ms)
+  Response: {
+  "address": "15oF4uVJwmo4TdGW7VfQxNLavjCXviqxT9S1MgbjMNHr6Sp5",
+  "count": 0,
+  "patterns": []
+}...
+
+[32m✓ GET /api/addresses/{address}/patterns - Valid address[0m
+  Status: 200 OK (4ms)
+  Response: {
+  "address": "14E5nqKAp3oAJcmzgZhUD2RcptBeUBScxKHgJKU4HPNcKVf3",
+  "count": 0,
+  "patterns": []
+}...
+
+
+[34m--- GRAPH TESTS ---[0m
+
+[31m✗ GET /api/graph/{address} - Default depth[0m
+  Status: 400 Bad Request (3ms)
+  Expected: 200
+  Response: {
+  "error": {
+    "code": "INVALID_ADDRESS",
+    "message": "The provided address is not a valid Substrate address",
+    "status": 400,
+    "details": {
+      "address": "1A1zP1eP5QGefi2DMPTfTL5SLmv7...
+
+[31m✗ GET /api/graph/{address} - Default depth[0m
+  Status: 404 Not Found (4ms)
+  Expected: 200
+  Response: {
+  "error": {
+    "code": "ADDRESS_NOT_FOUND",
+    "message": "Address not found in database",
+    "status": 404,
+    "details": {
+      "address": "15oF4uVJwmo4TdGW7VfQxNLavjCXviqxT9S1MgbjMNHr6Sp5",...
+
+[31m✗ GET /api/graph/{address} - Default depth[0m
+  Status: 404 Not Found (4ms)
+  Expected: 200
+  Response: {
+  "error": {
+    "code": "ADDRESS_NOT_FOUND",
+    "message": "Address not found in database",
+    "status": 404,
+    "details": {
+      "address": "14E5nqKAp3oAJcmzgZhUD2RcptBeUBScxKHgJKU4HPNcKVf3",...
+
+[31m✗ GET /api/graph/{address}?depth=1 - Min depth[0m
+  Status: 400 Bad Request (3ms)
+  Expected: 200
+  Response: {
+  "error": {
+    "code": "INVALID_ADDRESS",
+    "message": "The provided address is not a valid Substrate address",
+    "status": 400,
+    "details": {
+      "address": "1A1zP1eP5QGefi2DMPTfTL5SLmv7...
+
+[31m✗ GET /api/graph/{address}?depth=1 - Min depth[0m
+  Status: 404 Not Found (4ms)
+  Expected: 200
+  Response: {
+  "error": {
+    "code": "ADDRESS_NOT_FOUND",
+    "message": "Address not found in database",
+    "status": 404,
+    "details": {
+      "address": "15oF4uVJwmo4TdGW7VfQxNLavjCXviqxT9S1MgbjMNHr6Sp5",...
+
+[31m✗ GET /api/graph/{address}?depth=1 - Min depth[0m
+  Status: 429 Too Many Requests (3ms)
+  Expected: 200
+  Response: "This operation is resource intensive. Please wait before trying again."...
+
+[31m✗ GET /api/graph/{address}?depth=5 - Max depth[0m
+  Status: 429 Too Many Requests (4ms)
+  Expected: 200
+  Response: "This operation is resource intensive. Please wait before trying again."...
+
+[31m✗ GET /api/graph/{address}?depth=5 - Max depth[0m
+  Status: 429 Too Many Requests (3ms)
+  Expected: 200
+  Response: "This operation is resource intensive. Please wait before trying again."...
+
+[31m✗ GET /api/graph/{address}?depth=5 - Max depth[0m
+  Status: 429 Too Many Requests (4ms)
+  Expected: 200
+  Response: "This operation is resource intensive. Please wait before trying again."...
+
+[31m✗ GET /api/graph/{address}?depth=0 - Invalid depth[0m
+  Status: 429 Too Many Requests (3ms)
+  Expected: 400
+  Response: "This operation is resource intensive. Please wait before trying again."...
+
+[31m✗ GET /api/graph/{address}?depth=10 - Excessive depth[0m
+  Status: 429 Too Many Requests (3ms)
+  Expected: 400
+  Response: "This operation is resource intensive. Please wait before trying again."...
+
+[31m✗ GET /api/graph/path - Valid addresses[0m
+  Status: 429 Too Many Requests (2ms)
+  Expected: 200
+  Response: "This operation is resource intensive. Please wait before trying again."...
+
+[31m✗ GET /api/graph/path - Missing from param[0m
+  Status: 429 Too Many Requests (2ms)
+  Expected: 400
+  Response: "This operation is resource intensive. Please wait before trying again."...
+
+[31m✗ GET /api/graph/path - Missing to param[0m
+  Status: 429 Too Many Requests (2ms)
+  Expected: 400
+  Response: "This operation is resource intensive. Please wait before trying again."...
+
+[31m✗ GET /api/graph/metrics/{address}[0m
+  Status: 400 Bad Request (3ms)
+  Expected: 200
+  Response: {
+  "error": {
+    "code": "INVALID_ADDRESS",
+    "message": "The provided address is not a valid Substrate address",
+    "status": 400,
+    "details": {
+      "address": "1A1zP1eP5QGefi2DMPTfTL5SLmv7...
+
+[31m✗ GET /api/graph/metrics/{address}[0m
+  Status: 404 Not Found (3ms)
+  Expected: 200
+  Response: {
+  "error": {
+    "code": "ADDRESS_NOT_FOUND",
+    "message": "Address not found in database",
+    "status": 404,
+    "details": {
+      "address": "15oF4uVJwmo4TdGW7VfQxNLavjCXviqxT9S1MgbjMNHr6Sp5"
+...
+
+[31m✗ GET /api/graph/metrics/{address}[0m
+  Status: 404 Not Found (3ms)
+  Expected: 200
+  Response: {
+  "error": {
+    "code": "ADDRESS_NOT_FOUND",
+    "message": "Address not found in database",
+    "status": 404,
+    "details": {
+      "address": "14E5nqKAp3oAJcmzgZhUD2RcptBeUBScxKHgJKU4HPNcKVf3"
+...
+
+[31m✗ GET /api/graph/patterns/{address}[0m
+  Status: 429 Too Many Requests (3ms)
+  Expected: 200
+  Response: "This operation is resource intensive. Please wait before trying again."...
+
+[31m✗ GET /api/graph/patterns/{address}[0m
+  Status: 429 Too Many Requests (2ms)
+  Expected: 200
+  Response: "This operation is resource intensive. Please wait before trying again."...
+
+[31m✗ GET /api/graph/patterns/{address}[0m
+  Status: 429 Too Many Requests (2ms)
+  Expected: 200
+  Response: "This operation is resource intensive. Please wait before trying again."...
+
+[31m✗ GET /api/graph/expand - Valid request[0m
+  Status: 429 Too Many Requests (2ms)
+  Expected: 200
+  Response: "This operation is resource intensive. Please wait before trying again."...
+
+
+[34m--- RELATIONSHIPS TESTS ---[0m
+
+[32m✓ GET /api/relationships/{from}/{to}/score - Valid addresses[0m
+  Status: 200 OK (4ms)
+  Response: {
+  "success": true,
+  "data": {
+    "fromAddress": "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa",
+    "toAddress": "15oF4uVJwmo4TdGW7VfQxNLavjCXviqxT9S1MgbjMNHr6Sp5",
+    "scores": {
+      "total": 0,
+      "...
+
+[31m✗ GET /api/relationships/{from}/{to}/score - Invalid from address[0m
+  Status: 200 OK (4ms)
+  Expected: 400
+  Response: {
+  "success": true,
+  "data": {
+    "fromAddress": "invalid_address_123",
+    "toAddress": "15oF4uVJwmo4TdGW7VfQxNLavjCXviqxT9S1MgbjMNHr6Sp5",
+    "scores": {
+      "total": 0,
+      "volume": 0,
+   ...
+
+[31m✗ GET /api/relationships/{from}/{to}/score - Invalid to address[0m
+  Status: 200 OK (3ms)
+  Expected: 400
+  Response: {
+  "success": true,
+  "data": {
+    "fromAddress": "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa",
+    "toAddress": "invalid_address_123",
+    "scores": {
+      "total": 0,
+      "volume": 0,
+      "frequency"...
+
+
+[34m--- INVESTIGATIONS TESTS ---[0m
+
+[31m✗ POST /api/investigations - Create new investigation[0m
+  Status: 400 Bad Request (110ms)
+  Expected: 201
+  Response: {
+  "error": {
+    "message": "Validation error",
+    "details": [
+      {
+        "code": "invalid_type",
+        "expected": "string",
+        "received": "undefined",
+        "path": [
+          "t...
+
+[32m✓ POST /api/investigations - Missing required fields[0m
+  Status: 400 Bad Request (2ms)
+  Response: {
+  "error": {
+    "message": "Validation error",
+    "details": [
+      {
+        "code": "invalid_type",
+        "expected": "string",
+        "received": "undefined",
+        "path": [
+          "t...
+
+[32m✓ POST /api/investigations - Empty body[0m
+  Status: 400 Bad Request (2ms)
+  Response: {
+  "error": {
+    "message": "Validation error",
+    "details": [
+      {
+        "code": "invalid_type",
+        "expected": "string",
+        "received": "undefined",
+        "path": [
+          "t...
+
+
+[34m--- STATS TESTS ---[0m
+
+[32m✓ GET /api/stats - General statistics[0m
+  Status: 200 OK (2ms)
+  Response: {
+  "totalAccounts": 0,
+  "totalTransfers": 0,
+  "totalVolume": "0",
+  "lastSyncBlock": 0,
+  "syncStatus": "idle"
+}...
+
+
+[34m--- RATELIMITING TESTS ---[0m
+
+[32m✓ Rate Limiting - Rapid requests test[0m
+  Status: 429 Rate limit hit after 19 requests (undefinedms)
+  Response: {
+  "requestCount": 19,
+  "rateLimitHit": true
+}...
+
+
+[34m--- CONCURRENT TESTS ---[0m
+
+[31m✗ Concurrent Requests - 10 simultaneous requests[0m
+  Status: 207 3/10 requests successful (67ms)
+  Expected: 200
+  Response: {
+  "totalRequests": 10,
+  "successCount": 3,
+  "failureCount": 7,
+  "totalTime": 67,
+  "averageTime": 6.7
+}...
+
+
+[34m--- ERRORHANDLING TESTS ---[0m
+
+[32m✓ GET /api/nonexistent - 404 handling[0m
+  Status: 404 Not Found (2ms)
+  Response: "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot GET /api/nonexistent</pre>\n</body>\n</html>\n"...
+
+[32m✓ POST /api/addresses - Method not allowed[0m
+  Status: 404 Not Found (1ms)
+  Response: "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot POST /api/addresses</pre>\n</body>\n</html>\n"...
+
+[31m✗ GET /api/addresses/../../etc/passwd - Path traversal attempt[0m
+  Status: 404 Not Found (2ms)
+  Expected: 400
+  Response: "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot GET /etc/passwd</pre>\n</body>\n</html>\n"...
+
+
+[36m=== TEST SUMMARY ===[0m
+
+root: [32m1/1 passed[0m
+addresses: [31m14/21 passed[0m
+graph: [31m0/21 passed[0m
+relationships: [31m1/3 passed[0m
+investigations: [31m2/3 passed[0m
+stats: [32m1/1 passed[0m
+rateLimiting: [32m1/1 passed[0m
+concurrent: [31m0/1 passed[0m
+errorHandling: [31m2/3 passed[0m
+
+Total Tests: 55
+[32mPassed: 22[0m
+[31mFailed: 33[0m
+[31mSuccess Rate: 40.00%[0m
+
+Test results saved to api-test-results.json
+Test Completed: 2025-07-11T16:50:33.792Z

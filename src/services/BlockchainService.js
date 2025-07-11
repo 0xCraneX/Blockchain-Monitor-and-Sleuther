@@ -12,6 +12,12 @@ export class BlockchainService {
 
   async connect() {
     try {
+      // Skip blockchain connection in test mode
+      if (process.env.SKIP_BLOCKCHAIN === 'true') {
+        logger.info('Skipping blockchain connection (SKIP_BLOCKCHAIN=true)');
+        return;
+      }
+      
       logger.info(`Connecting to ${this.chainId} at ${this.endpoint}`);
       
       this.provider = new WsProvider(this.endpoint, 1000, {}, 5000);

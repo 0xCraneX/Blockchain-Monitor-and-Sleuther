@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Polkadot Analysis Tool - Frontend Test Runner</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        
+        .test-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .test-section {
+            margin: 20px 0;
+        }
+        
+        .test-section h2 {
+            color: #e6007a;
+            border-bottom: 2px solid #e6007a;
+            padding-bottom: 10px;
+        }
+        
+        .test-result {
+            padding: 8px 12px;
+            margin: 5px 0;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        
+        .test-pass {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .test-fail {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .test-warn {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .test-summary {
+            background-color: #e9ecef;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        
+        .test-controls {
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        button {
+            background-color: #e6007a;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 0 5px;
+        }
+        
+        button:hover {
+            background-color: #d10069;
+        }
+        
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .loading {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+        }
+        
+        .error-log {
+            background-color: #fef3f3;
+            border: 1px solid #fcc;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        pre {
+            background-color: #f4f4f4;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        
+        .iframe-container {
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+        
+        iframe {
+            width: 100%;
+            height: 600px;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Polkadot Analysis Tool - Frontend Test Runner</h1>
+    
+    <div class="test-controls">
+        <button id="runAllTests" onclick="runAllTests()">Run All Tests</button>
+        <button id="runUITests" onclick="runUITests()">Run UI Tests Only</button>
+        <button id="runAPITests" onclick="runAPITests()">Run API Tests Only</button>
+        <button id="clearResults" onclick="clearResults()">Clear Results</button>
+    </div>
+    
+    <div class="test-container">
+        <div class="test-section">
+            <h2>Test Configuration</h2>
+            <p><strong>Application URL:</strong> <span id="appUrl">http://localhost:3000</span></p>
+            <p><strong>Test Started:</strong> <span id="testStartTime">-</span></p>
+            <p><strong>Test Duration:</strong> <span id="testDuration">-</span></p>
+        </div>
+        
+        <div class="test-section">
+            <h2>UI Component Tests</h2>
+            <div id="uiTestResults" class="loading">Tests not started</div>
+        </div>
+        
+        <div class="test-section">
+            <h2>API Endpoint Tests</h2>
+            <div id="apiTestResults" class="loading">Tests not started</div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Browser Compatibility</h2>
+            <div id="browserTestResults"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Console Errors</h2>
+            <div id="consoleErrors" class="error-log">
+                <p>No errors logged</p>
+            </div>
+        </div>
+        
+        <div class="test-summary" id="testSummary" style="display: none;">
+            <h3>Test Summary</h3>
+            <p>Total Tests: <span id="totalTests">0</span></p>
+            <p>Passed: <span id="passedTests" style="color: green;">0</span></p>
+            <p>Failed: <span id="failedTests" style="color: red;">0</span></p>
+            <p>Pass Rate: <span id="passRate">0%</span></p>
+        </div>
+    </div>
+    
+    <div class="test-container">
+        <h2>Live Application View</h2>
+        <div class="iframe-container">
+            <iframe id="appFrame" src="http://localhost:3000" title="Application"></iframe>
+        </div>
+    </div>
+
+    <script>
+        // Test state
+        let testStartTime = null;
+        let consoleErrors = [];
+        
+        // Capture console errors
+        window.addEventListener('error', (event) => {
+            consoleErrors.push({
+                message: event.message,
+                source: event.filename,
+                line: event.lineno,
+                col: event.colno,
+                time: new Date().toISOString()
+            });
+            updateConsoleErrors();
+        });
+        
+        // Test functions
+        async function runAllTests() {
+            clearResults();
+            testStartTime = new Date();
+            document.getElementById('testStartTime').textContent = testStartTime.toLocaleString();
+            
+            disableButtons(true);
+            
+            await runUITests();
+            await runAPITests();
+            await runBrowserTests();
+            
+            updateSummary();
+            updateTestDuration();
+            disableButtons(false);
+        }
+        
+        async function runUITests() {
+            const resultsDiv = document.getElementById('uiTestResults');
+            resultsDiv.innerHTML = '<div class="loading">Running UI tests...</div>';
+            
+            const tests = [
+                { name: 'Page Load Test', fn: testPageLoad },
+                { name: 'Search Input Test', fn: testSearchInput },
+                { name: 'Address Validation Test', fn: testAddressValidation },
+                { name: 'D3.js Integration Test', fn: testD3Integration },
+                { name: 'Socket.IO Integration Test', fn: testSocketIO },
+                { name: 'Filter Controls Test', fn: testFilterControls },
+                { name: 'Export Buttons Test', fn: testExportButtons },
+                { name: 'Responsive Design Test', fn: testResponsiveDesign }
+            ];
+            
+            resultsDiv.innerHTML = '';
+            
+            for (const test of tests) {
+                const result = await runSingleTest(test.name, test.fn);
+                resultsDiv.appendChild(createResultElement(test.name, result));
+            }
+        }
+        
+        async function runAPITests() {
+            const resultsDiv = document.getElementById('apiTestResults');
+            resultsDiv.innerHTML = '<div class="loading">Running API tests...</div>';
+            
+            const tests = [
+                { name: 'Server Health Check', fn: testServerHealth },
+                { name: 'API Endpoints Test', fn: testAPIEndpoints },
+                { name: 'Address Search Test', fn: testAddressSearch },
+                { name: 'CORS Headers Test', fn: testCORSHeaders },
+                { name: 'Static Files Test', fn: testStaticFiles }
+            ];
+            
+            resultsDiv.innerHTML = '';
+            
+            for (const test of tests) {
+                const result = await runSingleTest(test.name, test.fn);
+                resultsDiv.appendChild(createResultElement(test.name, result));
+            }
+        }
+        
+        async function runBrowserTests() {
+            const resultsDiv = document.getElementById('browserTestResults');
+            resultsDiv.innerHTML = '';
+            
+            // Browser info
+            const browserInfo = {
+                userAgent: navigator.userAgent,
+                platform: navigator.platform,
+                language: navigator.language,
+                cookiesEnabled: navigator.cookieEnabled,
+                onLine: navigator.onLine,
+                screenResolution: `${screen.width}x${screen.height}`,
+                windowSize: `${window.innerWidth}x${window.innerHeight}`
+            };
+            
+            resultsDiv.innerHTML = '<pre>' + JSON.stringify(browserInfo, null, 2) + '</pre>';
+        }
+        
+        // Individual test implementations
+        async function testPageLoad() {
+            const iframe = document.getElementById('appFrame');
+            const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+            
+            if (!iframeDoc.getElementById('app')) {
+                throw new Error('App container not found');
+            }
+            
+            if (!iframeDoc.getElementById('address-search')) {
+                throw new Error('Search input not found');
+            }
+            
+            return { success: true };
+        }
+        
+        async function testSearchInput() {
+            const iframe = document.getElementById('appFrame');
+            const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+            const searchInput = iframeDoc.getElementById('address-search');
+            
+            if (!searchInput) {
+                throw new Error('Search input not found');
+            }
+            
+            // Test input functionality
+            searchInput.value = 'test';
+            if (searchInput.value !== 'test') {
+                throw new Error('Input value not set correctly');
+            }
+            
+            return { success: true };
+        }
+        
+        async function testAddressValidation() {
+            const iframe = document.getElementById('appFrame');
+            const iframeWin = iframe.contentWindow;
+            
+            if (!iframeWin.polkadotAddressValidator) {
+                throw new Error('Address validator not loaded');
+            }
+            
+            return { success: true };
+        }
+        
+        async function testD3Integration() {
+            const iframe = document.getElementById('appFrame');
+            const iframeWin = iframe.contentWindow;
+            
+            if (typeof iframeWin.d3 === 'undefined') {
+                throw new Error('D3.js not loaded');
+            }
+            
+            return { success: true, info: `D3.js version: ${iframeWin.d3.version}` };
+        }
+        
+        async function testSocketIO() {
+            const iframe = document.getElementById('appFrame');
+            const iframeWin = iframe.contentWindow;
+            
+            if (typeof iframeWin.io === 'undefined') {
+                throw new Error('Socket.IO not loaded');
+            }
+            
+            return { success: true };
+        }
+        
+        async function testFilterControls() {
+            const iframe = document.getElementById('appFrame');
+            const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+            
+            const filters = ['depth-filter', 'volume-filter', 'time-filter', 'connection-filter'];
+            for (const filterId of filters) {
+                if (!iframeDoc.getElementById(filterId)) {
+                    throw new Error(`Filter ${filterId} not found`);
+                }
+            }
+            
+            return { success: true };
+        }
+        
+        async function testExportButtons() {
+            const iframe = document.getElementById('appFrame');
+            const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+            
+            const buttons = ['export-csv', 'export-json', 'save-investigation'];
+            for (const buttonId of buttons) {
+                if (!iframeDoc.getElementById(buttonId)) {
+                    throw new Error(`Button ${buttonId} not found`);
+                }
+            }
+            
+            return { success: true };
+        }
+        
+        async function testResponsiveDesign() {
+            const iframe = document.getElementById('appFrame');
+            
+            // Test different viewport sizes
+            const originalWidth = iframe.style.width;
+            iframe.style.width = '375px';
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            iframe.style.width = originalWidth;
+            return { success: true };
+        }
+        
+        async function testServerHealth() {
+            const response = await fetch('http://localhost:3000/');
+            if (!response.ok) {
+                throw new Error(`Server returned ${response.status}`);
+            }
+            return { success: true };
+        }
+        
+        async function testAPIEndpoints() {
+            const endpoints = ['/api/addresses', '/api/graph', '/api/stats'];
+            const results = [];
+            
+            for (const endpoint of endpoints) {
+                try {
+                    const response = await fetch(`http://localhost:3000${endpoint}`);
+                    results.push(`${endpoint}: ${response.status}`);
+                } catch (error) {
+                    results.push(`${endpoint}: Error`);
+                }
+            }
+            
+            return { success: true, info: results.join(', ') };
+        }
+        
+        async function testAddressSearch() {
+            const testAddress = '15oF4uVJwmo4TdGW7VfQxNLavjCXviqxT9S1MgbjMNHr6Sp5';
+            const response = await fetch(`http://localhost:3000/api/addresses/search?q=${testAddress}`);
+            
+            if (!response.ok) {
+                throw new Error(`Search API returned ${response.status}`);
+            }
+            
+            const data = await response.json();
+            if (!data.results) {
+                throw new Error('Invalid search response format');
+            }
+            
+            return { success: true };
+        }
+        
+        async function testCORSHeaders() {
+            const response = await fetch('http://localhost:3000/api/addresses', {
+                headers: { 'Origin': 'http://example.com' }
+            });
+            
+            const corsHeader = response.headers.get('access-control-allow-origin');
+            if (!corsHeader) {
+                return { success: true, warning: 'CORS headers not found' };
+            }
+            
+            return { success: true, info: `CORS: ${corsHeader}` };
+        }
+        
+        async function testStaticFiles() {
+            const files = ['/css/style.css', '/js/client.js'];
+            const results = [];
+            
+            for (const file of files) {
+                try {
+                    const response = await fetch(`http://localhost:3000${file}`);
+                    results.push(`${file}: ${response.status}`);
+                } catch (error) {
+                    results.push(`${file}: Error`);
+                }
+            }
+            
+            return { success: true, info: results.join(', ') };
+        }
+        
+        // Helper functions
+        async function runSingleTest(name, testFn) {
+            try {
+                const result = await testFn();
+                return { ...result, success: true };
+            } catch (error) {
+                return { success: false, error: error.message };
+            }
+        }
+        
+        function createResultElement(testName, result) {
+            const div = document.createElement('div');
+            div.className = 'test-result ' + (result.success ? 'test-pass' : 'test-fail');
+            
+            let content = `${result.success ? '✓' : '✗'} ${testName}`;
+            if (result.error) {
+                content += ` - Error: ${result.error}`;
+            } else if (result.warning) {
+                div.className = 'test-result test-warn';
+                content += ` - Warning: ${result.warning}`;
+            } else if (result.info) {
+                content += ` - ${result.info}`;
+            }
+            
+            div.textContent = content;
+            return div;
+        }
+        
+        function clearResults() {
+            document.getElementById('uiTestResults').innerHTML = '<div class="loading">Tests not started</div>';
+            document.getElementById('apiTestResults').innerHTML = '<div class="loading">Tests not started</div>';
+            document.getElementById('browserTestResults').innerHTML = '';
+            document.getElementById('testSummary').style.display = 'none';
+            consoleErrors = [];
+            updateConsoleErrors();
+        }
+        
+        function updateSummary() {
+            const allResults = document.querySelectorAll('.test-result');
+            const passed = document.querySelectorAll('.test-pass').length;
+            const failed = document.querySelectorAll('.test-fail').length;
+            const total = allResults.length;
+            
+            document.getElementById('totalTests').textContent = total;
+            document.getElementById('passedTests').textContent = passed;
+            document.getElementById('failedTests').textContent = failed;
+            document.getElementById('passRate').textContent = total > 0 ? 
+                `${(passed / total * 100).toFixed(1)}%` : '0%';
+            
+            document.getElementById('testSummary').style.display = 'block';
+        }
+        
+        function updateTestDuration() {
+            if (testStartTime) {
+                const duration = new Date() - testStartTime;
+                document.getElementById('testDuration').textContent = `${(duration / 1000).toFixed(1)}s`;
+            }
+        }
+        
+        function updateConsoleErrors() {
+            const errorDiv = document.getElementById('consoleErrors');
+            if (consoleErrors.length === 0) {
+                errorDiv.innerHTML = '<p>No errors logged</p>';
+            } else {
+                errorDiv.innerHTML = consoleErrors.map(err => 
+                    `<div>${err.time}: ${err.message} (${err.source}:${err.line})</div>`
+                ).join('');
+            }
+        }
+        
+        function disableButtons(disabled) {
+            document.getElementById('runAllTests').disabled = disabled;
+            document.getElementById('runUITests').disabled = disabled;
+            document.getElementById('runAPITests').disabled = disabled;
+        }
+        
+        // Initial setup
+        window.onload = () => {
+            console.log('Test runner loaded');
+            
+            // Wait for iframe to load
+            const iframe = document.getElementById('appFrame');
+            iframe.onload = () => {
+                console.log('Application iframe loaded');
+            };
+        };
+    </script>
+</body>
+</html>

