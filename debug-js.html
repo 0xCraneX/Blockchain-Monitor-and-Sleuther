@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JavaScript Debug Tool</title>
+    <style>
+        body { 
+            background: #0a0a0a; 
+            color: #fff; 
+            font-family: 'Consolas', 'Monaco', monospace; 
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .debug-section {
+            border: 1px solid #333;
+            margin: 10px 0;
+            padding: 15px;
+            border-radius: 5px;
+            background: #1a1a1a;
+        }
+        .success { border-left: 4px solid #4CAF50; }
+        .error { border-left: 4px solid #f44336; }
+        .warning { border-left: 4px solid #ff9800; }
+        .info { border-left: 4px solid #2196F3; }
+        h2 { color: #e6007a; margin-top: 0; }
+        h3 { color: #ccc; }
+        pre { background: #000; padding: 10px; border-radius: 3px; overflow-x: auto; }
+        .status-good { color: #4CAF50; }
+        .status-bad { color: #f44336; }
+        .status-warn { color: #ff9800; }
+        #network-graph { width: 200px; height: 150px; border: 1px solid #666; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>Polkadot Analysis Tool - JavaScript Debug Console</h1>
+    
+    <div id="debug-output"></div>
+    <div id="console-output" class="debug-section info">
+        <h3>Console Output</h3>
+        <pre id="console-log"></pre>
+    </div>
+    
+    <!-- Test container for graph -->
+    <svg id="network-graph"></svg>
+
+    <script>
+        // Capture console output
+        const originalConsole = {
+            log: console.log,
+            error: console.error,
+            warn: console.warn,
+            info: console.info
+        };
+        
+        const consoleOutput = document.getElementById('console-log');
+        let logBuffer = [];
+        
+        function captureConsole(type, color) {
+            return function(...args) {
+                const timestamp = new Date().toISOString().substr(11, 12);
+                const message = args.map(arg => 
+                    typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+                ).join(' ');
+                
+                logBuffer.push(`[${timestamp}] ${type.toUpperCase()}: ${message}`);
+                consoleOutput.textContent = logBuffer.slice(-50).join('\n');
+                consoleOutput.scrollTop = consoleOutput.scrollHeight;
+                
+                // Call original
+                originalConsole[type].apply(console, args);
+            };
+        }
+        
+        console.log = captureConsole('log', '#fff');
+        console.error = captureConsole('error', '#f44336');
+        console.warn = captureConsole('warn', '#ff9800');
+        console.info = captureConsole('info', '#2196F3');
+
+        // Debug output container
+        const debugOutput = document.getElementById('debug-output');
+        
+        function addDebugSection(title, status, content, details = '') {
+            const statusClass = status === 'success' ? 'success' : status === 'error' ? 'error' : status === 'warning' ? 'warning' : 'info';
+            const statusIcon = status === 'success' ? '✓' : status === 'error' ? '✗' : status === 'warning' ? '⚠' : 'ℹ';
+            
+            const section = document.createElement('div');
+            section.className = `debug-section ${statusClass}`;
+            section.innerHTML = `
+                <h3>${statusIcon} ${title}</h3>
+                <p>${content}</p>
+                ${details ? `<pre>${details}</pre>` : ''}
+            `;
+            debugOutput.appendChild(section);
+        }
+
+        // Test sequence
+        async function runDiagnostics() {
+            console.log('Starting comprehensive JavaScript diagnostics...');
+            
+            // Test 1: Basic JavaScript
+            try {
+                addDebugSection('Basic JavaScript', 'success', 'JavaScript execution is working');
+            } catch (e) {
+                addDebugSection('Basic JavaScript', 'error', 'JavaScript execution failed', e.message);
+            }
+
+            // Test 2: DOM Access
+            try {
+                const testElement = document.getElementById('network-graph');
+                if (testElement) {
+                    addDebugSection('DOM Access', 'success', 'DOM elements are accessible');
+                } else {
+                    addDebugSection('DOM Access', 'error', 'Cannot access DOM elements');
+                }
+            } catch (e) {
+                addDebugSection('DOM Access', 'error', 'DOM access failed', e.message);
+            }
+
+            // Test 3: External Dependencies
+            await testExternalDependencies();
+            
+            // Test 4: Local File Access
+            await testLocalFiles();
+            
+            // Test 5: Graph Initialization Test
+            await testGraphInitialization();
+            
+            // Test 6: Memory and Performance
+            testPerformance();
+            
+            console.log('Diagnostics complete!');
+        }
+
+        async function testExternalDependencies() {
+            // Wait a bit for external scripts to load
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            // Test D3.js
+            if (typeof d3 !== 'undefined') {
+                try {
+                    const version = d3.version || 'unknown';
+                    addDebugSection('D3.js Library', 'success', `D3.js v${version} loaded successfully`);
+                    
+                    // Test D3 functionality
+                    const svg = d3.select('#network-graph');
+                    svg.append('circle')
+                       .attr('cx', 50)
+                       .attr('cy', 50)
+                       .attr('r', 10)
+                       .style('fill', '#e6007a');
+                    addDebugSection('D3.js Functionality', 'success', 'D3.js DOM manipulation working');
+                } catch (e) {
+                    addDebugSection('D3.js Functionality', 'error', 'D3.js functionality test failed', e.message);
+                }
+            } else {
+                addDebugSection('D3.js Library', 'error', 'D3.js not loaded or not available');
+            }
+            
+            // Test Socket.IO
+            if (typeof io !== 'undefined') {
+                addDebugSection('Socket.IO Library', 'success', 'Socket.IO loaded successfully');
+            } else {
+                addDebugSection('Socket.IO Library', 'error', 'Socket.IO not loaded or not available');
+            }
+        }
+
+        async function testLocalFiles() {
+            const localFiles = [
+                '/js/address-validator.js',
+                '/js/search.js', 
+                '/js/overlay-helpers.js',
+                '/js/client.js',
+                '/js/graph.js',
+                '/js/app.js'
+            ];
+            
+            for (const file of localFiles) {
+                try {
+                    const response = await fetch(file);
+                    if (response.ok) {
+                        const size = response.headers.get('content-length') || 'unknown';
+                        addDebugSection(`Local File: ${file}`, 'success', `File accessible (${size} bytes)`);
+                    } else {
+                        addDebugSection(`Local File: ${file}`, 'error', `HTTP ${response.status}: ${response.statusText}`);
+                    }
+                } catch (e) {
+                    addDebugSection(`Local File: ${file}`, 'error', 'Fetch failed', e.message);
+                }
+                
+                // Small delay to avoid overwhelming the server
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+        }
+
+        async function testGraphInitialization() {
+            // Wait for all scripts to potentially load
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            
+            if (typeof PolkadotGraphVisualization !== 'undefined') {
+                try {
+                    addDebugSection('Graph Class', 'success', 'PolkadotGraphVisualization class is available');
+                    
+                    // Try to create a minimal instance
+                    const testContainer = document.getElementById('network-graph');
+                    if (testContainer) {
+                        const testGraph = new PolkadotGraphVisualization('#network-graph', {
+                            width: 200,
+                            height: 150
+                        });
+                        addDebugSection('Graph Instantiation', 'success', 'Graph can be instantiated successfully');
+                    } else {
+                        addDebugSection('Graph Instantiation', 'error', 'Test container not available');
+                    }
+                } catch (e) {
+                    addDebugSection('Graph Instantiation', 'error', 'Graph instantiation failed', e.message);
+                }
+            } else {
+                addDebugSection('Graph Class', 'error', 'PolkadotGraphVisualization class not found');
+            }
+            
+            // Test app initialization
+            if (typeof PolkadotAnalysisApp !== 'undefined') {
+                addDebugSection('App Class', 'success', 'PolkadotAnalysisApp class is available');
+            } else {
+                addDebugSection('App Class', 'error', 'PolkadotAnalysisApp class not found');
+            }
+            
+            // Check if main app instance exists
+            if (typeof window.app !== 'undefined') {
+                addDebugSection('App Instance', 'success', 'Main app instance is available');
+            } else {
+                addDebugSection('App Instance', 'warning', 'Main app instance not found (may be normal during loading)');
+            }
+        }
+
+        function testPerformance() {
+            const memory = performance.memory;
+            if (memory) {
+                const memoryInfo = `
+Used: ${(memory.usedJSHeapSize / 1024 / 1024).toFixed(2)} MB
+Total: ${(memory.totalJSHeapSize / 1024 / 1024).toFixed(2)} MB
+Limit: ${(memory.jsHeapSizeLimit / 1024 / 1024).toFixed(2)} MB`;
+                addDebugSection('Memory Usage', 'info', 'Memory information available', memoryInfo);
+            } else {
+                addDebugSection('Memory Usage', 'warning', 'Memory information not available');
+            }
+            
+            // Check for potential issues
+            const userAgent = navigator.userAgent;
+            addDebugSection('Browser Info', 'info', 'User agent detected', userAgent);
+        }
+
+        // Start diagnostics after page load
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(runDiagnostics, 500);
+        });
+    </script>
+
+    <!-- Load external dependencies -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+    
+    <!-- Load local files sequentially -->
+    <script src="/js/address-validator.js"></script>
+    <script src="/js/search.js"></script>
+    <script src="/js/overlay-helpers.js"></script>
+    <script src="/js/client.js"></script>
+    <script src="/js/graph.js"></script>
+    <script src="/js/app.js"></script>
+</body>
+</html>

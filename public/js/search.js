@@ -180,11 +180,13 @@ class PolkadotAddressSearch {
             // Add to search history
             this.addToSearchHistory(query);
 
-            // Trigger main search action (integrate with main app)
+            // Wait for main search function to be available, then trigger it
+            await this.waitForMainSearchFunction();
+            
             if (typeof window.performMainSearch === 'function') {
                 await window.performMainSearch(query);
             } else {
-                console.log('Main search function not available, query:', query);
+                throw new Error('Main search function is not available');
             }
 
             this.hideResults();
@@ -194,6 +196,32 @@ class PolkadotAddressSearch {
         } finally {
             this.setLoading(false);
         }
+    }
+
+    /**
+     * Wait for the main search function to be available
+     */
+    async waitForMainSearchFunction() {
+        const maxWaitTime = 10000; // 10 seconds timeout
+        const checkInterval = 100; // Check every 100ms
+        
+        return new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => {
+                reject(new Error('Timeout waiting for main search function to be available'));
+            }, maxWaitTime);
+            
+            const checkFunction = () => {
+                if (typeof window.performMainSearch === 'function') {
+                    clearTimeout(timeout);
+                    resolve();
+                } else {
+                    setTimeout(checkFunction, checkInterval);
+                }
+            };
+            
+            // Start checking immediately
+            checkFunction();
+        });
     }
 
     async performSearch(query) {
@@ -345,7 +373,8 @@ class PolkadotAddressSearch {
         
         // Auto-trigger search if enabled
         if (this.options.autoSearch !== false) {
-            this.handleSearch();
+            // Use setTimeout to ensure this doesn't block the UI
+            setTimeout(() => this.handleSearch(), 0);
         }
     }
 

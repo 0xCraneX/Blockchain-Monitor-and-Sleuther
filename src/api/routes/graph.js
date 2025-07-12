@@ -114,7 +114,14 @@ const patternsQuerySchema = z.object({
 const expandQuerySchema = z.object({
   cursor: z.string().min(1),
   limit: z.coerce.number().min(1).max(100).default(20),
-  direction: z.enum(['inward', 'outward', 'both']).default('outward')
+  direction: z.string().transform((val) => {
+    // Handle direction with optional suffix (e.g., "outward:1")
+    const direction = val.split(':')[0];
+    if (!['inward', 'outward', 'both'].includes(direction)) {
+      throw new Error(`Invalid direction: ${direction}`);
+    }
+    return direction;
+  }).default('outward')
 });
 
 // Middleware to validate request

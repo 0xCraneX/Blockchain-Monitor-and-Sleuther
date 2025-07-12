@@ -1,11 +1,26 @@
 // Client-side JavaScript for polkadot-analysis-tool
 // This file provides frontend functionality for the blockchain analysis tool
 
+// Wait for app to be ready before initializing client
+function waitForApp() {
+  if (typeof window.app !== 'undefined') {
+    console.log('Main app detected, initializing client integration...');
+    initializeApp();
+  } else {
+    console.log('Waiting for main app to be ready...');
+    // Listen for the app ready event
+    document.addEventListener('polkadotAppReady', function(event) {
+      console.log('App ready event received, initializing client integration...');
+      initializeApp();
+    }, { once: true });
+  }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
   console.log('Polkadot Analysis Tool client loaded');
   
-  // Initialize the application
-  initializeApp();
+  // Wait for the main app to be ready
+  waitForApp();
 });
 
 function initializeApp() {
@@ -20,6 +35,14 @@ function initializeApp() {
 }
 
 function initializeSearchIntegration() {
+  let appReady = false;
+  
+  // Listen for the app ready event
+  window.addEventListener('polkadotAppReady', () => {
+    appReady = true;
+    console.log('Main app system is now ready for integration');
+  });
+  
   // Provide main search function for the search component
   window.performMainSearch = async function(query) {
     console.log('Performing main search for:', query);
@@ -27,6 +50,14 @@ function initializeSearchIntegration() {
     try {
       // Show loading state
       showLoadingState(true);
+      
+      // Ensure main app is available before proceeding
+      if (typeof window.app === 'undefined') {
+        console.log('Main app not ready for search, waiting...');
+        await new Promise(resolve => {
+          document.addEventListener('polkadotAppReady', resolve, { once: true });
+        });
+      }
       
       // Validate the address/query
       const validation = validateSearchQuery(query);
@@ -57,6 +88,8 @@ function initializeSearchIntegration() {
       showLoadingState(false);
     }
   };
+  
+  console.log('window.performMainSearch function has been defined and is available:', typeof window.performMainSearch === 'function');
 }
 
 function validateSearchQuery(query) {
@@ -108,20 +141,42 @@ async function fetchAccountData(query) {
 
 async function loadAddressGraph(address) {
   try {
-    // Fetch relationships data
-    const response = await fetch(`/api/addresses/${encodeURIComponent(address)}/relationships?limit=50`);
-    if (!response.ok) {
-      throw new Error(`Failed to load relationships: ${response.status}`);
-    }
+    // Wait for main app system to be available with timeout
+    console.log('Graph loading delegated to main app system for address:', address);
     
-    const data = await response.json();
-    console.log('Relationships data:', data);
+    const maxWaitTime = 10000; // 10 seconds timeout
     
-    // Initialize graph visualization
-    initializeNetworkGraph(address, data.relationships || []);
+    // Use Promise to wait for either app ready or timeout
+    await new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('Timeout waiting for main app system to initialize'));
+      }, maxWaitTime);
+      
+      const checkApp = () => {
+        if (typeof window.app !== 'undefined' && window.app.loadAddressGraph) {
+          clearTimeout(timeout);
+          resolve();
+        } else {
+          // Check again in 100ms
+          setTimeout(checkApp, 100);
+        }
+      };
+      
+      // Also listen for the app ready event
+      const handleAppReady = () => {
+        clearTimeout(timeout);
+        document.removeEventListener('polkadotAppReady', handleAppReady);
+        resolve();
+      };
+      
+      document.addEventListener('polkadotAppReady', handleAppReady);
+      
+      // Start checking immediately
+      checkApp();
+    });
     
-    // Update statistics
-    updateGraphStatistics(data.relationships || []);
+    // Now we can safely call the main app
+    await window.app.loadAddressGraph(address);
     
   } catch (error) {
     console.error('Failed to load address graph:', error);
@@ -130,118 +185,8 @@ async function loadAddressGraph(address) {
 }
 
 function initializeNetworkGraph(centerAddress, relationships) {
-  // Basic D3.js graph initialization
-  const container = document.getElementById('graph-container');
-  const svg = d3.select('#network-graph');
-  
-  // Clear previous content
-  svg.selectAll('*').remove();
-  
-  // Set up dimensions
-  const width = container.clientWidth;
-  const height = container.clientHeight;
-  
-  svg.attr('width', width).attr('height', height);
-  
-  // Create nodes and links data
-  const nodes = [{ id: centerAddress, type: 'center' }];
-  const links = [];
-  
-  relationships.forEach(rel => {
-    if (!nodes.find(n => n.id === rel.connected_address)) {
-      nodes.push({ 
-        id: rel.connected_address, 
-        type: 'connected',
-        identity: rel.identity,
-        riskScore: rel.risk_score || 0
-      });
-    }
-    
-    links.push({
-      source: centerAddress,
-      target: rel.connected_address,
-      value: parseFloat(rel.total_volume || 0)
-    });
-  });
-  
-  // Create force simulation
-  const simulation = d3.forceSimulation(nodes)
-    .force('link', d3.forceLink(links).id(d => d.id).distance(100))
-    .force('charge', d3.forceManyBody().strength(-300))
-    .force('center', d3.forceCenter(width / 2, height / 2));
-  
-  // Create links
-  const link = svg.append('g')
-    .selectAll('line')
-    .data(links)
-    .enter().append('line')
-    .attr('class', 'link')
-    .attr('stroke-width', d => Math.sqrt(d.value / 1000000000000) + 1);
-  
-  // Create nodes
-  const node = svg.append('g')
-    .selectAll('circle')
-    .data(nodes)
-    .enter().append('circle')
-    .attr('class', 'node')
-    .attr('r', d => d.type === 'center' ? 15 : 10)
-    .attr('fill', d => {
-      if (d.type === 'center') return '#e6007a';
-      if (d.riskScore > 0.7) return '#f44336';
-      if (d.riskScore > 0.3) return '#ff9800';
-      return '#4caf50';
-    })
-    .call(d3.drag()
-      .on('start', dragstarted)
-      .on('drag', dragged)
-      .on('end', dragended))
-    .on('click', (event, d) => showNodeDetails(d));
-  
-  // Add labels
-  const label = svg.append('g')
-    .selectAll('text')
-    .data(nodes)
-    .enter().append('text')
-    .text(d => d.identity || truncateAddress(d.id))
-    .attr('class', 'node-label')
-    .attr('font-size', '10px')
-    .attr('text-anchor', 'middle')
-    .attr('dy', -20);
-  
-  // Update positions on simulation tick
-  simulation.on('tick', () => {
-    link
-      .attr('x1', d => d.source.x)
-      .attr('y1', d => d.source.y)
-      .attr('x2', d => d.target.x)
-      .attr('y2', d => d.target.y);
-    
-    node
-      .attr('cx', d => d.x)
-      .attr('cy', d => d.y);
-    
-    label
-      .attr('x', d => d.x)
-      .attr('y', d => d.y);
-  });
-  
-  // Drag functions
-  function dragstarted(event, d) {
-    if (!event.active) simulation.alphaTarget(0.3).restart();
-    d.fx = d.x;
-    d.fy = d.y;
-  }
-  
-  function dragged(event, d) {
-    d.fx = event.x;
-    d.fy = event.y;
-  }
-  
-  function dragended(event, d) {
-    if (!event.active) simulation.alphaTarget(0);
-    d.fx = null;
-    d.fy = null;
-  }
+  // Delegate to the main app's graph visualization system
+  console.log('Graph initialization delegated to main app system');
 }
 
 function truncateAddress(address, start = 6, end = 6) {
@@ -331,6 +276,23 @@ function showErrorMessage(message) {
   // Simple error display - could be enhanced with a proper notification system
   alert('Error: ' + message);
 }
+
+// Debug utility function to test integration
+window.testIntegration = function() {
+  console.log('=== Integration Test ===');
+  console.log('window.performMainSearch available:', typeof window.performMainSearch === 'function');
+  console.log('window.app available:', typeof window.app !== 'undefined');
+  console.log('window.app.loadAddressGraph available:', typeof window.app?.loadAddressGraph === 'function');
+  console.log('Search components initialized:', typeof window.polkadotSearch !== 'undefined');
+  
+  if (typeof window.app !== 'undefined' && window.app.loadAddressGraph) {
+    console.log('✅ Integration looks good - ready to search!');
+    return true;
+  } else {
+    console.log('❌ Integration not complete yet');
+    return false;
+  }
+};
 
 // Export for module usage if needed
 if (typeof module !== 'undefined' && module.exports) {

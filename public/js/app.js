@@ -32,28 +32,80 @@ class PolkadotAnalysisApp {
         };
         
         // Initialize components
+        console.log('Initializing application components...');
         this.initializeComponents();
+        console.log('Setting up event handlers...');
         this.setupEventHandlers();
+        console.log('Loading initial data...');
         this.loadInitialData();
         
-        console.log('Polkadot Analysis Tool initialized');
+        console.log('Polkadot Analysis Tool initialized successfully with loadAddressGraph method available:', typeof this.loadAddressGraph === 'function');
     }
     
     /**
      * Initialize application components
      */
     initializeComponents() {
+        // Check if PolkadotGraphVisualization is available
+        if (typeof PolkadotGraphVisualization === 'undefined') {
+            console.error('PolkadotGraphVisualization class not found. Make sure graph.js is loaded before app.js');
+            throw new Error('Graph visualization dependency not available');
+        }
+        
         // Initialize graph visualization
-        this.graph = new PolkadotGraphVisualization('#network-graph', {
-            width: 1200,
-            height: 600,
-            onNodeClick: (nodeData, event, selectedNodes) => this.handleNodeClick(nodeData, event, selectedNodes),
-            onNodeDoubleClick: (nodeData, event) => this.handleNodeDoubleClick(nodeData, event),
-            onEdgeClick: (edgeData, event) => this.handleEdgeClick(edgeData, event),
-            onViewportChange: (transform, zoomLevel) => this.handleViewportChange(transform, zoomLevel),
-            onDataUpdate: (data, metrics) => this.handleDataUpdate(data, metrics),
-            onError: (error) => this.handleError(error)
-        });
+        try {
+            // First verify the container exists before attempting initialization
+            const graphContainer = document.querySelector('#network-graph');
+            if (!graphContainer) {
+                throw new Error('Graph container #network-graph not found in DOM. Please check HTML structure.');
+            }
+            
+            // Check if container is visible and has dimensions
+            const containerRect = graphContainer.getBoundingClientRect();
+            if (containerRect.width === 0 || containerRect.height === 0) {
+                console.warn('Graph container has zero dimensions. This may cause visualization issues.');
+                console.log('Container rect:', containerRect);
+                
+                // Try to make the visualization section visible if it's hidden
+                const visualizationSection = document.getElementById('visualization-section');
+                if (visualizationSection && visualizationSection.style.display === 'none') {
+                    console.log('Visualization section is hidden, making it visible for proper initialization');
+                    visualizationSection.style.display = 'block';
+                    
+                    // Re-check dimensions after making it visible
+                    const newRect = graphContainer.getBoundingClientRect();
+                    console.log('Container rect after showing section:', newRect);
+                }
+            }
+            
+            console.log('Initializing graph with container:', graphContainer);
+            
+            this.graph = new PolkadotGraphVisualization('#network-graph', {
+                width: 1200,
+                height: 600,
+                onNodeClick: (nodeData, event, selectedNodes) => this.handleNodeClick(nodeData, event, selectedNodes),
+                onNodeDoubleClick: (nodeData, event) => this.handleNodeDoubleClick(nodeData, event),
+                onEdgeClick: (edgeData, event) => this.handleEdgeClick(edgeData, event),
+                onViewportChange: (transform, zoomLevel) => this.handleViewportChange(transform, zoomLevel),
+                onDataUpdate: (data, metrics) => this.handleDataUpdate(data, metrics),
+                onError: (error) => this.handleError(error)
+            });
+            console.log('Graph visualization initialized successfully');
+        } catch (error) {
+            console.error('Failed to initialize graph visualization:', error);
+            this.handleError(error);
+            
+            // Create a placeholder graph object to prevent further errors
+            this.graph = {
+                updateData: () => console.warn('Graph not initialized - using placeholder'),
+                clear: () => console.warn('Graph not initialized - using placeholder'),
+                destroy: () => console.warn('Graph not initialized - using placeholder'),
+                resize: () => console.warn('Graph not initialized - using placeholder')
+            };
+            
+            // Don't throw - allow app to continue with degraded functionality
+            console.log('Continuing with placeholder graph object');
+        }
         
         // Initialize WebSocket for real-time updates
         this.initializeWebSocket();
@@ -335,6 +387,8 @@ class PolkadotAnalysisApp {
      * Load graph data for a specific address
      */
     async loadAddressGraph(address) {
+        console.log('loadAddressGraph called with address:', address);
+        
         if (!this.isValidSubstrateAddress(address)) {
             this.showError('Invalid Substrate address format');
             return;
@@ -640,7 +694,7 @@ class PolkadotAnalysisApp {
             (Number(BigInt(nodeData.balance.free)) / 1e12).toLocaleString() + ' DOT' : 
             'Unknown';
         const connections = nodeData.degree || 0;
-        const riskScore = nodeData.riskScore || 0;
+        // Risk scoring not implemented yet
         
         nodeInfoContainer.innerHTML = `
             <p><span class="label">Identity:</span> ${identity}</p>
@@ -648,17 +702,32 @@ class PolkadotAnalysisApp {
             <p><span class="label">Type:</span> ${nodeType}</p>
             <p><span class="label">Balance:</span> ${balance}</p>
             <p><span class="label">Connections:</span> ${connections}</p>
-            <p><span class="label">Risk Score:</span> ${riskScore}/100</p>
             
             <div style="margin-top: 15px;">
-                <button onclick="app.investigateNode('${address}')" class="btn-primary">
+                <button class="btn-primary investigate-node-btn" data-address="${address}">
                     Investigate
                 </button>
-                <button onclick="app.expandFromNode('${address}')" class="btn-secondary">
+                <button class="btn-secondary expand-node-btn" data-address="${address}">
                     Expand
                 </button>
             </div>
         `;
+        
+        // Add event listeners for the buttons
+        const investigateBtn = nodeInfoContainer.querySelector('.investigate-node-btn');
+        const expandBtn = nodeInfoContainer.querySelector('.expand-node-btn');
+        
+        if (investigateBtn) {
+            investigateBtn.addEventListener('click', () => {
+                this.investigateNode(address);
+            });
+        }
+        
+        if (expandBtn) {
+            expandBtn.addEventListener('click', () => {
+                this.expandFromNode(address);
+            });
+        }
         
         nodeDetailsPanel.style.display = 'block';
     }
@@ -1037,8 +1106,55 @@ class PolkadotAnalysisApp {
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM loaded, initializing Polkadot Analysis Tool...');
     
-    // Create global app instance
-    window.app = new PolkadotAnalysisApp();
+    try {
+        // Check dependencies
+        if (typeof d3 === 'undefined') {
+            throw new Error('D3.js not loaded. Make sure D3.js script is included.');
+        }
+        
+        if (typeof PolkadotGraphVisualization === 'undefined') {
+            throw new Error('PolkadotGraphVisualization not loaded. Make sure graph.js is included before app.js.');
+        }
+        
+        // Create global app instance
+        window.app = new PolkadotAnalysisApp();
+        
+        // Ensure the app is properly exposed for integration
+        console.log('Main app system initialized and available');
+        
+        // Dispatch custom event to notify other components that app is ready
+        document.dispatchEvent(new CustomEvent('polkadotAppReady', { 
+            detail: { app: window.app } 
+        }));
+        
+        console.log('App ready event dispatched');
+        
+    } catch (error) {
+        console.error('Failed to initialize Polkadot Analysis Tool:', error);
+        
+        // Show error message to user
+        const errorDiv = document.createElement('div');
+        errorDiv.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #f44336;
+            color: white;
+            padding: 15px;
+            border-radius: 4px;
+            z-index: 10000;
+            max-width: 400px;
+            font-family: Arial, sans-serif;
+        `;
+        errorDiv.textContent = `Initialization Error: ${error.message}`;
+        document.body.appendChild(errorDiv);
+        
+        // Try to hide loading indicator if it exists
+        const loadingSection = document.getElementById('loading');
+        if (loadingSection) {
+            loadingSection.style.display = 'none';
+        }
+    }
 });
 
 // Export for module usage if needed

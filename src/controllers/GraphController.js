@@ -211,7 +211,7 @@ export class GraphController {
         requestedDepth: parseInt(depth),
         actualDepth: d3Graph.metadata.depth || parseInt(depth),
         hasMore: d3Graph.nodes.length >= maxNodes,
-        nextCursor: d3Graph.nodes.length >= maxNodes ? this._generateCursor(d3Graph.nodes) : null,
+        nextCursor: d3Graph.nodes.length >= maxNodes ? this._generateCursor(d3Graph.nodes, address, parseInt(depth)) : null,
         nodesOmitted: Math.max(0, (d3Graph.metadata.totalPaths || 0) - d3Graph.nodes.length),
         edgesOmitted: 0,
         renderingComplexity: this._calculateRenderingComplexity(d3Graph.nodes.length, d3Graph.edges.length),
@@ -609,31 +609,102 @@ export class GraphController {
       // Decode cursor
       let cursorData;
       try {
-        cursorData = JSON.parse(Buffer.from(cursor, 'base64').toString());
+        const decodedString = Buffer.from(cursor, 'base64').toString();
+        controllerLogger.debug('Decoded cursor string:', decodedString);
+        cursorData = JSON.parse(decodedString);
+        controllerLogger.debug('Parsed cursor data:', cursorData);
       } catch (e) {
+        controllerLogger.warn('Failed to decode cursor as JSON, checking if it looks like an address', { 
+          cursor: cursor.slice(0, 20) + '...', 
+          error: e.message 
+        });
+        
+        // Check if cursor looks like a Substrate address (48+ characters, alphanumeric)
+        if (cursor.length >= 48 && /^[1-9A-HJ-NP-Za-km-z]+$/.test(cursor)) {
+          controllerLogger.info('Cursor appears to be a Substrate address, treating as center address for expansion');
+          // Treat as a fresh expansion from this address
+          cursorData = {
+            centerAddress: cursor,
+            currentDepth: 1,
+            lastNodes: [cursor],
+            excludeNodes: []
+          };
+        } else {
+          return res.status(400).json({
+            error: {
+              code: 'INVALID_CURSOR',
+              message: 'Invalid cursor format - must be base64 encoded JSON or valid Substrate address',
+              status: 400,
+              details: {
+                cursor: cursor.slice(0, 20) + '...',
+                error: e.message
+              }
+            }
+          });
+        }
+      }
+
+      const { centerAddress, currentDepth, lastNodes, excludeNodes = [] } = cursorData;
+
+      // Validate cursor data structure
+      if (!centerAddress || !lastNodes || !Array.isArray(lastNodes) || typeof currentDepth !== 'number') {
+        controllerLogger.warn('Invalid cursor data structure', { cursorData });
         return res.status(400).json({
           error: {
-            code: 'INVALID_CURSOR',
-            message: 'Invalid cursor format',
-            status: 400
+            code: 'INVALID_CURSOR_DATA',
+            message: 'Cursor data missing required fields: centerAddress, currentDepth, lastNodes',
+            status: 400,
+            details: {
+              received: Object.keys(cursorData),
+              expected: ['centerAddress', 'currentDepth', 'lastNodes']
+            }
           }
         });
       }
 
-      const { centerAddress, currentDepth, lastNodes, excludeNodes = [] } = cursorData;
+      // Validate that the center address exists in the database
+      const centerAccount = this.db.getAccount(centerAddress);
+      if (!centerAccount) {
+        controllerLogger.warn(`Center address not found in database: ${centerAddress}`);
+        return res.status(404).json({
+          error: {
+            code: 'ADDRESS_NOT_FOUND',
+            message: 'Center address not found in database',
+            status: 404,
+            details: {
+              address: centerAddress,
+              expected: 'Valid Substrate address in database'
+            }
+          }
+        });
+      }
 
       // Get additional connections for last nodes
       const newNodes = new Map();
       const newEdges = [];
       const processedAddresses = new Set(excludeNodes);
 
-      for (const nodeAddress of lastNodes.slice(0, 5)) { // Limit expansion points
-        if (processedAddresses.has(nodeAddress)) continue;
+      controllerLogger.info('Starting graph expansion', {
+        centerAddress,
+        currentDepth,
+        lastNodesCount: lastNodes.length,
+        excludeNodesCount: excludeNodes.length,
+        direction
+      });
 
+      for (const nodeAddress of lastNodes.slice(0, 5)) { // Limit expansion points
+        if (processedAddresses.has(nodeAddress)) {
+          controllerLogger.debug(`Skipping already processed address: ${nodeAddress}`);
+          continue;
+        }
+
+        controllerLogger.debug(`Getting connections for: ${nodeAddress}`);
         const connections = this.graphQueries.getDirectConnections(nodeAddress, {
           minVolume: '0',
           limit: Math.ceil(parseInt(limit) / lastNodes.length)
         });
+
+        controllerLogger.debug(`Found ${connections.nodes.length} nodes and ${connections.edges.length} edges for ${nodeAddress}`);
 
         connections.nodes.forEach(node => {
           if (!processedAddresses.has(node.address) && node.address !== centerAddress) {
@@ -683,7 +754,12 @@ export class GraphController {
       };
 
       const executionTime = Date.now() - startTime;
-      logger.info(`Graph expansion completed in ${executionTime}ms`);
+      controllerLogger.info(`Graph expansion completed in ${executionTime}ms`, {
+        addedNodes: limitedNodes.length,
+        addedEdges: filteredEdges.length,
+        hasMore,
+        nextCursor: nextCursor ? nextCursor.slice(0, 20) + '...' : null
+      });
 
       res.json(result);
 
@@ -916,10 +992,12 @@ export class GraphController {
    * Generate cursor for pagination
    * @private
    */
-  _generateCursor(nodes) {
+  _generateCursor(nodes, centerAddress, currentDepth = 2) {
     const cursorData = {
-      depth: 2,
-      lastNode: nodes[nodes.length - 1]?.address || ''
+      centerAddress,
+      currentDepth,
+      lastNodes: nodes.slice(-Math.min(5, nodes.length)).map(n => n.address || n.id),
+      excludeNodes: nodes.map(n => n.address || n.id)
     };
     return Buffer.from(JSON.stringify(cursorData)).toString('base64');
   }

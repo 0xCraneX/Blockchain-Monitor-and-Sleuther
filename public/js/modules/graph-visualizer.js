@@ -19,10 +19,10 @@ export class GraphVisualizer {
         max: 30,
         default: 12
       },
-      linkDistance: 80,
-      linkStrength: 0.7,
-      chargeStrength: -300,
-      collideRadius: 20,
+      linkDistance: 100,
+      linkStrength: 0.3,
+      chargeStrength: -150,
+      collideRadius: 15,
       colors: {
         node: {
           default: '#4CAF50',
@@ -50,6 +50,8 @@ export class GraphVisualizer {
     this.zoom = null;
     
     this.selectedNode = null;
+    this.lockedNodes = new Set();
+    this.simulationPaused = false;
     this.eventHandlers = new Map();
     
     this.init();
@@ -87,15 +89,20 @@ export class GraphVisualizer {
     graphGroup.append('g').attr('class', 'nodes');
     graphGroup.append('g').attr('class', 'labels');
 
-    // Create force simulation
+    // Create force simulation with gentler physics
     this.simulation = d3.forceSimulation()
       .force('link', d3.forceLink().id(d => d.id).distance(this.options.linkDistance).strength(this.options.linkStrength))
       .force('charge', d3.forceManyBody().strength(this.options.chargeStrength))
       .force('center', d3.forceCenter(this.options.width / 2, this.options.height / 2))
-      .force('collision', d3.forceCollide().radius(this.options.collideRadius));
+      .force('collision', d3.forceCollide().radius(this.options.collideRadius))
+      .alphaDecay(0.05)
+      .velocityDecay(0.8);
 
     // Handle window resize
     window.addEventListener('resize', () => this.handleResize());
+    
+    // Handle keyboard shortcuts
+    window.addEventListener('keydown', (event) => this.handleKeyDown(event));
   }
 
   /**
@@ -197,6 +204,9 @@ export class GraphVisualizer {
       );
 
     this.nodeElements = nodeEnter.merge(this.nodeElements);
+    
+    // Update node styles to show locked state
+    this.updateNodeStyles();
 
     // Update labels
     this.labelElements = this.svg.select('.labels')
@@ -224,8 +234,10 @@ export class GraphVisualizer {
     this.simulation.force('link')
       .links(this.links);
 
-    // Restart simulation
-    this.simulation.alpha(1).restart();
+    // Restart simulation if not paused
+    if (!this.simulationPaused) {
+      this.simulation.alpha(0.3).restart();
+    }
   }
 
   /**
@@ -263,6 +275,26 @@ export class GraphVisualizer {
         }
         return colors.default;
     }
+  }
+  
+  /**
+   * Get node stroke color including locked state
+   */
+  getNodeStrokeColor(node) {
+    if (this.lockedNodes.has(node.id)) {
+      return '#FFD700'; // Gold for locked nodes
+    }
+    return '#fff';
+  }
+  
+  /**
+   * Get node stroke width including locked state
+   */
+  getNodeStrokeWidth(node) {
+    if (this.lockedNodes.has(node.id)) {
+      return 3; // Thicker stroke for locked nodes
+    }
+    return 2;
   }
 
   /**
@@ -302,11 +334,16 @@ export class GraphVisualizer {
   handleNodeClick(event, node) {
     event.stopPropagation();
     
+    // Handle double-click for locking
+    if (event.detail === 2) {
+      this.toggleNodeLock(node);
+    }
+    
     // Update selection
     this.selectedNode = node;
     
     // Update node colors
-    this.nodeElements.style('fill', d => this.getNodeColor(d));
+    this.updateNodeStyles();
     
     // Emit event
     this.emit('nodeClick', { node, event });
@@ -343,12 +380,13 @@ export class GraphVisualizer {
   }
 
   /**
-   * Drag handlers
+   * Drag handlers with position locking support
    */
   dragStarted(event, node) {
-    if (!event.active) this.simulation.alphaTarget(0.3).restart();
+    if (!event.active && !this.simulationPaused) this.simulation.alphaTarget(0.1).restart();
     node.fx = node.x;
     node.fy = node.y;
+    node.__dragging = true;
   }
 
   dragged(event, node) {
@@ -357,9 +395,25 @@ export class GraphVisualizer {
   }
 
   dragEnded(event, node) {
-    if (!event.active) this.simulation.alphaTarget(0);
-    node.fx = null;
-    node.fy = null;
+    node.__dragging = false;
+    
+    // Check if user wants to lock position (ctrl+drag)
+    const shouldLock = event.sourceEvent?.ctrlKey || event.sourceEvent?.metaKey;
+    
+    if (shouldLock || this.lockedNodes.has(node.id)) {
+      // Keep node locked in position
+      this.lockedNodes.add(node.id);
+      // Keep fx, fy set
+    } else {
+      // Release for normal physics
+      node.fx = null;
+      node.fy = null;
+    }
+    
+    if (!event.active && !this.simulationPaused) this.simulation.alphaTarget(0);
+    
+    // Update visual feedback
+    this.updateNodeStyles();
   }
 
   /**
@@ -378,8 +432,41 @@ export class GraphVisualizer {
     
     this.simulation
       .force('center', d3.forceCenter(newWidth / 2, newHeight / 2))
-      .alpha(1)
+      .alpha(0.3)
       .restart();
+  }
+  
+  /**
+   * Handle keyboard shortcuts
+   */
+  handleKeyDown(event) {
+    switch (event.key) {
+      case ' ': // Spacebar to toggle simulation
+        event.preventDefault();
+        this.toggleSimulation();
+        break;
+      case 'l':
+      case 'L':
+        if (event.ctrlKey || event.metaKey) {
+          event.preventDefault();
+          if (this.selectedNode) {
+            this.lockNode(this.selectedNode);
+          }
+        }
+        break;
+      case 'u':
+      case 'U':
+        if (event.ctrlKey || event.metaKey) {
+          event.preventDefault();
+          // Unlock all nodes
+          this.nodes.forEach(node => {
+            if (this.lockedNodes.has(node.id)) {
+              this.unlockNode(node);
+            }
+          });
+        }
+        break;
+    }
   }
 
   /**
@@ -455,12 +542,89 @@ export class GraphVisualizer {
   }
 
   /**
+   * Toggle node position lock
+   */
+  toggleNodeLock(node) {
+    if (this.lockedNodes.has(node.id)) {
+      this.unlockNode(node);
+    } else {
+      this.lockNode(node);
+    }
+  }
+  
+  /**
+   * Lock a node's position
+   */
+  lockNode(node) {
+    this.lockedNodes.add(node.id);
+    node.fx = node.x;
+    node.fy = node.y;
+    this.updateNodeStyles();
+    console.log(`Node ${node.id} locked`);
+  }
+  
+  /**
+   * Unlock a node's position
+   */
+  unlockNode(node) {
+    this.lockedNodes.delete(node.id);
+    node.fx = null;
+    node.fy = null;
+    this.updateNodeStyles();
+    console.log(`Node ${node.id} unlocked`);
+  }
+  
+  /**
+   * Update node visual styles
+   */
+  updateNodeStyles() {
+    if (this.nodeElements) {
+      this.nodeElements
+        .style('fill', d => this.getNodeColor(d))
+        .style('stroke', d => this.getNodeStrokeColor(d))
+        .style('stroke-width', d => this.getNodeStrokeWidth(d));
+    }
+  }
+  
+  /**
+   * Pause the force simulation
+   */
+  pauseSimulation() {
+    this.simulationPaused = true;
+    this.simulation.alphaTarget(0).stop();
+    console.log('Simulation paused');
+  }
+  
+  /**
+   * Resume the force simulation
+   */
+  resumeSimulation() {
+    this.simulationPaused = false;
+    this.simulation.alpha(0.3).restart();
+    console.log('Simulation resumed');
+  }
+  
+  /**
+   * Toggle simulation pause/resume
+   */
+  toggleSimulation() {
+    if (this.simulationPaused) {
+      this.resumeSimulation();
+    } else {
+      this.pauseSimulation();
+    }
+    return !this.simulationPaused;
+  }
+  
+  /**
    * Clear the graph
    */
   clear() {
     this.nodes = [];
     this.links = [];
     this.selectedNode = null;
+    this.lockedNodes.clear();
+    this.simulationPaused = false;
     
     this.svg.select('.links').selectAll('.link').remove();
     this.svg.select('.nodes').selectAll('.node').remove();
@@ -480,7 +644,9 @@ export class GraphVisualizer {
     
     this.container.innerHTML = '';
     this.eventHandlers.clear();
+    this.lockedNodes.clear();
     
     window.removeEventListener('resize', this.handleResize);
+    window.removeEventListener('keydown', this.handleKeyDown);
   }
 }

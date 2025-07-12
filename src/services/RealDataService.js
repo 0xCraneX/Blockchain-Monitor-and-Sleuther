@@ -25,27 +25,44 @@ export class RealDataService {
       
       // Fallback to blockchain RPC if Subscan fails
       if (!accountInfo && this.blockchain?.api) {
-        const account = await this.blockchain.api.query.system.account(address);
-        const identity = await this.blockchain.getIdentity(address);
-        
-        accountInfo = {
-          address,
-          identity: {
-            display: identity?.display || null,
-            legal: identity?.legal || null,
-            web: identity?.web || null,
-            email: identity?.email || null,
-            twitter: identity?.twitter || null,
-            verified: identity?.verified || false
-          },
-          balance: {
-            free: account.data.free.toString(),
-            reserved: account.data.reserved.toString(),
-            locked: account.data.frozen?.toString() || '0'
-          },
-          nonce: account.nonce.toNumber(),
-          role: 'regular'
-        };
+        try {
+          const account = await this.blockchain.api.query.system.account(address);
+          let identity = null;
+          
+          // Try to get identity info if available
+          try {
+            if (this.blockchain.api.query.identity?.identityOf) {
+              const identityData = await this.blockchain.api.query.identity.identityOf(address);
+              if (identityData.isSome) {
+                const info = identityData.unwrap().info;
+                identity = this.blockchain.parseIdentity(info);
+              }
+            }
+          } catch (identityError) {
+            logger.debug('Failed to get identity from blockchain', { address, error: identityError.message });
+          }
+          
+          accountInfo = {
+            address,
+            identity: {
+              display: identity?.display || null,
+              legal: identity?.legal || null,
+              web: identity?.web || null,
+              email: identity?.email || null,
+              twitter: identity?.twitter || null,
+              verified: false
+            },
+            balance: {
+              free: account.data.free.toString(),
+              reserved: account.data.reserved.toString(),
+              locked: account.data.frozen?.toString() || '0'
+            },
+            nonce: account.nonce.toNumber(),
+            role: 'regular'
+          };
+        } catch (blockchainError) {
+          logger.warn('Failed to get account data from blockchain', { address, error: blockchainError.message });
+        }
       }
 
       if (accountInfo) {

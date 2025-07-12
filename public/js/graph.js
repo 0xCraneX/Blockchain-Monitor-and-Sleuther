@@ -19,15 +19,15 @@ class PolkadotGraphVisualization {
             width: options.width || 1200,
             height: options.height || 600,
             
-            // Force simulation settings
+            // Force simulation settings - optimized for manual control
             forces: {
-                charge: options.chargeStrength || -300,
-                linkDistance: options.linkDistance || 80,
-                linkStrength: options.linkStrength || 0.7,
-                collideRadius: options.collideRadius || 30,
-                alpha: options.alpha || 0.9,
-                alphaDecay: options.alphaDecay || 0.028,
-                velocityDecay: options.velocityDecay || 0.4
+                charge: options.chargeStrength || -150,
+                linkDistance: options.linkDistance || 100,
+                linkStrength: options.linkStrength || 0.3,
+                collideRadius: options.collideRadius || 15,
+                alpha: options.alpha || 0.3,
+                alphaDecay: options.alphaDecay || 0.05,
+                velocityDecay: options.velocityDecay || 0.8
             },
             
             // Visual styling
@@ -82,12 +82,14 @@ class PolkadotGraphVisualization {
             selectedNodes: new Set(),
             highlightedNodes: new Set(),
             expandingNodes: new Set(),
+            lockedNodes: new Set(),
             currentFilters: {},
             isLoading: false,
             hasMore: false,
             nextCursor: null,
             viewTransform: null,
-            zoomLevel: 1
+            zoomLevel: 1,
+            simulationPaused: false
         };
         
         // Performance tracking
@@ -101,6 +103,30 @@ class PolkadotGraphVisualization {
         
         // Initialize visualization
         this.container = d3.select(containerSelector);
+        
+        // Validate container exists and is properly accessible
+        if (this.container.empty()) {
+            const error = new Error(`Graph container not found: ${containerSelector}. Please ensure the element exists in the DOM.`);
+            console.error('PolkadotGraphVisualization initialization failed:', error.message);
+            if (options.onError) {
+                options.onError(error);
+            }
+            throw error;
+        }
+        
+        // Validate container has a valid DOM node
+        const containerNode = this.container.node();
+        if (!containerNode) {
+            const error = new Error(`Invalid container node for selector: ${containerSelector}`);
+            console.error('PolkadotGraphVisualization initialization failed:', error.message);
+            if (options.onError) {
+                options.onError(error);
+            }
+            throw error;
+        }
+        
+        console.log(`Graph container found: ${containerSelector}`, containerNode);
+        
         this.initializeVisualization();
         this.setupEventHandlers();
         
@@ -119,16 +145,74 @@ class PolkadotGraphVisualization {
      * Initialize the D3.js visualization components
      */
     initializeVisualization() {
-        // Clear existing content
-        this.container.selectAll('*').remove();
+        try {
+            // Clear existing content
+            this.container.selectAll('*').remove();
+            
+            // Get actual container dimensions with proper error handling
+            const containerElement = this.container.node().tagName === 'svg' ? 
+                this.container.node().parentNode : this.container.node();
+            
+            if (!containerElement) {
+                throw new Error('Container element not accessible for dimension measurement');
+            }
+            
+            const rect = containerElement.getBoundingClientRect();
+            
+            // Validate dimensions are meaningful
+            if (!rect || (rect.width === 0 && rect.height === 0)) {
+                console.warn('Container has zero dimensions, using fallback values');
+                // Use CSS or computed styles as fallback
+                const computedStyle = window.getComputedStyle(containerElement);
+                const computedWidth = parseFloat(computedStyle.width);
+                const computedHeight = parseFloat(computedStyle.height);
+                
+                this.config.width = computedWidth > 0 ? computedWidth : this.config.width;
+                this.config.height = computedHeight > 0 ? computedHeight : this.config.height;
+            } else {
+                // Update config with actual dimensions
+                this.config.width = rect.width || this.config.width;
+                this.config.height = rect.height || this.config.height;
+            }
+            
+            // Ensure minimum dimensions
+            this.config.width = Math.max(this.config.width, 300);
+            this.config.height = Math.max(this.config.height, 200);
+            
+            console.log(`Graph dimensions: ${this.config.width}x${this.config.height}`);
+        } catch (error) {
+            console.error('Error during container dimension detection:', error);
+            this.callbacks.onError?.(error);
+            // Continue with default dimensions
+        }
         
-        // Create main SVG
-        this.svg = this.container
-            .append('svg')
-            .attr('width', this.config.width)
-            .attr('height', this.config.height)
-            .attr('viewBox', [0, 0, this.config.width, this.config.height])
-            .style('background-color', this.config.colors.background);
+        // Create main SVG with validation
+        try {
+            this.svg = this.container.node().tagName === 'svg' ? 
+                this.container : 
+                this.container.append('svg');
+            
+            if (!this.svg || this.svg.empty()) {
+                throw new Error('Failed to create or access SVG element');
+            }
+            
+            // Validate that dimensions are valid before setting attributes
+            if (this.config.width <= 0 || this.config.height <= 0) {
+                throw new Error(`Invalid SVG dimensions: ${this.config.width}x${this.config.height}`);
+            }
+            
+            this.svg
+                .attr('width', this.config.width)
+                .attr('height', this.config.height)
+                .attr('viewBox', [0, 0, this.config.width, this.config.height])
+                .style('background-color', this.config.colors.background);
+                
+            console.log('SVG element created successfully');
+        } catch (error) {
+            console.error('Error creating SVG element:', error);
+            this.callbacks.onError?.(error);
+            throw error;
+        }
         
         // Create zoom behavior
         this.zoom = d3.zoom()
@@ -143,6 +227,7 @@ class PolkadotGraphVisualization {
         
         // Create groups for different elements (order matters for rendering)
         this.edgeGroup = this.mainGroup.append('g').attr('class', 'edges');
+        this.edgeLabelGroup = this.mainGroup.append('g').attr('class', 'edge-labels');
         this.nodeGroup = this.mainGroup.append('g').attr('class', 'nodes');
         this.labelGroup = this.mainGroup.append('g').attr('class', 'labels');
         this.overlayGroup = this.mainGroup.append('g').attr('class', 'overlays');
@@ -336,11 +421,7 @@ class PolkadotGraphVisualization {
                 filters.nodeTypes.includes(node.nodeType || 'regular'));
         }
         
-        // Apply risk score filter
-        if (filters.riskThreshold !== undefined) {
-            filteredNodes = filteredNodes.filter(node => 
-                (node.riskScore || 0) <= filters.riskThreshold);
-        }
+        // Risk filtering removed - not implemented yet
         
         // Apply volume filter
         if (filters.minVolume && filters.minVolume !== '0') {
@@ -396,8 +477,8 @@ class PolkadotGraphVisualization {
         const nodeCount = this.state.filteredData.nodes.length;
         const linkCount = this.state.filteredData.links.length;
         
-        // Adjust charge strength based on node count
-        const chargeStrength = -Math.max(100, Math.min(1000, nodeCount * 5));
+        // Adjust charge strength based on node count - reduced for less aggressive physics
+        const chargeStrength = -Math.max(50, Math.min(400, nodeCount * 2));
         this.simulation.force('charge').strength(chargeStrength);
         
         // Adjust link distance based on density
@@ -405,11 +486,11 @@ class PolkadotGraphVisualization {
         const linkDistance = Math.max(30, Math.min(200, 80 / Math.max(0.01, density)));
         this.simulation.force('link').distance(linkDistance);
         
-        // Adjust collision radius based on average node size
+        // Adjust collision radius based on average node size - reduced for less aggressive physics
         const avgNodeSize = this.state.filteredData.nodes.reduce((sum, n) => 
             sum + this.getNodeRadius(n), 0) / nodeCount || 0;
         this.simulation.force('collision').radius(d => 
-            this.getNodeRadius(d) + avgNodeSize * 0.1);
+            this.getNodeRadius(d) + Math.min(avgNodeSize * 0.05, 5));
         
         console.log('Simulation parameters updated:', {
             chargeStrength,
@@ -431,6 +512,7 @@ class PolkadotGraphVisualization {
         requestAnimationFrame(() => {
             this.renderNodes();
             this.renderEdges();
+            this.renderEdgeLabels();
             this.renderLabels();
             
             // Update simulation
@@ -438,8 +520,10 @@ class PolkadotGraphVisualization {
                 .nodes(this.state.filteredData.nodes)
                 .force('link').links(this.state.filteredData.links);
             
-            // Restart simulation
-            this.simulation.alpha(this.config.forces.alpha).restart();
+            // Restart simulation if not paused
+            if (!this.state.simulationPaused) {
+                this.simulation.alpha(this.config.forces.alpha).restart();
+            }
             
             this.hideLoading();
         });
@@ -561,49 +645,197 @@ class PolkadotGraphVisualization {
         // Store edge selection for later use
         this.edgeSelection = linkUpdate;
     }
+
+    /**
+     * Render permanent edge labels showing connection information
+     */
+    renderEdgeLabels() {
+        const edgeLabelSelection = this.edgeLabelGroup
+            .selectAll('.edge-label-group')
+            .data(this.state.filteredData.links, d => d.id || `${d.source}-${d.target}`);
+        
+        // Remove old edge label groups
+        edgeLabelSelection.exit().remove();
+        
+        // Add new edge label groups
+        const edgeLabelEnter = edgeLabelSelection.enter()
+            .append('g')
+            .attr('class', 'edge-label-group');
+        
+        // Add background rectangle for better readability
+        edgeLabelEnter.append('rect')
+            .attr('class', 'edge-label-background')
+            .attr('fill', 'rgba(0, 0, 0, 0.8)')
+            .attr('stroke', 'rgba(255, 255, 255, 0.2)')
+            .attr('stroke-width', 0.5)
+            .attr('rx', 2)
+            .attr('ry', 2);
+        
+        // Add the edge label text
+        edgeLabelEnter.append('text')
+            .attr('class', 'edge-label-text')
+            .attr('text-anchor', 'middle')
+            .attr('font-family', 'Arial, sans-serif')
+            .attr('font-size', '10px')
+            .attr('fill', '#ffffff')
+            .attr('pointer-events', 'none')
+            .style('user-select', 'none')
+            .text(d => this.getEdgeLabelText(d));
+        
+        // Merge selections
+        const edgeLabelUpdate = edgeLabelEnter.merge(edgeLabelSelection);
+        
+        // Update edge label text and styling
+        edgeLabelUpdate.select('.edge-label-text')
+            .text(d => this.getEdgeLabelText(d))
+            .attr('font-size', '10px')
+            .attr('opacity', 0.9);
+        
+        // Update background rectangles
+        edgeLabelUpdate.each(function(d) {
+            const group = d3.select(this);
+            const text = group.select('.edge-label-text');
+            const background = group.select('.edge-label-background');
+            
+            // Get text dimensions
+            const bbox = text.node().getBBox();
+            const padding = 3;
+            
+            // Update background size and position
+            background
+                .attr('x', bbox.x - padding)
+                .attr('y', bbox.y - padding)
+                .attr('width', bbox.width + padding * 2)
+                .attr('height', bbox.height + padding * 2);
+        });
+        
+        this.edgeLabelSelection = edgeLabelUpdate;
+    }
     
     /**
-     * Render node labels
+     * Render node labels - now showing permanent labels for all nodes
      */
     renderLabels() {
-        // Only show labels for important nodes or when zoomed in
-        const showLabels = this.state.zoomLevel > 1.5 || 
-                          this.state.filteredData.nodes.length <= 50;
-        
-        if (!showLabels) {
-            this.labelGroup.selectAll('*').remove();
-            return;
-        }
-        
+        // Always show labels for all nodes
         const labelSelection = this.labelGroup
-            .selectAll('.label')
-            .data(this.state.filteredData.nodes.filter(d => 
-                this.shouldShowLabel(d)), d => d.address);
+            .selectAll('.label-group')
+            .data(this.state.filteredData.nodes, d => d.address);
         
-        // Remove old labels
+        // Remove old label groups
         labelSelection.exit().remove();
         
-        // Add new labels
+        // Add new label groups
         const labelEnter = labelSelection.enter()
-            .append('text')
-            .attr('class', 'label')
+            .append('g')
+            .attr('class', 'label-group');
+        
+        // Add background rectangle for better readability
+        labelEnter.append('rect')
+            .attr('class', 'label-background')
+            .attr('fill', 'rgba(0, 0, 0, 0.7)')
+            .attr('stroke', 'rgba(255, 255, 255, 0.3)')
+            .attr('stroke-width', 0.5)
+            .attr('rx', 3)
+            .attr('ry', 3);
+        
+        // Add the text label
+        labelEnter.append('text')
+            .attr('class', 'label-text')
             .attr('text-anchor', 'middle')
-            .attr('dy', d => this.getNodeRadius(d) + 15)
             .attr('font-family', this.config.nodes.labelFont)
-            .attr('font-size', '11px')
+            .attr('font-size', '12px')
             .attr('fill', this.config.colors.text)
             .attr('pointer-events', 'none')
-            .text(d => this.getNodeLabel(d));
+            .style('user-select', 'none');
         
         // Merge selections
         const labelUpdate = labelEnter.merge(labelSelection);
         
-        // Update label text and position
-        labelUpdate
-            .text(d => this.getNodeLabel(d))
-            .attr('dy', d => this.getNodeRadius(d) + 15);
+        // Update label text and styling
+        labelUpdate.select('.label-text')
+            .selectAll('tspan')
+            .remove();
+            
+        const graphInstance = this;
+        labelUpdate.select('.label-text')
+            .each(function(d) {
+                const text = d3.select(this);
+                const labelText = graphInstance.getNodeLabel(d);
+                const lines = labelText.split('\n');
+                
+                lines.forEach((line, i) => {
+                    text.append('tspan')
+                        .attr('x', 0)
+                        .attr('dy', i === 0 ? 0 : '1.2em')
+                        .text(line);
+                });
+            })
+            .attr('font-size', '12px')
+            .attr('opacity', 0.9);
+        
+        // Update background rectangles with collision detection
+        labelUpdate.each(function(d) {
+            const group = d3.select(this);
+            const text = group.select('.label-text');
+            const background = group.select('.label-background');
+            
+            // Get text dimensions
+            const bbox = text.node().getBBox();
+            const padding = 4;
+            
+            // Update background size and position
+            background
+                .attr('x', bbox.x - padding)
+                .attr('y', bbox.y - padding)
+                .attr('width', bbox.width + padding * 2)
+                .attr('height', bbox.height + padding * 2);
+        });
+        
+        // Apply collision detection for better label positioning
+        this.applyLabelCollisionDetection(labelUpdate);
         
         this.labelSelection = labelUpdate;
+    }
+    
+    /**
+     * Apply collision detection to prevent label overlaps
+     */
+    applyLabelCollisionDetection(labelSelection) {
+        const labels = labelSelection.nodes();
+        const nodeCount = this.state.filteredData.nodes.length;
+        
+        // Only apply collision detection for smaller graphs to avoid performance issues
+        if (nodeCount > 100) return;
+        
+        // Simple collision detection - adjust label position if overlapping
+        for (let i = 0; i < labels.length; i++) {
+            for (let j = i + 1; j < labels.length; j++) {
+                const label1 = d3.select(labels[i]);
+                const label2 = d3.select(labels[j]);
+                
+                const data1 = label1.datum();
+                const data2 = label2.datum();
+                
+                if (!data1 || !data2 || !data1.x || !data1.y || !data2.x || !data2.y) continue;
+                
+                const distance = Math.sqrt(
+                    Math.pow(data1.x - data2.x, 2) + Math.pow(data1.y - data2.y, 2)
+                );
+                
+                // If labels are too close, adjust their vertical offset
+                if (distance < 60) {
+                    const angle = Math.atan2(data2.y - data1.y, data2.x - data1.x);
+                    const offsetDistance = 30;
+                    
+                    // Store offset for use in tick function
+                    data1.labelOffsetX = Math.cos(angle + Math.PI) * offsetDistance * 0.3;
+                    data1.labelOffsetY = Math.sin(angle + Math.PI) * offsetDistance * 0.3;
+                    
+                    data2.labelOffsetX = Math.cos(angle) * offsetDistance * 0.3;
+                    data2.labelOffsetY = Math.sin(angle) * offsetDistance * 0.3;
+                }
+            }
+        }
     }
     
     /**
@@ -625,11 +857,43 @@ class PolkadotGraphVisualization {
                 .attr('y2', d => d.target.y);
         }
         
-        // Update label positions
+        // Update label group positions with collision offsets
         if (this.labelSelection) {
             this.labelSelection
-                .attr('x', d => d.x)
-                .attr('y', d => d.y);
+                .attr('transform', d => {
+                    // Ensure coordinates exist before using them
+                    const x = d.x || 0;
+                    const y = d.y || 0;
+                    const nodeRadius = this.getNodeRadius(d);
+                    const baseOffsetY = nodeRadius + 18; // Position below the node
+                    
+                    // Apply collision detection offsets if they exist
+                    const offsetX = d.labelOffsetX || 0;
+                    const offsetY = baseOffsetY + (d.labelOffsetY || 0);
+                    
+                    return `translate(${x + offsetX}, ${y + offsetY})`;
+                });
+            
+            // Update text position within each label group
+            this.labelSelection.select('.label-text')
+                .attr('x', 0)
+                .attr('y', 0);
+        }
+        
+        // Update edge label positions
+        if (this.edgeLabelSelection) {
+            this.edgeLabelSelection
+                .attr('transform', d => {
+                    // Ensure coordinates exist before using them
+                    const sourceX = d.source?.x || 0;
+                    const sourceY = d.source?.y || 0;
+                    const targetX = d.target?.x || 0;
+                    const targetY = d.target?.y || 0;
+                    
+                    const midX = (sourceX + targetX) / 2;
+                    const midY = (sourceY + targetY) / 2;
+                    return `translate(${midX}, ${midY})`;
+                });
         }
     }
     
@@ -652,8 +916,7 @@ class PolkadotGraphVisualization {
         // Apply zoom transform to main group
         this.mainGroup.attr('transform', transform);
         
-        // Update label visibility based on zoom level
-        this.updateLabelVisibility();
+        // Keep labels visible at all zoom levels for now
         
         // Trigger viewport change callback
         this.callbacks.onViewportChange(transform, this.state.zoomLevel);
@@ -663,37 +926,56 @@ class PolkadotGraphVisualization {
      * Update label visibility based on zoom level
      */
     updateLabelVisibility() {
-        const showLabels = this.state.zoomLevel > 1.5 || 
-                          this.state.filteredData.nodes.length <= 50;
-        
-        this.labelGroup
-            .transition()
-            .duration(200)
-            .attr('opacity', showLabels ? 1 : 0);
+        // Labels are now always visible, but we adjust their opacity based on zoom and graph density
+        if (this.labelSelection) {
+            this.labelSelection
+                .select('.label-text')
+                .attr('opacity', this.getLabelOpacity())
+                .attr('font-size', this.getLabelFontSize());
+        }
     }
     
     /**
-     * Create drag behavior for nodes
+     * Create drag behavior for nodes with position locking
      */
     createDragBehavior() {
         return d3.drag()
             .on('start', (event, d) => {
-                if (!event.active) {
-                    this.simulation.alphaTarget(0.3).restart();
+                // Only restart simulation if not paused and dragging actively
+                if (!event.active && !this.state.simulationPaused) {
+                    this.simulation.alphaTarget(0.1).restart();
                 }
                 d.fx = d.x;
                 d.fy = d.y;
+                d.__dragging = true;
             })
             .on('drag', (event, d) => {
                 d.fx = event.x;
                 d.fy = event.y;
             })
             .on('end', (event, d) => {
-                if (!event.active) {
+                d.__dragging = false;
+                
+                // Check if user wants to lock position (double-click during drag or ctrl+drag)
+                const shouldLock = event.sourceEvent?.ctrlKey || event.sourceEvent?.metaKey || d.__lockOnDrop;
+                
+                if (shouldLock) {
+                    // Lock the node position
+                    this.state.lockedNodes.add(d.address);
+                    // Keep fixed position
+                    // d.fx and d.fy remain set
+                } else {
+                    // Release position for normal physics
+                    d.fx = null;
+                    d.fy = null;
+                }
+                
+                if (!event.active && !this.state.simulationPaused) {
                     this.simulation.alphaTarget(0);
                 }
-                d.fx = null;
-                d.fy = null;
+                
+                // Update visual indication of locked nodes
+                this.updateNodeLockVisualization();
             });
     }
     
@@ -761,6 +1043,32 @@ class PolkadotGraphVisualization {
                     this.fitToView();
                 }
                 break;
+            case ' ': // Spacebar to toggle simulation
+                event.preventDefault();
+                this.toggleSimulation();
+                break;
+            case 'l':
+            case 'L':
+                if (event.ctrlKey || event.metaKey) {
+                    event.preventDefault();
+                    // Lock all selected nodes
+                    this.state.selectedNodes.forEach(address => {
+                        const node = this.state.filteredData.nodes.find(n => n.address === address);
+                        if (node) this.lockNode(node);
+                    });
+                }
+                break;
+            case 'u':
+            case 'U':
+                if (event.ctrlKey || event.metaKey) {
+                    event.preventDefault();
+                    // Unlock all nodes
+                    this.state.lockedNodes.forEach(address => {
+                        const node = this.state.filteredData.nodes.find(n => n.address === address);
+                        if (node) this.unlockNode(node);
+                    });
+                }
+                break;
             case '+':
             case '=':
                 if (event.ctrlKey || event.metaKey) {
@@ -798,6 +1106,14 @@ class PolkadotGraphVisualization {
     
     handleNodeDoubleClick(event, nodeData) {
         event.stopPropagation();
+        
+        // Toggle node position lock on double-click
+        if (this.state.lockedNodes.has(nodeData.address)) {
+            this.unlockNode(nodeData);
+        } else {
+            this.lockNode(nodeData);
+        }
+        
         this.callbacks.onNodeDoubleClick(nodeData, event);
     }
     
@@ -858,24 +1174,30 @@ class PolkadotGraphVisualization {
         const maxRadius = this.config.nodes.maxRadius;
         
         // Calculate radius based on node properties
-        let sizeFactor = 0.5; // Default
+        let sizeFactor = 0.3; // Default smaller
         
         if (nodeData.suggestedSize !== undefined) {
             // Use suggested size from D3Formatter
             sizeFactor = Math.min(1, nodeData.suggestedSize / 100);
         } else {
-            // Calculate based on degree, volume, importance
-            if (nodeData.degree !== undefined) {
-                sizeFactor = Math.min(1, nodeData.degree / 50) * 0.4;
+            // Calculate based on balance primarily, then degree
+            if (nodeData.balance?.free) {
+                // Find min/max balances from all nodes for proper scaling
+                const allBalances = this.state.filteredData.nodes
+                    .map(n => n.balance?.free ? BigInt(n.balance.free) : BigInt(0))
+                    .filter(b => b > BigInt(0));
+                
+                if (allBalances.length > 0) {
+                    const minBalance = allBalances.reduce((a, b) => a < b ? a : b);
+                    const maxBalance = allBalances.reduce((a, b) => a > b ? a : b);
+                    const balanceScale = FormatUtils.getVisualScale(nodeData.balance.free, minBalance, maxBalance);
+                    sizeFactor = 0.3 + balanceScale * 0.7;
+                }
             }
             
-            if (nodeData.totalVolume && nodeData.totalVolume !== '0') {
-                const volume = Number(BigInt(nodeData.totalVolume) / BigInt('1000000000000'));
-                sizeFactor += Math.min(0.4, volume / 1000);
-            }
-            
-            if (nodeData.importanceScore !== undefined) {
-                sizeFactor += (nodeData.importanceScore / 100) * 0.2;
+            // Add a small bonus for high degree nodes
+            if (nodeData.degree !== undefined && nodeData.degree > 10) {
+                sizeFactor = Math.min(1, sizeFactor + 0.1);
             }
         }
         
@@ -887,15 +1209,9 @@ class PolkadotGraphVisualization {
             return nodeData.suggestedColor;
         }
         
-        // Color based on risk score
-        if (nodeData.riskScore !== undefined) {
-            if (nodeData.riskScore >= 70) return this.config.colors.high;
-            if (nodeData.riskScore >= 30) return this.config.colors.medium;
-            return this.config.colors.safe;
-        }
-        
         // Color based on node type
         switch (nodeData.nodeType) {
+            case 'center': return this.config.colors.exchange; // Target node
             case 'exchange': return this.config.colors.exchange;
             case 'validator': return this.config.colors.validator;
             case 'mixer': return this.config.colors.mixer;
@@ -908,6 +1224,10 @@ class PolkadotGraphVisualization {
             return this.config.colors.high;
         }
         
+        if (this.state.lockedNodes.has(nodeData.address)) {
+            return '#FFD700'; // Gold color for locked nodes
+        }
+        
         if (this.state.highlightedNodes.has(nodeData.address)) {
             return this.config.colors.medium;
         }
@@ -918,6 +1238,10 @@ class PolkadotGraphVisualization {
     getNodeStrokeWidth(nodeData) {
         if (this.state.selectedNodes.has(nodeData.address)) {
             return this.config.nodes.strokeWidth * 2;
+        }
+        
+        if (this.state.lockedNodes.has(nodeData.address)) {
+            return this.config.nodes.strokeWidth * 2.5;
         }
         
         if (this.state.highlightedNodes.has(nodeData.address)) {
@@ -952,11 +1276,19 @@ class PolkadotGraphVisualization {
             return edgeData.suggestedWidth;
         }
         
-        // Calculate width based on volume
+        // Calculate width based on volume using FormatUtils for better scaling
         if (edgeData.volume && edgeData.volume !== '0') {
-            const volume = Number(BigInt(edgeData.volume) / BigInt('1000000000000'));
-            const factor = Math.min(1, Math.log10(volume + 1) / 4);
-            return baseWidth + (maxWidth - baseWidth) * factor;
+            // Find min/max volumes from all edges for proper scaling
+            const allVolumes = this.state.filteredData.links
+                .map(l => l.volume ? BigInt(l.volume) : BigInt(0))
+                .filter(v => v > BigInt(0));
+            
+            if (allVolumes.length > 0) {
+                const minVolume = allVolumes.reduce((a, b) => a < b ? a : b);
+                const maxVolume = allVolumes.reduce((a, b) => a > b ? a : b);
+                const scale = FormatUtils.getVisualScale(edgeData.volume, minVolume, maxVolume);
+                return baseWidth + (maxWidth - baseWidth) * scale;
+            }
         }
         
         return baseWidth;
@@ -975,7 +1307,26 @@ class PolkadotGraphVisualization {
     }
     
     getEdgeOpacity(edgeData) {
-        return edgeData.suggestedOpacity || this.config.edges.opacity;
+        if (edgeData.suggestedOpacity !== undefined) {
+            return edgeData.suggestedOpacity;
+        }
+        
+        // Scale opacity based on volume for better visual hierarchy
+        if (edgeData.volume && edgeData.volume !== '0') {
+            const allVolumes = this.state.filteredData.links
+                .map(l => l.volume ? BigInt(l.volume) : BigInt(0))
+                .filter(v => v > BigInt(0));
+            
+            if (allVolumes.length > 0) {
+                const minVolume = allVolumes.reduce((a, b) => a < b ? a : b);
+                const maxVolume = allVolumes.reduce((a, b) => a > b ? a : b);
+                const scale = FormatUtils.getVisualScale(edgeData.volume, minVolume, maxVolume);
+                // Minimum opacity of 0.3, maximum of 0.9
+                return 0.3 + scale * 0.6;
+            }
+        }
+        
+        return this.config.edges.opacity;
     }
     
     getEdgeMarker(edgeData) {
@@ -988,22 +1339,82 @@ class PolkadotGraphVisualization {
         return null;
     }
     
+    /**
+     * Get text label for edge
+     */
+    getEdgeLabelText(edgeData) {
+        // Show formatted transfer info if we have both count and volume
+        if (edgeData.count && edgeData.volume && edgeData.volume !== '0') {
+            return FormatUtils.formatTransfer(edgeData.count, edgeData.volume);
+        }
+        
+        // Show just volume if available
+        if (edgeData.volume && edgeData.volume !== '0') {
+            return FormatUtils.formatBalance(edgeData.volume);
+        }
+        
+        // Show transaction count if available
+        if (edgeData.count && edgeData.count > 1) {
+            return `${edgeData.count} txs`;
+        }
+        
+        // Default to empty string for single transactions with no volume
+        return '';
+    }
+    
     shouldShowLabel(nodeData) {
-        // Show labels for important nodes or when zoomed in
-        return this.state.zoomLevel > 1.5 || 
-               nodeData.importanceScore > 50 ||
-               this.state.selectedNodes.has(nodeData.address) ||
-               this.state.highlightedNodes.has(nodeData.address);
+        // All nodes now show labels permanently, but this method can be used for special styling
+        return true;
     }
     
     getNodeLabel(nodeData) {
+        // Always show abbreviated address - first 6 + last 4 characters
+        const addr = nodeData.address;
+        const abbreviatedAddr = `${addr.substring(0, 6)}...${addr.substring(addr.length - 4)}`;
+        
+        // If there's an identity, show it above the address
         if (nodeData.identity?.display) {
+            // Show identity and balance if available
+            if (nodeData.balance?.free) {
+                const formattedBalance = FormatUtils.formatBalance(nodeData.balance.free);
+                return `${nodeData.identity.display}\n${formattedBalance}`;
+            }
             return nodeData.identity.display;
         }
         
-        // Shorten address for display
-        const addr = nodeData.address;
-        return `${addr.substring(0, 6)}...${addr.substring(addr.length - 4)}`;
+        // Show address and balance
+        if (nodeData.balance?.free) {
+            const formattedBalance = FormatUtils.formatBalance(nodeData.balance.free);
+            return `${abbreviatedAddr}\n${formattedBalance}`;
+        }
+        
+        return abbreviatedAddr;
+    }
+    
+    /**
+     * Get font size for labels based on zoom level
+     */
+    getLabelFontSize() {
+        // Adjust font size based on zoom level for better readability
+        const baseSize = 10;
+        const scaleFactor = Math.max(0.8, Math.min(1.5, this.state.zoomLevel));
+        return `${Math.round(baseSize * scaleFactor)}px`;
+    }
+    
+    /**
+     * Get label opacity based on zoom level and node count
+     */
+    getLabelOpacity() {
+        const nodeCount = this.state.filteredData.nodes.length;
+        
+        // Reduce opacity for large graphs to reduce visual clutter
+        if (nodeCount > 200) {
+            return Math.max(0.6, this.state.zoomLevel * 0.8);
+        } else if (nodeCount > 100) {
+            return Math.max(0.7, this.state.zoomLevel * 0.9);
+        }
+        
+        return Math.max(0.8, this.state.zoomLevel * 0.95);
     }
     
     // Tooltip methods
@@ -1023,13 +1434,8 @@ class PolkadotGraphVisualization {
         
         if (nodeData.balance?.free) {
             try {
-                // Handle decimal values by converting to string and removing decimals
-                let balanceStr = nodeData.balance.free.toString();
-                if (balanceStr.includes('.')) {
-                    balanceStr = balanceStr.split('.')[0];
-                }
-                const balance = Number(BigInt(balanceStr) / BigInt('1000000000000'));
-                parts.push(`<strong>Balance:</strong> ${balance.toLocaleString()} DOT`);
+                const formattedBalance = FormatUtils.formatBalance(nodeData.balance.free);
+                parts.push(`<strong>Balance:</strong> ${formattedBalance}`);
             } catch (e) {
                 console.warn('Error converting balance:', e);
             }
@@ -1041,21 +1447,14 @@ class PolkadotGraphVisualization {
         
         if (nodeData.totalVolume && nodeData.totalVolume !== '0') {
             try {
-                // Handle decimal values by converting to string and removing decimals
-                let volumeStr = nodeData.totalVolume.toString();
-                if (volumeStr.includes('.')) {
-                    volumeStr = volumeStr.split('.')[0];
-                }
-                const volume = Number(BigInt(volumeStr) / BigInt('1000000000000'));
-                parts.push(`<strong>Total Volume:</strong> ${volume.toLocaleString()} DOT`);
+                const formattedVolume = FormatUtils.formatBalance(nodeData.totalVolume);
+                parts.push(`<strong>Total Volume:</strong> ${formattedVolume}`);
             } catch (e) {
                 console.warn('Error converting volume:', e);
             }
         }
         
-        if (nodeData.riskScore !== undefined) {
-            parts.push(`<strong>Risk Score:</strong> ${nodeData.riskScore}/100`);
-        }
+        // Risk score removed - not implemented yet
         
         return parts.join('<br>');
     }
@@ -1073,8 +1472,8 @@ class PolkadotGraphVisualization {
         }
         
         if (edgeData.volume && edgeData.volume !== '0') {
-            const volume = Number(BigInt(edgeData.volume) / BigInt('1000000000000'));
-            parts.push(`<strong>Volume:</strong> ${volume.toLocaleString()} DOT`);
+            const formattedVolume = FormatUtils.formatBalance(edgeData.volume);
+            parts.push(`<strong>Volume:</strong> ${formattedVolume}`);
         }
         
         if (edgeData.firstTransfer) {
@@ -1163,6 +1562,70 @@ class PolkadotGraphVisualization {
     clearSelection() {
         this.state.selectedNodes.clear();
         this.updateNodeSelection();
+    }
+    
+    /**
+     * Lock a node's position
+     */
+    lockNode(nodeData) {
+        this.state.lockedNodes.add(nodeData.address);
+        nodeData.fx = nodeData.x;
+        nodeData.fy = nodeData.y;
+        this.updateNodeLockVisualization();
+        console.log(`Node ${nodeData.address.substring(0, 8)}... locked`);
+    }
+    
+    /**
+     * Unlock a node's position
+     */
+    unlockNode(nodeData) {
+        this.state.lockedNodes.delete(nodeData.address);
+        nodeData.fx = null;
+        nodeData.fy = null;
+        this.updateNodeLockVisualization();
+        console.log(`Node ${nodeData.address.substring(0, 8)}... unlocked`);
+    }
+    
+    /**
+     * Update visual indication of locked nodes
+     */
+    updateNodeLockVisualization() {
+        if (this.nodeSelection) {
+            this.nodeSelection
+                .select('circle')
+                .attr('stroke', d => this.getNodeStrokeColor(d))
+                .attr('stroke-width', d => this.getNodeStrokeWidth(d));
+        }
+    }
+    
+    /**
+     * Pause the force simulation
+     */
+    pauseSimulation() {
+        this.state.simulationPaused = true;
+        this.simulation.alphaTarget(0).stop();
+        console.log('Force simulation paused');
+    }
+    
+    /**
+     * Resume the force simulation
+     */
+    resumeSimulation() {
+        this.state.simulationPaused = false;
+        this.simulation.alpha(0.3).restart();
+        console.log('Force simulation resumed');
+    }
+    
+    /**
+     * Toggle simulation pause/resume
+     */
+    toggleSimulation() {
+        if (this.state.simulationPaused) {
+            this.resumeSimulation();
+        } else {
+            this.pauseSimulation();
+        }
+        return !this.state.simulationPaused;
     }
     
     // Utility methods
@@ -1308,7 +1771,7 @@ class PolkadotGraphVisualization {
             const row = nodeHeaders.map(header => {
                 let value = node[header] || '';
                 if (header === 'balance' && node.balance?.free) {
-                    value = Number(BigInt(node.balance.free) / BigInt('1000000000000'));
+                    value = FormatUtils.formatBalance(node.balance.free);
                 }
                 return `"${value}"`;
             });
@@ -1326,7 +1789,7 @@ class PolkadotGraphVisualization {
                 } else if (header === 'target') {
                     value = edge.target.address || edge.target;
                 } else if (header === 'volume' && edge.volume) {
-                    value = Number(BigInt(edge.volume) / BigInt('1000000000000'));
+                    value = FormatUtils.formatBalance(edge.volume);
                 }
                 return `"${value}"`;
             });

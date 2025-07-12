@@ -138,7 +138,7 @@ class PreDeploymentChecker {
             return new Promise((resolve) => {
               const script = document.createElement('script');
               script.src = 'https://cdn.socket.io/4.6.1/socket.io.min.js';
-              script.onload = () => {
+              script.addEventListener('load', () => {
                 const socket = io(`http://localhost:${port}`, {
                   transports: ['websocket'],
                   extraHeaders: { 'Origin': origin }
@@ -160,7 +160,7 @@ class PreDeploymentChecker {
                   socket.close();
                   resolve({ success: false, error: error.message });
                 });
-              };
+              });
               document.head.appendChild(script);
             });
           }, { origin, port });

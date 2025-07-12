@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Graph Labels Test</title>
+    <link rel="stylesheet" href="public/css/style.css">
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+    <div id="test-container" style="width: 800px; height: 600px; margin: 20px auto; background: #1a1a1a; border: 1px solid #333;"></div>
+    
+    <div style="text-align: center; margin: 20px; color: white;">
+        <h3>Graph Visualization Test - Permanent Address Labels</h3>
+        <p>This test verifies that address labels are permanently visible on all nodes</p>
+        <button id="loadTestDataBtn" style="padding: 10px 20px; margin: 10px; background: #e6007a; color: white; border: none; border-radius: 4px; cursor: pointer;">Load Test Data</button>
+        <button id="zoomInBtn" style="padding: 10px 20px; margin: 10px; background: #552bbf; color: white; border: none; border-radius: 4px; cursor: pointer;">Zoom In</button>
+        <button id="zoomOutBtn" style="padding: 10px 20px; margin: 10px; background: #552bbf; color: white; border: none; border-radius: 4px; cursor: pointer;">Zoom Out</button>
+    </div>
+
+    <script src="public/js/graph.js"></script>
+    <script>
+        let graph;
+        
+        function initGraph() {
+            graph = new PolkadotGraphVisualization('#test-container', {
+                width: 800,
+                height: 600,
+                onNodeClick: (node) => console.log('Node clicked:', node.address),
+                onNodeDoubleClick: (node) => console.log('Node double-clicked:', node.address)
+            });
+        }
+        
+        function loadTestData() {
+            // Create test data with sample Polkadot addresses
+            const testData = {
+                nodes: [
+                    {
+                        address: '15oF4uVJwmo4TdGW7VfQxNLavjCXviqxT9S1MgbjMNHr6Sp5',
+                        nodeType: 'exchange',
+                        balance: { free: '1000000000000' },
+                        degree: 25,
+                        riskScore: 10,
+                        identity: { display: 'Kraken' }
+                    },
+                    {
+                        address: '13UVJyLnbVp9RBZYFwFGyDvVd1y27Tt8tkntv6Q7JVPhFsTB',
+                        nodeType: 'validator',
+                        balance: { free: '500000000000' },
+                        degree: 15,
+                        riskScore: 5
+                    },
+                    {
+                        address: '14E5nqKAp3oAJcmzgZhUD2RcptBeUBScxKHgJKU4HPNcKVf3',
+                        nodeType: 'regular',
+                        balance: { free: '100000000000' },
+                        degree: 8,
+                        riskScore: 30
+                    },
+                    {
+                        address: '16j4xxSTfgaNdcJsQv5Y4dGPSSvePZwdGY3HH8GJb4vwGZzK',
+                        nodeType: 'mixer',
+                        balance: { free: '50000000000' },
+                        degree: 40,
+                        riskScore: 85
+                    },
+                    {
+                        address: '12xtAYsRUrmbniiWQqJtECiBQrMn8AypQcXhnQAc6RB6XkLW',
+                        nodeType: 'regular',
+                        balance: { free: '200000000000' },
+                        degree: 3,
+                        riskScore: 20
+                    }
+                ],
+                links: [
+                    {
+                        source: '15oF4uVJwmo4TdGW7VfQxNLavjCXviqxT9S1MgbjMNHr6Sp5',
+                        target: '13UVJyLnbVp9RBZYFwFGyDvVd1y27Tt8tkntv6Q7JVPhFsTB',
+                        volume: '50000000000',
+                        count: 10
+                    },
+                    {
+                        source: '13UVJyLnbVp9RBZYFwFGyDvVd1y27Tt8tkntv6Q7JVPhFsTB',
+                        target: '14E5nqKAp3oAJcmzgZhUD2RcptBeUBScxKHgJKU4HPNcKVf3',
+                        volume: '25000000000',
+                        count: 5
+                    },
+                    {
+                        source: '14E5nqKAp3oAJcmzgZhUD2RcptBeUBScxKHgJKU4HPNcKVf3',
+                        target: '16j4xxSTfgaNdcJsQv5Y4dGPSSvePZwdGY3HH8GJb4vwGZzK',
+                        volume: '75000000000',
+                        count: 20
+                    },
+                    {
+                        source: '16j4xxSTfgaNdcJsQv5Y4dGPSSvePZwdGY3HH8GJb4vwGZzK',
+                        target: '12xtAYsRUrmbniiWQqJtECiBQrMn8AypQcXhnQAc6RB6XkLW',
+                        volume: '30000000000',
+                        count: 8
+                    },
+                    {
+                        source: '12xtAYsRUrmbniiWQqJtECiBQrMn8AypQcXhnQAc6RB6XkLW',
+                        target: '15oF4uVJwmo4TdGW7VfQxNLavjCXviqxT9S1MgbjMNHr6Sp5',
+                        volume: '40000000000',
+                        count: 12
+                    }
+                ]
+            };
+            
+            graph.loadGraphData(testData);
+            console.log('Test data loaded - labels should be permanently visible');
+        }
+        
+        function zoomIn() {
+            if (graph) {
+                graph.zoomIn();
+            }
+        }
+        
+        function zoomOut() {
+            if (graph) {
+                graph.zoomOut();
+            }
+        }
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            initGraph();
+            
+            // Add event listeners for buttons
+            document.getElementById('loadTestDataBtn').addEventListener('click', loadTestData);
+            document.getElementById('zoomInBtn').addEventListener('click', zoomIn);
+            document.getElementById('zoomOutBtn').addEventListener('click', zoomOut);
+            
+            console.log('Graph initialized. Click "Load Test Data" to see permanent labels.');
+        });
+    </script>
+</body>
+</html>

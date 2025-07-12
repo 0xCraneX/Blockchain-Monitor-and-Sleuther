@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Minimal Test</title>
+    <style>
+        body {
+            background-color: #0a0a0a;
+            color: white;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+        }
+        #status {
+            background-color: #1a1a1a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Minimal Test Page</h1>
+    <p>If you can see this white text on a dark background, CSS is working.</p>
+    
+    <div id="status">
+        <h2>Status Checks:</h2>
+        <p id="js-status">JavaScript: <span style="color: red;">Not working</span></p>
+        <p id="css-status">CSS: <span style="color: green;">Working (inline styles)</span></p>
+    </div>
+    
+    <script>
+        // Update JavaScript status
+        document.getElementById('js-status').innerHTML = 'JavaScript: <span style="color: green;">Working</span>';
+        
+        // Test external CSS
+        const testCSS = document.createElement('link');
+        testCSS.rel = 'stylesheet';
+        testCSS.href = '/css/style.css';
+        testCSS.onload = function() {
+            const p = document.createElement('p');
+            p.innerHTML = 'External CSS: <span style="color: green;">Loaded successfully</span>';
+            document.getElementById('status').appendChild(p);
+        };
+        testCSS.onerror = function() {
+            const p = document.createElement('p');
+            p.innerHTML = 'External CSS: <span style="color: red;">Failed to load</span>';
+            document.getElementById('status').appendChild(p);
+        };
+        document.head.appendChild(testCSS);
+        
+        // Log to console
+        console.log('Test page loaded successfully');
+    </script>
+</body>
+</html>

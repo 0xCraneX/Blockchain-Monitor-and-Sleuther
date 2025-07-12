@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Graph Visualization Data Flow Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #e6007a, #552bbf);
+            border-radius: 10px;
+        }
+        
+        .test-section {
+            background-color: #2a2a2a;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid #e6007a;
+        }
+        
+        .test-controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #e6007a, #552bbf);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(230, 0, 122, 0.3);
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .status {
+            padding: 12px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-weight: 500;
+        }
+        
+        .status.success {
+            background-color: rgba(76, 175, 80, 0.2);
+            border: 1px solid #4CAF50;
+            color: #4CAF50;
+        }
+        
+        .status.error {
+            background-color: rgba(244, 67, 54, 0.2);
+            border: 1px solid #F44336;
+            color: #F44336;
+        }
+        
+        .status.warning {
+            background-color: rgba(255, 152, 0, 0.2);
+            border: 1px solid #FF9800;
+            color: #FF9800;
+        }
+        
+        .status.info {
+            background-color: rgba(33, 150, 243, 0.2);
+            border: 1px solid #2196F3;
+            color: #2196F3;
+        }
+        
+        #graph-container {
+            width: 100%;
+            height: 600px;
+            border: 2px solid #444;
+            border-radius: 10px;
+            background-color: #1a1a1a;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .data-display {
+            background-color: #1e1e1e;
+            border: 1px solid #444;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 15px 0;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .data-display pre {
+            margin: 0;
+            font-size: 12px;
+            color: #e0e0e0;
+            white-space: pre-wrap;
+        }
+        
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .metric-card {
+            background-color: #2a2a2a;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #444;
+            text-align: center;
+        }
+        
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #e6007a;
+        }
+        
+        .metric-label {
+            font-size: 14px;
+            color: #ccc;
+            margin-top: 5px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #555;
+            border-radius: 50%;
+            border-top-color: #e6007a;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Graph Visualization Data Flow Test</h1>
+            <p>Testing API → D3Formatter → PolkadotGraphVisualization Pipeline</p>
+        </div>
+        
+        <div class="test-section">
+            <h2>🔧 Test Controls</h2>
+            <div class="test-controls">
+                <button class="btn" id="testMockDataBtn">Test Mock Data</button>
+                <button class="btn" id="testAPIEndpointBtn">Test API Endpoint</button>
+                <button class="btn" id="testDataTransformationBtn">Test D3 Transform</button>
+                <button class="btn" id="testVisualizationLoadBtn">Test Visualization</button>
+                <button class="btn" id="clearTestsBtn">Clear All</button>
+            </div>
+            <div id="test-status"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>📊 Metrics</h2>
+            <div class="metrics">
+                <div class="metric-card">
+                    <div class="metric-value" id="node-count">0</div>
+                    <div class="metric-label">Nodes</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="link-count">0</div>
+                    <div class="metric-label">Links</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="transform-time">0</div>
+                    <div class="metric-label">Transform Time (ms)</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="render-time">0</div>
+                    <div class="metric-label">Render Time (ms)</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🎨 Graph Visualization</h2>
+            <div id="graph-container"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>📄 Data Inspector</h2>
+            <div class="test-controls">
+                <button class="btn" id="showAPIDataBtn">Show API Data</button>
+                <button class="btn" id="showD3DataBtn">Show D3 Data</button>
+                <button class="btn" id="showGraphStateBtn">Show Graph State</button>
+            </div>
+            <div class="data-display" id="data-display">
+                <pre>Click a button above to inspect data...</pre>
+            </div>
+        </div>
+    </div>
+
+    <!-- Include D3.js -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    
+    <!-- Include our graph visualization -->
+    <script src="/js/graph.js"></script>
+    
+    <script>
+        // Test state
+        let testState = {
+            apiData: null,
+            d3Data: null,
+            graphVisualization: null,
+            metrics: {
+                nodes: 0,
+                links: 0,
+                transformTime: 0,
+                renderTime: 0
+            }
+        };
+        
+        // Status display helper
+        function showStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('test-status');
+            const statusElement = document.createElement('div');
+            statusElement.className = `status ${type}`;
+            statusElement.innerHTML = message;
+            statusDiv.appendChild(statusElement);
+            
+            // Auto-remove after 10 seconds
+            setTimeout(() => {
+                if (statusElement.parentNode) {
+                    statusElement.parentNode.removeChild(statusElement);
+                }
+            }, 10000);
+        }
+        
+        // Update metrics display
+        function updateMetrics(metrics) {
+            document.getElementById('node-count').textContent = metrics.nodes || 0;
+            document.getElementById('link-count').textContent = metrics.links || 0;
+            document.getElementById('transform-time').textContent = metrics.transformTime || 0;
+            document.getElementById('render-time').textContent = metrics.renderTime || 0;
+        }
+        
+        // Mock data for testing
+        function getMockAPIData() {
+            return {
+                nodes: [
+                    {
+                        address: '15oF4uVJwmo4TdGW7VfQxNLavjCXviqxT9S1MgbjMNHr6Sp5',
+                        balance: { free: '1000000000000000', reserved: '0', frozen: '0' },
+                        identity: { display: 'Target Node' },
+                        totalVolume: '15000000000000000',
+                        degree: 3,
+                        transferCount: 5,
+                        nodeType: 'center',
+                        lastActive: Math.floor(Date.now() / 1000)
+                    },
+                    {
+                        address: '177MiXeRDVz5t7Y8Q9n6P5kL6r4r4r4r4r4r4r4r4r4r4r4',
+                        balance: { free: '500000000000000', reserved: '0', frozen: '0' },
+                        identity: { display: 'Exchange Node' },
+                        totalVolume: '25000000000000000',
+                        degree: 15,
+                        transferCount: 50,
+                        nodeType: 'exchange',
+                        lastActive: Math.floor(Date.now() / 1000) - 86400
+                    },
+                    {
+                        address: '13RBN6UF43sxkxUrd2H4QSJccvLNGr6HY4v3mN2WtW59WaNk',
+                        balance: { free: '250000000000000', reserved: '0', frozen: '0' },
+                        identity: { display: 'Validator Node' },
+                        totalVolume: '8000000000000000',
+                        degree: 8,
+                        transferCount: 20,
+                        nodeType: 'validator',
+                        lastActive: Math.floor(Date.now() / 1000) - 3600
+                    }
+                ],
+                links: [
+                    {
+                        source: '15oF4uVJwmo4TdGW7VfQxNLavjCXviqxT9S1MgbjMNHr6Sp5',
+                        target: '177MiXeRDVz5t7Y8Q9n6P5kL6r4r4r4r4r4r4r4r4r4r4r4',
+                        volume: '10000000000000000',
+                        count: 3,
+                        firstTransfer: Math.floor(Date.now() / 1000) - 7 * 86400,
+                        lastTransfer: Math.floor(Date.now() / 1000) - 86400,
+                        edgeType: 'direct'
+                    },
+                    {
+                        source: '13RBN6UF43sxkxUrd2H4QSJccvLNGr6HY4v3mN2WtW59WaNk',
+                        target: '15oF4uVJwmo4TdGW7VfQxNLavjCXviqxT9S1MgbjMNHr6Sp5',
+                        volume: '5000000000000000',
+                        count: 2,
+                        firstTransfer: Math.floor(Date.now() / 1000) - 5 * 86400,
+                        lastTransfer: Math.floor(Date.now() / 1000) - 3600,
+                        edgeType: 'direct'
+                    }
+                ],
+                metadata: {
+                    totalNodes: 3,
+                    totalConnections: 2,
+                    centerNode: '15oF4uVJwmo4TdGW7VfQxNLavjCXviqxT9S1MgbjMNHr6Sp5',
+                    depth: 2,
+                    generated: Date.now()
+                }
+            };
+        }
+        
+        // Test 1: Mock Data Loading
+        async function testMockData() {
+            showStatus('<span class="loading"></span>Testing mock data...', 'info');
+            
+            try {
+                testState.apiData = getMockAPIData();
+                
+                testState.metrics.nodes = testState.apiData.nodes.length;
+                testState.metrics.links = testState.apiData.links.length;
+                
+                updateMetrics(testState.metrics);
+                showStatus('✅ Mock data loaded successfully', 'success');
+                
+                // Auto-proceed to transformation test
+                setTimeout(() => testDataTransformation(), 1000);
+                
+            } catch (error) {
+                showStatus(`❌ Mock data test failed: ${error.message}`, 'error');
+                console.error('Mock data test error:', error);
+            }
+        }
+        
+        // Test 2: API Endpoint
+        async function testAPIEndpoint() {
+            showStatus('<span class="loading"></span>Testing API endpoint...', 'info');
+            
+            try {
+                const testAddress = '15oF4uVJwmo4TdGW7VfQxNLavjCXviqxT9S1MgbjMNHr6Sp5';
+                const response = await fetch(`/api/graph/${testAddress}?depth=1&maxNodes=10`);
+                
+                if (!response.ok) {
+                    throw new Error(`API returned ${response.status}: ${response.statusText}`);
+                }
+                
+                testState.apiData = await response.json();
+                
+                // Validate API response structure
+                if (!testState.apiData.nodes || !testState.apiData.links) {
+                    throw new Error('API response missing nodes or links array');
+                }
+                
+                testState.metrics.nodes = testState.apiData.nodes.length;
+                testState.metrics.links = testState.apiData.links.length;
+                
+                updateMetrics(testState.metrics);
+                showStatus(`✅ API endpoint test successful (${testState.metrics.nodes} nodes, ${testState.metrics.links} links)`, 'success');
+                
+                // Auto-proceed to transformation test
+                setTimeout(() => testDataTransformation(), 1000);
+                
+            } catch (error) {
+                showStatus(`❌ API endpoint test failed: ${error.message}`, 'error');
+                console.error('API endpoint test error:', error);
+                
+                // Fallback to mock data
+                showStatus('ℹ️ Falling back to mock data for continued testing', 'warning');
+                setTimeout(() => testMockData(), 2000);
+            }
+        }
+        
+        // Test 3: Data Transformation
+        async function testDataTransformation() {
+            if (!testState.apiData) {
+                showStatus('❌ No API data available for transformation test', 'error');
+                return;
+            }
+            
+            showStatus('<span class="loading"></span>Testing D3 data transformation...', 'info');
+            
+            try {
+                const startTime = performance.now();
+                
+                // Simulate D3Formatter transformation (the actual formatting happens server-side)
+                // But we can verify the data structure is already compatible
+                testState.d3Data = {
+                    nodes: testState.apiData.nodes.map(node => ({
+                        ...node,
+                        id: node.address,
+                        size: Math.max(20, Math.min(60, (node.degree || 1) * 3)),
+                        color: getNodeColor(node),
+                        label: node.identity?.display || node.address.substring(0, 8) + '...'
+                    })),
+                    links: testState.apiData.links.map(link => ({
+                        ...link,
+                        width: Math.max(1, Math.min(8, Math.log10(Number(link.volume || 1) / 1e12))),
+                        color: '#666666'
+                    })),
+                    metadata: testState.apiData.metadata
+                };
+                
+                const transformTime = performance.now() - startTime;
+                testState.metrics.transformTime = Math.round(transformTime);
+                
+                updateMetrics(testState.metrics);
+                showStatus(`✅ D3 transformation successful (${transformTime.toFixed(2)}ms)`, 'success');
+                
+                // Auto-proceed to visualization test
+                setTimeout(() => testVisualizationLoad(), 1000);
+                
+            } catch (error) {
+                showStatus(`❌ D3 transformation failed: ${error.message}`, 'error');
+                console.error('D3 transformation error:', error);
+            }
+        }
+        
+        // Helper function for node colors
+        function getNodeColor(node) {
+            switch (node.nodeType) {
+                case 'center': return '#2196F3';
+                case 'exchange': return '#FF9800';
+                case 'validator': return '#9C27B0';
+                default: return '#9E9E9E';
+            }
+        }
+        
+        // Test 4: Visualization Loading
+        async function testVisualizationLoad() {
+            if (!testState.d3Data) {
+                showStatus('❌ No D3 data available for visualization test', 'error');
+                return;
+            }
+            
+            showStatus('<span class="loading"></span>Testing graph visualization...', 'info');
+            
+            try {
+                const startTime = performance.now();
+                
+                // Initialize PolkadotGraphVisualization
+                if (typeof PolkadotGraphVisualization === 'undefined') {
+                    throw new Error('PolkadotGraphVisualization class not loaded');
+                }
+                
+                // Clear existing visualization
+                document.getElementById('graph-container').innerHTML = '';
+                
+                // Create new visualization instance
+                testState.graphVisualization = new PolkadotGraphVisualization('#graph-container', {
+                    width: 1200,
+                    height: 600,
+                    nodeMinRadius: 8,
+                    nodeMaxRadius: 30,
+                    onNodeClick: (nodeData) => {
+                        showStatus(`🎯 Node clicked: ${nodeData.label || nodeData.address}`, 'info');
+                    },
+                    onError: (error) => {
+                        showStatus(`❌ Visualization error: ${error.message}`, 'error');
+                    }
+                });
+                
+                // Load the data
+                testState.graphVisualization.loadGraphData(testState.d3Data);
+                
+                const renderTime = performance.now() - startTime;
+                testState.metrics.renderTime = Math.round(renderTime);
+                
+                updateMetrics(testState.metrics);
+                showStatus(`✅ Visualization loaded successfully (${renderTime.toFixed(2)}ms)`, 'success');
+                
+                // Show additional info
+                setTimeout(() => {
+                    const stats = testState.graphVisualization.getStatistics();
+                    showStatus(`📊 Graph stats: ${stats.visibleNodes} nodes, ${stats.visibleEdges} edges displayed`, 'info');
+                }, 2000);
+                
+            } catch (error) {
+                showStatus(`❌ Visualization test failed: ${error.message}`, 'error');
+                console.error('Visualization test error:', error);
+            }
+        }
+        
+        // Clear all tests
+        function clearTests() {
+            testState = {
+                apiData: null,
+                d3Data: null,
+                graphVisualization: null,
+                metrics: { nodes: 0, links: 0, transformTime: 0, renderTime: 0 }
+            };
+            
+            if (testState.graphVisualization) {
+                testState.graphVisualization.destroy();
+            }
+            
+            document.getElementById('graph-container').innerHTML = '';
+            document.getElementById('test-status').innerHTML = '';
+            document.getElementById('data-display').innerHTML = '<pre>Click a button above to inspect data...</pre>';
+            updateMetrics(testState.metrics);
+            
+            showStatus('🧹 All tests cleared', 'info');
+        }
+        
+        // Data inspection functions
+        function showAPIData() {
+            const display = document.getElementById('data-display');
+            if (testState.apiData) {
+                display.innerHTML = `<pre>${JSON.stringify(testState.apiData, null, 2)}</pre>`;
+            } else {
+                display.innerHTML = '<pre>No API data available. Run a test first.</pre>';
+            }
+        }
+        
+        function showD3Data() {
+            const display = document.getElementById('data-display');
+            if (testState.d3Data) {
+                display.innerHTML = `<pre>${JSON.stringify(testState.d3Data, null, 2)}</pre>`;
+            } else {
+                display.innerHTML = '<pre>No D3 data available. Run transformation test first.</pre>';
+            }
+        }
+        
+        function showGraphState() {
+            const display = document.getElementById('data-display');
+            if (testState.graphVisualization) {
+                const stats = testState.graphVisualization.getStatistics();
+                display.innerHTML = `<pre>${JSON.stringify(stats, null, 2)}</pre>`;
+            } else {
+                display.innerHTML = '<pre>No graph visualization loaded. Run visualization test first.</pre>';
+            }
+        }
+        
+        // Auto-start with mock data test
+        window.addEventListener('DOMContentLoaded', () => {
+            showStatus('🚀 Graph Data Flow Test initialized. Ready to test!', 'success');
+            
+            // Check if D3 is loaded
+            if (typeof d3 === 'undefined') {
+                showStatus('⚠️ D3.js not loaded. Some tests may fail.', 'warning');
+            } else {
+                showStatus('✅ D3.js loaded successfully', 'success');
+            }
+            
+            // Check if graph visualization is loaded
+            if (typeof PolkadotGraphVisualization === 'undefined') {
+                showStatus('⚠️ PolkadotGraphVisualization not loaded. Visualization tests will fail.', 'warning');
+            } else {
+                showStatus('✅ PolkadotGraphVisualization loaded successfully', 'success');
+            }
+            
+            // Add event listeners for test control buttons
+            document.getElementById('testMockDataBtn').addEventListener('click', testMockData);
+            document.getElementById('testAPIEndpointBtn').addEventListener('click', testAPIEndpoint);
+            document.getElementById('testDataTransformationBtn').addEventListener('click', testDataTransformation);
+            document.getElementById('testVisualizationLoadBtn').addEventListener('click', testVisualizationLoad);
+            document.getElementById('clearTestsBtn').addEventListener('click', clearTests);
+            
+            // Add event listeners for data inspector buttons
+            document.getElementById('showAPIDataBtn').addEventListener('click', showAPIData);
+            document.getElementById('showD3DataBtn').addEventListener('click', showD3Data);
+            document.getElementById('showGraphStateBtn').addEventListener('click', showGraphState);
+        });
+    </script>
+</body>
+</html>

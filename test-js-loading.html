@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JavaScript Loading Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .status { padding: 10px; margin: 5px 0; border-radius: 4px; }
+        .success { background: #dff0d8; color: #3c763d; border: 1px solid #d6e9c6; }
+        .error { background: #f2dede; color: #a94442; border: 1px solid #ebccd1; }
+        .warning { background: #fcf8e3; color: #8a6d3b; border: 1px solid #faebcc; }
+    </style>
+</head>
+<body>
+    <h1>JavaScript Loading Diagnostic Test</h1>
+    <div id="test-results"></div>
+
+    <!-- Load external dependencies first -->
+    <script>
+        const results = [];
+        
+        function addResult(message, type = 'success') {
+            results.push({ message, type });
+            updateDisplay();
+        }
+        
+        function updateDisplay() {
+            const container = document.getElementById('test-results');
+            container.innerHTML = results.map(result => 
+                `<div class="status ${result.type}">${result.message}</div>`
+            ).join('');
+        }
+        
+        // Test 1: Basic JavaScript execution
+        addResult('✓ Basic JavaScript execution works');
+        
+        // Test 2: DOM manipulation
+        try {
+            document.querySelector('body');
+            addResult('✓ DOM access works');
+        } catch (e) {
+            addResult('✗ DOM access failed: ' + e.message, 'error');
+        }
+    </script>
+
+    <!-- Load external scripts dynamically to avoid CSP violations -->
+    <script>
+        // Load D3.js
+        (function() {
+            const d3Script = document.createElement('script');
+            d3Script.src = 'https://d3js.org/d3.v7.min.js';
+            d3Script.addEventListener('load', () => addResult('✓ D3.js loaded successfully'));
+            d3Script.addEventListener('error', () => addResult('✗ D3.js failed to load', 'error'));
+            document.head.appendChild(d3Script);
+        })();
+        
+        // Load Socket.IO
+        (function() {
+            const socketScript = document.createElement('script');
+            socketScript.src = 'https://cdn.socket.io/4.6.1/socket.io.min.js';
+            socketScript.addEventListener('load', () => addResult('✓ Socket.IO loaded successfully'));
+            socketScript.addEventListener('error', () => addResult('✗ Socket.IO failed to load', 'error'));
+            document.head.appendChild(socketScript);
+        })();
+    </script>
+
+    <!-- Test local JavaScript files -->
+    <script>
+        // Test after external scripts load
+        setTimeout(() => {
+            // Test D3.js
+            if (typeof d3 !== 'undefined') {
+                addResult('✓ D3.js is available in global scope');
+                try {
+                    d3.select('body');
+                    addResult('✓ D3.js DOM selection works');
+                } catch (e) {
+                    addResult('✗ D3.js DOM selection error: ' + e.message, 'error');
+                }
+            } else {
+                addResult('✗ D3.js not available in global scope', 'error');
+            }
+            
+            // Test Socket.IO
+            if (typeof io !== 'undefined') {
+                addResult('✓ Socket.IO is available in global scope');
+            } else {
+                addResult('✗ Socket.IO not available in global scope', 'error');
+            }
+        }, 1000);
+    </script>
+
+    <!-- Load local JavaScript files with error handling -->
+    <script>
+        const scripts = [
+            '/js/address-validator.js',
+            '/js/search.js',
+            '/js/overlay-helpers.js',
+            '/js/client.js',
+            '/js/graph.js',
+            '/js/app.js'
+        ];
+        
+        function loadScript(src) {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = src;
+                script.addEventListener('load', () => {
+                    addResult(`✓ ${src} loaded successfully`);
+                    resolve();
+                });
+                script.addEventListener('error', () => {
+                    addResult(`✗ ${src} failed to load`, 'error');
+                    reject(new Error(`Failed to load ${src}`));
+                });
+                document.head.appendChild(script);
+            });
+        }
+        
+        // Load scripts sequentially after external dependencies are ready
+        setTimeout(() => {
+            loadScript('/js/address-validator.js')
+            .then(() => loadScript('/js/search.js'))
+            .then(() => loadScript('/js/overlay-helpers.js'))
+            .then(() => loadScript('/js/client.js'))
+            .then(() => loadScript('/js/graph.js'))
+            .then(() => {
+                // Test if graph class is available
+                if (typeof PolkadotGraphVisualization !== 'undefined') {
+                    addResult('✓ PolkadotGraphVisualization class is available');
+                } else {
+                    addResult('✗ PolkadotGraphVisualization class not found', 'error');
+                }
+                return loadScript('/js/app.js');
+            })
+            .then(() => {
+                addResult('✓ All scripts loaded successfully');
+                
+                // Test app initialization
+                setTimeout(() => {
+                    if (typeof window.app !== 'undefined') {
+                        addResult('✓ Main app instance created successfully');
+                    } else {
+                        addResult('✗ Main app instance not found', 'error');
+                    }
+                }, 2000);
+            })
+            .catch((error) => {
+                addResult(`✗ Script loading failed: ${error.message}`, 'error');
+            });
+        }, 1500);
+    </script>
+</body>
+</html>

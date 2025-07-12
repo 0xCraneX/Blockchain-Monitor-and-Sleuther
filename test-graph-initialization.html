@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Graph Initialization Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background-color: #0a0a0a;
+            color: white;
+        }
+        
+        #test-container {
+            background-color: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 4px;
+            margin: 20px 0;
+            padding: 20px;
+        }
+        
+        #network-graph {
+            width: 100%;
+            height: 600px;
+            background-color: #0a0a0a;
+            border: 1px solid #e6007a;
+        }
+        
+        .test-info {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #333;
+            border-radius: 4px;
+        }
+        
+        .success {
+            border-left: 4px solid #4CAF50;
+        }
+        
+        .error {
+            border-left: 4px solid #f44336;
+        }
+        
+        .warning {
+            border-left: 4px solid #ff9800;
+        }
+        
+        .log {
+            background-color: #222;
+            padding: 10px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            border-radius: 4px;
+        }
+    </style>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+    <h1>Graph Container Initialization Test</h1>
+    
+    <div class="test-info">
+        <h3>Test Steps:</h3>
+        <ol>
+            <li>Check if container #network-graph exists</li>
+            <li>Verify container has proper dimensions</li>
+            <li>Initialize PolkadotGraphVisualization</li>
+            <li>Test error handling for missing container</li>
+        </ol>
+    </div>
+    
+    <div id="test-container">
+        <h3>Graph Container (should be visible):</h3>
+        <svg id="network-graph"></svg>
+    </div>
+    
+    <div class="test-info">
+        <h3>Test Results:</h3>
+        <div id="test-results"></div>
+    </div>
+    
+    <div class="test-info">
+        <h3>Console Log:</h3>
+        <div id="console-log" class="log"></div>
+    </div>
+
+    <script src="/js/graph.js"></script>
+    <script>
+        // Capture console logs
+        const logElement = document.getElementById('console-log');
+        const originalConsole = {
+            log: console.log,
+            error: console.error,
+            warn: console.warn
+        };
+        
+        function addLogMessage(type, message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logMessage = document.createElement('div');
+            logMessage.style.color = type === 'error' ? '#f44336' : 
+                                   type === 'warn' ? '#ff9800' : '#4CAF50';
+            logMessage.textContent = `[${timestamp}] ${type.toUpperCase()}: ${message}`;
+            logElement.appendChild(logMessage);
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+        
+        console.log = function(...args) {
+            originalConsole.log(...args);
+            addLogMessage('log', args.join(' '));
+        };
+        
+        console.error = function(...args) {
+            originalConsole.error(...args);
+            addLogMessage('error', args.join(' '));
+        };
+        
+        console.warn = function(...args) {
+            originalConsole.warn(...args);
+            addLogMessage('warn', args.join(' '));
+        };
+        
+        function addTestResult(message, success = true) {
+            const resultsDiv = document.getElementById('test-results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-info ${success ? 'success' : 'error'}`;
+            resultDiv.textContent = message;
+            resultsDiv.appendChild(resultDiv);
+        }
+        
+        // Start tests
+        console.log('Starting graph initialization tests...');
+        
+        // Test 1: Check container existence
+        console.log('Test 1: Checking container existence...');
+        const container = document.querySelector('#network-graph');
+        if (container) {
+            addTestResult('✓ Container #network-graph found', true);
+            console.log('Container element:', container);
+            
+            // Test 2: Check dimensions
+            const rect = container.getBoundingClientRect();
+            console.log('Container dimensions:', rect);
+            
+            if (rect.width > 0 && rect.height > 0) {
+                addTestResult(`✓ Container has valid dimensions: ${rect.width}x${rect.height}`, true);
+                
+                // Test 3: Initialize graph
+                console.log('Test 3: Initializing PolkadotGraphVisualization...');
+                try {
+                    const graph = new PolkadotGraphVisualization('#network-graph', {
+                        width: 800,
+                        height: 400,
+                        onError: (error) => {
+                            console.error('Graph error callback:', error);
+                            addTestResult(`✗ Graph error: ${error.message}`, false);
+                        }
+                    });
+                    
+                    addTestResult('✓ PolkadotGraphVisualization initialized successfully', true);
+                    console.log('Graph object:', graph);
+                    
+                } catch (error) {
+                    addTestResult(`✗ Failed to initialize graph: ${error.message}`, false);
+                    console.error('Graph initialization failed:', error);
+                }
+            } else {
+                addTestResult(`✗ Container has zero dimensions: ${rect.width}x${rect.height}`, false);
+            }
+        } else {
+            addTestResult('✗ Container #network-graph not found', false);
+        }
+        
+        // Test 4: Test error handling with invalid selector
+        console.log('Test 4: Testing error handling with invalid selector...');
+        try {
+            const invalidGraph = new PolkadotGraphVisualization('#non-existent-container', {
+                onError: (error) => {
+                    console.log('Expected error caught by callback:', error.message);
+                    addTestResult('✓ Error handling works correctly for missing container', true);
+                }
+            });
+            addTestResult('✗ Should have thrown error for missing container', false);
+        } catch (error) {
+            console.log('Expected error caught by try/catch:', error.message);
+            addTestResult('✓ Error handling works correctly for missing container', true);
+        }
+        
+        console.log('All tests completed.');
+    </script>
+</body>
+</html>

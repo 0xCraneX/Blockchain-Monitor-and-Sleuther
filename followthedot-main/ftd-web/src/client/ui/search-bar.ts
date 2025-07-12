@@ -34,11 +34,11 @@ class SearchBar {
                 this.search();
             }, 300);
         };
-        document.onkeydown = (event) => {
+        document.addEventListener('keydown', (event) => {
             if (event.key.toLowerCase() === 'escape') {
                 hide(this.ui.resultContainer);
             }
-        };
+        });
     }
 
     private sortAccounts() {

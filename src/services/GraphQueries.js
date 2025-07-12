@@ -92,8 +92,13 @@ export class GraphQueries {
         nodeType: 'center',
         metrics: {
           degree: connections.length,
-          totalVolume: connections.reduce((sum, conn) => 
-            BigInt(sum) + BigInt(conn.total_volume), BigInt(0)).toString()
+          totalVolume: connections.reduce((sum, conn) => {
+            let volumeStr = conn.total_volume.toString();
+            if (volumeStr.includes('.')) {
+              volumeStr = volumeStr.split('.')[0];
+            }
+            return BigInt(sum) + BigInt(volumeStr || 0);
+          }, BigInt(0)).toString()
         }
       });
       

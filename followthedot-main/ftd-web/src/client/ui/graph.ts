@@ -247,6 +247,10 @@ class Graph {
         loadedBatches: 0
     };
     private clickTimeout?: NodeJS.Timeout = undefined;
+    private currentLayoutAlgorithm: 'force' | 'circular' | 'hierarchical' | 'grid' = 'force';
+    private isSimulationPaused: boolean = false;
+    private arePositionsLocked: boolean = false;
+    private layoutTransitionDuration: number = 800;
 
     constructor(
         onClickAccount: (address: string, depth?: number, priority?: boolean) => void,
@@ -1220,6 +1224,396 @@ class Graph {
                 .ease(d3.easeBackOut)
                 .attr('transform', 'scale(1)');
         });
+    }
+
+    // Layout Control Methods
+    public pauseSimulation(): void {
+        this.isSimulationPaused = true;
+        this.simulation.stop();
+        this.addSimulationIndicator('paused');
+    }
+
+    public resumeSimulation(): void {
+        this.isSimulationPaused = false;
+        this.simulation.alpha(0.3).restart();
+        this.addSimulationIndicator('running');
+    }
+
+    public resetPositions(): void {
+        // Reset all node positions and restart simulation
+        this.accounts.forEach((node: any) => {
+            delete node.x;
+            delete node.y;
+            delete node.fx;
+            delete node.fy;
+        });
+        
+        this.simulation.alpha(1).restart();
+        this.addSimulationIndicator('running');
+        
+        // Add reset animation
+        this.addResetAnimation();
+    }
+
+    public lockPositions(lock: boolean): void {
+        this.arePositionsLocked = lock;
+        
+        if (lock) {
+            // Fix all node positions
+            this.accounts.forEach((node: any) => {
+                if (node.x !== undefined && node.y !== undefined) {
+                    node.fx = node.x;
+                    node.fy = node.y;
+                }
+            });
+            this.simulation.stop();
+            this.addSimulationIndicator('locked');
+        } else {
+            // Unfix all node positions
+            this.accounts.forEach((node: any) => {
+                node.fx = null;
+                node.fy = null;
+            });
+            if (!this.isSimulationPaused) {
+                this.simulation.alpha(0.3).restart();
+                this.addSimulationIndicator('running');
+            }
+        }
+    }
+
+    public setLayoutAlgorithm(algorithm: 'force' | 'circular' | 'hierarchical' | 'grid'): void {
+        this.currentLayoutAlgorithm = algorithm;
+        this.applyLayoutAlgorithm(algorithm);
+        this.addLayoutIndicator(algorithm);
+    }
+
+    private applyLayoutAlgorithm(algorithm: 'force' | 'circular' | 'hierarchical' | 'grid'): void {
+        // Add transition class for smooth animations
+        this.accountGroup.classed('layout-transition', true);
+        
+        setTimeout(() => {
+            this.accountGroup.classed('layout-transition', false);
+        }, this.layoutTransitionDuration);
+
+        switch (algorithm) {
+            case 'circular':
+                this.applyCircularLayout();
+                break;
+            case 'hierarchical':
+                this.applyHierarchicalLayout();
+                break;
+            case 'grid':
+                this.applyGridLayout();
+                break;
+            case 'force':
+            default:
+                this.applyForceLayout();
+                break;
+        }
+    }
+
+    private applyCircularLayout(): void {
+        const nodeCount = this.accounts.length;
+        const radius = Math.min(window.innerWidth, window.innerHeight) * 0.3;
+        const angleStep = (2 * Math.PI) / nodeCount;
+
+        this.accounts.forEach((node: any, index: number) => {
+            const angle = index * angleStep;
+            const targetX = radius * Math.cos(angle);
+            const targetY = radius * Math.sin(angle);
+            
+            this.animateNodeToPosition(node, targetX, targetY);
+        });
+
+        // Stop force simulation for circular layout
+        this.simulation.stop();
+    }
+
+    private applyHierarchicalLayout(): void {
+        // Create a simple hierarchical layout based on node importance/connections
+        const levels = this.calculateHierarchicalLevels();
+        const levelHeight = 200;
+        const levelWidth = window.innerWidth * 0.8;
+
+        levels.forEach((levelNodes, levelIndex) => {
+            const nodesInLevel = levelNodes.length;
+            const nodeSpacing = levelWidth / (nodesInLevel + 1);
+            
+            levelNodes.forEach((node: any, nodeIndex: number) => {
+                const targetX = (nodeIndex + 1) * nodeSpacing - levelWidth / 2;
+                const targetY = levelIndex * levelHeight - (levels.length * levelHeight) / 2;
+                
+                this.animateNodeToPosition(node, targetX, targetY);
+            });
+        });
+
+        this.simulation.stop();
+    }
+
+    private applyGridLayout(): void {
+        const nodeCount = this.accounts.length;
+        const cols = Math.ceil(Math.sqrt(nodeCount));
+        const rows = Math.ceil(nodeCount / cols);
+        const cellWidth = window.innerWidth * 0.8 / cols;
+        const cellHeight = window.innerHeight * 0.8 / rows;
+
+        this.accounts.forEach((node: any, index: number) => {
+            const col = index % cols;
+            const row = Math.floor(index / cols);
+            const targetX = (col + 0.5) * cellWidth - (window.innerWidth * 0.8) / 2;
+            const targetY = (row + 0.5) * cellHeight - (window.innerHeight * 0.8) / 2;
+            
+            this.animateNodeToPosition(node, targetX, targetY);
+        });
+
+        this.simulation.stop();
+    }
+
+    private applyForceLayout(): void {
+        // Reset to force-directed layout
+        this.accounts.forEach((node: any) => {
+            node.fx = null;
+            node.fy = null;
+        });
+        
+        this.simulation.alpha(1).restart();
+    }
+
+    private calculateHierarchicalLevels(): any[][] {
+        // Simple hierarchical leveling based on connections and importance
+        const connectionCounts = new Map<string, number>();
+        
+        this.transferVolumes.forEach(transfer => {
+            const sourceCount = connectionCounts.get(transfer.source) || 0;
+            const targetCount = connectionCounts.get(transfer.target) || 0;
+            connectionCounts.set(transfer.source, sourceCount + 1);
+            connectionCounts.set(transfer.target, targetCount + 1);
+        });
+
+        // Sort nodes by connection count (descending)
+        const sortedNodes = [...this.accounts].sort((a, b) => {
+            const connectionsA = connectionCounts.get(a.address) || 0;
+            const connectionsB = connectionCounts.get(b.address) || 0;
+            return connectionsB - connectionsA;
+        });
+
+        // Distribute into levels
+        const levels: any[][] = [];
+        const maxLevels = Math.min(5, Math.ceil(Math.sqrt(this.accounts.length)));
+        const nodesPerLevel = Math.ceil(this.accounts.length / maxLevels);
+
+        for (let i = 0; i < maxLevels; i++) {
+            const levelStart = i * nodesPerLevel;
+            const levelEnd = Math.min(levelStart + nodesPerLevel, sortedNodes.length);
+            levels.push(sortedNodes.slice(levelStart, levelEnd));
+        }
+
+        return levels;
+    }
+
+    private animateNodeToPosition(node: any, targetX: number, targetY: number): void {
+        // Smooth animation to target position
+        const startX = node.x || 0;
+        const startY = node.y || 0;
+        const duration = this.layoutTransitionDuration;
+        const startTime = Date.now();
+
+        const animate = () => {
+            const elapsed = Date.now() - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            
+            // Cubic bezier easing
+            const easeProgress = progress < 0.5 
+                ? 4 * progress * progress * progress 
+                : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+
+            node.x = startX + (targetX - startX) * easeProgress;
+            node.y = startY + (targetY - startY) * easeProgress;
+            
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            } else {
+                node.x = targetX;
+                node.y = targetY;
+            }
+        };
+
+        requestAnimationFrame(animate);
+    }
+
+    // Zoom and Pan Control Methods
+    public zoomIn(): void {
+        const currentTransform = d3.zoomTransform(this.svg.node()!);
+        const newScale = Math.min(currentTransform.k * 1.5, 8);
+        const transition = this.svg.transition().duration(300);
+        // @ts-ignore
+        transition.call(this.zoom.scaleTo, newScale);
+    }
+
+    public zoomOut(): void {
+        const currentTransform = d3.zoomTransform(this.svg.node()!);
+        const newScale = Math.max(currentTransform.k / 1.5, 0.2);
+        const transition = this.svg.transition().duration(300);
+        // @ts-ignore
+        transition.call(this.zoom.scaleTo, newScale);
+    }
+
+    public centerView(): void {
+        const transition = this.svg.transition().duration(500);
+        // @ts-ignore
+        transition.call(this.zoom.transform, d3.zoomIdentity.scale(this.initialScale));
+    }
+
+    public fitView(): void {
+        if (this.accounts.length === 0) return;
+
+        // Calculate bounding box of all nodes
+        const bounds = this.calculateNodeBounds();
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        
+        const dx = bounds.maxX - bounds.minX;
+        const dy = bounds.maxY - bounds.minY;
+        const x = (bounds.minX + bounds.maxX) / 2;
+        const y = (bounds.minY + bounds.maxY) / 2;
+        
+        const scale = Math.min(8, 0.8 / Math.max(dx / width, dy / height));
+        const translate = [width / 2 - scale * x, height / 2 - scale * y];
+        
+        const transition = this.svg.transition().duration(750);
+        // @ts-ignore
+        transition.call(this.zoom.transform, d3.zoomIdentity.translate(translate[0], translate[1]).scale(scale));
+    }
+
+    private calculateNodeBounds(): { minX: number; maxX: number; minY: number; maxY: number } {
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        
+        this.accounts.forEach((node: any) => {
+            if (node.x !== undefined && node.y !== undefined) {
+                minX = Math.min(minX, node.x);
+                maxX = Math.max(maxX, node.x);
+                minY = Math.min(minY, node.y);
+                maxY = Math.max(maxY, node.y);
+            }
+        });
+        
+        return { minX, maxX, minY, maxY };
+    }
+
+    // Layout Presets
+    public applyLayoutPreset(preset: string): void {
+        this.addPresetAnimation();
+        
+        switch (preset) {
+            case 'transaction-flow':
+                this.applyTransactionFlowPreset();
+                break;
+            case 'risk-analysis':
+                this.applyRiskAnalysisPreset();
+                break;
+            case 'cluster-analysis':
+                this.applyClusterAnalysisPreset();
+                break;
+            case 'timeline-analysis':
+                this.applyTimelineAnalysisPreset();
+                break;
+        }
+    }
+
+    private applyTransactionFlowPreset(): void {
+        // Hierarchical layout with high-volume nodes at top
+        this.setLayoutAlgorithm('hierarchical');
+        this.setExpansionStrategy('volume');
+        this.setPerformanceMode('balanced');
+    }
+
+    private applyRiskAnalysisPreset(): void {
+        // Circular layout focusing on risk indicators
+        this.setLayoutAlgorithm('circular');
+        this.setExpansionStrategy('risk');
+        this.setPerformanceMode('detailed');
+    }
+
+    private applyClusterAnalysisPreset(): void {
+        // Force layout with clustering
+        this.setLayoutAlgorithm('force');
+        this.setExpansionStrategy('balanced');
+        this.setPerformanceMode('balanced');
+    }
+
+    private applyTimelineAnalysisPreset(): void {
+        // Grid layout for timeline analysis
+        this.setLayoutAlgorithm('grid');
+        this.setExpansionStrategy('importance');
+        this.setPerformanceMode('fast');
+    }
+
+    // Visual Indicators
+    private addSimulationIndicator(state: 'running' | 'paused' | 'locked'): void {
+        d3.select('.simulation-indicator').remove();
+        
+        const indicator = d3.select('body')
+            .append('div')
+            .attr('class', `simulation-indicator ${state}`)
+            .text(state.charAt(0).toUpperCase() + state.slice(1));
+        
+        // Auto-hide after 2 seconds if running
+        if (state === 'running') {
+            setTimeout(() => indicator.remove(), 2000);
+        }
+    }
+
+    private addLayoutIndicator(algorithm: string): void {
+        d3.select('.layout-algorithm-indicator').remove();
+        
+        d3.select('body')
+            .append('div')
+            .attr('class', 'layout-algorithm-indicator')
+            .text(algorithm.charAt(0).toUpperCase() + algorithm.slice(1) + ' Layout')
+            .transition()
+            .delay(2000)
+            .duration(500)
+            .style('opacity', 0)
+            .remove();
+    }
+
+    private addResetAnimation(): void {
+        // Add a brief flash effect to indicate reset
+        const overlay = d3.select('.graph-container')
+            .append('div')
+            .style('position', 'absolute')
+            .style('top', '0')
+            .style('left', '0')
+            .style('width', '100%')
+            .style('height', '100%')
+            .style('background', 'rgba(255, 255, 255, 0.3)')
+            .style('pointer-events', 'none')
+            .style('z-index', '1000');
+        
+        overlay.transition()
+            .duration(300)
+            .style('opacity', 0)
+            .remove();
+    }
+
+    private addPresetAnimation(): void {
+        d3.select('.graph-container').classed('preset-applying', true);
+        setTimeout(() => {
+            d3.select('.graph-container').classed('preset-applying', false);
+        }, 1500);
+    }
+
+    // Getters for current state
+    public getCurrentLayoutAlgorithm(): string {
+        return this.currentLayoutAlgorithm;
+    }
+
+    public isSimulationRunning(): boolean {
+        return !this.isSimulationPaused && !this.arePositionsLocked;
+    }
+
+    public arePositionsCurrentlyLocked(): boolean {
+        return this.arePositionsLocked;
     }
 }
 

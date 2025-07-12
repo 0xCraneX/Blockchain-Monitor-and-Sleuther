@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Layout Test - Polkadot Analysis Tool</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        /* Test styles to visualize the layout */
+        .graph-area {
+            border: 2px dashed #e6007a;
+        }
+        .sidebar {
+            border: 2px dashed #552bbf;
+        }
+        #graph-container {
+            border: 1px solid #4caf50;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: #4caf50;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <header>
+            <h1>Polkadot Analysis Tool</h1>
+            <p>Layout Test - Graph-Centered Design</p>
+        </header>
+
+        <main>
+            <!-- Sidebar for search and controls -->
+            <div class="sidebar">
+                <section id="search-section">
+                    <div class="search-container">
+                        <input 
+                            type="text" 
+                            id="address-search" 
+                            placeholder="Enter Polkadot address..."
+                            value="Test search input"
+                        >
+                        <button id="search-btn">Search</button>
+                    </div>
+                </section>
+
+                <section class="controls" style="display: block;">
+                    <div class="control-panel">
+                        <h3>Filters</h3>
+                        
+                        <div class="filter-group">
+                            <label for="depth-filter">Connection Depth:</label>
+                            <select id="depth-filter">
+                                <option value="2" selected>2 degrees</option>
+                            </select>
+                        </div>
+
+                        <div class="filter-group">
+                            <label for="volume-filter">Min Volume (DOT):</label>
+                            <input type="number" id="volume-filter" value="10">
+                        </div>
+
+                        <button class="btn-primary">Apply Filters</button>
+                        <button class="btn-secondary">Reset</button>
+                    </div>
+
+                    <div class="stats-panel">
+                        <h3>Statistics</h3>
+                        <div class="stat-item">
+                            <span class="stat-label">Nodes:</span>
+                            <span class="stat-value">25</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Edges:</span>
+                            <span class="stat-value">42</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Total Volume:</span>
+                            <span class="stat-value">1,234.56 DOT</span>
+                        </div>
+                    </div>
+
+                    <div class="export-panel">
+                        <h3>Export</h3>
+                        <button class="btn-secondary">Export CSV</button>
+                        <button class="btn-secondary">Export JSON</button>
+                        <button class="btn-primary">Save Investigation</button>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Main graph area -->
+            <div class="graph-area">
+                <section id="visualization-section" style="display: block;">
+                    <div id="graph-container">
+                        <div>GRAPH VISUALIZATION AREA<br>
+                        <small>80% width, full height</small></div>
+                        
+                        <div class="graph-legend">
+                            <div class="legend-item">
+                                <span class="legend-color" style="background: #e6007a;"></span>
+                                <span>Target Address</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-color" style="background: #2196F3;"></span>
+                                <span>Exchange</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Graph controls -->
+                        <div class="graph-controls">
+                            <button class="graph-control-btn">+</button>
+                            <button class="graph-control-btn">-</button>
+                            <button class="graph-control-btn">⌂</button>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+
+        <footer>
+            <p>Layout Test - Built with D3.js and Polkadot.js</p>
+        </footer>
+    </div>
+</body>
+</html>

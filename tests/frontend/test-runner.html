@@ -134,10 +134,10 @@
     <h1>Polkadot Analysis Tool - Frontend Test Runner</h1>
     
     <div class="test-controls">
-        <button id="runAllTests" onclick="runAllTests()">Run All Tests</button>
-        <button id="runUITests" onclick="runUITests()">Run UI Tests Only</button>
-        <button id="runAPITests" onclick="runAPITests()">Run API Tests Only</button>
-        <button id="clearResults" onclick="clearResults()">Clear Results</button>
+        <button id="runAllTests">Run All Tests</button>
+        <button id="runUITests">Run UI Tests Only</button>
+        <button id="runAPITests">Run API Tests Only</button>
+        <button id="clearResults">Clear Results</button>
     </div>
     
     <div class="test-container">
@@ -534,15 +534,21 @@
         }
         
         // Initial setup
-        window.onload = () => {
+        window.addEventListener('load', () => {
             console.log('Test runner loaded');
+            
+            // Add event listeners for test control buttons
+            document.getElementById('runAllTests').addEventListener('click', runAllTests);
+            document.getElementById('runUITests').addEventListener('click', runUITests);
+            document.getElementById('runAPITests').addEventListener('click', runAPITests);
+            document.getElementById('clearResults').addEventListener('click', clearResults);
             
             // Wait for iframe to load
             const iframe = document.getElementById('appFrame');
-            iframe.onload = () => {
+            iframe.addEventListener('load', () => {
                 console.log('Application iframe loaded');
-            };
-        };
+            });
+        });
     </script>
 </body>
 </html>

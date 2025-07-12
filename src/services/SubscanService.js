@@ -52,26 +52,33 @@ export class SubscanService {
    */
   async getAccountInfo(address) {
     try {
-      const data = await this.request('/api/v2/scan/account', { address });
+      const data = await this.request('/api/v2/scan/accounts', { address: [address] });
+      
+      // API returns a list, get the first item if available
+      const account = data.list && data.list.length > 0 ? data.list[0] : null;
+      
+      if (!account) {
+        return null;
+      }
       
       return {
-        address: data.account?.address || address,
+        address: account.address || address,
         identity: {
-          display: data.account?.display_name || data.account?.identity?.display || null,
-          legal: data.account?.identity?.legal || null,
-          web: data.account?.identity?.web || null,
-          email: data.account?.identity?.email || null,
-          twitter: data.account?.identity?.twitter || null,
-          verified: data.account?.identity?.judgements?.some(j => j.status === 'KnownGood') || false
+          display: account.display_name || account.identity?.display || null,
+          legal: account.identity?.legal || null,
+          web: account.identity?.web || null,
+          email: account.identity?.email || null,
+          twitter: account.identity?.twitter || null,
+          verified: account.identity?.judgements?.some(j => j.status === 'KnownGood') || false
         },
         balance: {
-          free: data.account?.balance || '0',
-          reserved: data.account?.reserved || '0',
-          locked: data.account?.locked || '0'
+          free: account.balance || '0',
+          reserved: account.reserved || '0',
+          locked: account.locked || '0'
         },
-        nonce: data.account?.nonce || 0,
-        role: data.account?.role || 'regular',
-        registrar: data.account?.registrar || null
+        nonce: account.nonce || 0,
+        role: account.role || 'regular',
+        registrar: account.registrar || null
       };
     } catch (error) {
       logger.warn('Failed to get account info from Subscan', { address, error: error.message });

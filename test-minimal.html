@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minimal Test</title>
+    <style>
+        body { 
+            background: #000; 
+            color: #fff; 
+            font-family: Arial, sans-serif; 
+            padding: 20px;
+        }
+        #test-container {
+            border: 1px solid #333;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        #network-graph {
+            width: 400px;
+            height: 300px;
+            border: 1px solid #666;
+            background: #111;
+        }
+    </style>
+</head>
+<body>
+    <h1>Minimal JavaScript Test</h1>
+    <div id="test-container">
+        <p id="status">Loading...</p>
+        <svg id="network-graph"></svg>
+    </div>
+
+    <script>
+        function updateStatus(message) {
+            document.getElementById('status').textContent = message;
+            console.log(message);
+        }
+
+        updateStatus('Starting tests...');
+        
+        // Test basic functionality
+        updateStatus('✓ Basic JavaScript working');
+        
+        // Test DOM access
+        const container = document.getElementById('network-graph');
+        if (container) {
+            updateStatus('✓ DOM element found');
+        } else {
+            updateStatus('✗ DOM element not found');
+        }
+    </script>
+
+    <!-- Test external dependencies -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script>
+        setTimeout(() => {
+            if (typeof d3 !== 'undefined') {
+                updateStatus('✓ D3.js loaded successfully');
+                
+                // Test basic D3 functionality
+                try {
+                    const svg = d3.select('#network-graph');
+                    svg.append('circle')
+                       .attr('cx', 50)
+                       .attr('cy', 50)
+                       .attr('r', 10)
+                       .style('fill', '#e6007a');
+                    updateStatus('✓ D3.js basic functionality working');
+                } catch (e) {
+                    updateStatus('✗ D3.js error: ' + e.message);
+                }
+            } else {
+                updateStatus('✗ D3.js not available');
+            }
+        }, 1000);
+    </script>
+
+    <!-- Test Socket.IO -->
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+    <script>
+        setTimeout(() => {
+            if (typeof io !== 'undefined') {
+                updateStatus('✓ Socket.IO loaded successfully');
+            } else {
+                updateStatus('✗ Socket.IO not available');
+            }
+        }, 1500);
+    </script>
+
+    <!-- Test local file access -->
+    <script>
+        setTimeout(() => {
+            // Try to load a simple local script
+            fetch('/js/address-validator.js')
+                .then(response => {
+                    if (response.ok) {
+                        updateStatus('✓ Local JS files accessible');
+                    } else {
+                        updateStatus('✗ Local JS files not accessible: ' + response.status);
+                    }
+                })
+                .catch(error => {
+                    updateStatus('✗ Fetch error: ' + error.message);
+                });
+        }, 2000);
+    </script>
+</body>
+</html>

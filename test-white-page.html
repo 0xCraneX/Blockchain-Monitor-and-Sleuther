@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Page</title>
+    <style>
+        body {
+            background-color: #0a0a0a;
+            color: #ffffff;
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        .test-content {
+            background-color: #1a1a1a;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Page - Dark Theme</h1>
+    <div class="test-content">
+        <p>This page should have a dark background (#0a0a0a) with white text.</p>
+        <p>If you see this text on a white background, there's a rendering issue.</p>
+    </div>
+    <div id="js-test"></div>
+    <script>
+        document.getElementById('js-test').innerHTML = '<p style="color: #e6007a;">JavaScript is working!</p>';
+        console.log('Test page loaded successfully');
+    </script>
+</body>
+</html>
