@@ -6,6 +6,7 @@ import { GraphQueries } from '../../services/GraphQueries.js';
 import { RelationshipScorer } from '../../services/RelationshipScorer.js';
 import { PathFinder } from '../../services/PathFinder.js';
 import { GraphMetrics } from '../../services/GraphMetrics.js';
+import { RealDataService } from '../../services/RealDataService.js';
 import { createLogger, logMethodEntry, logMethodExit, logError, startPerformanceTimer, endPerformanceTimer } from '../../utils/logger.js';
 
 const logger = createLogger('GraphRoutes');
@@ -28,6 +29,7 @@ function getServices(req) {
         relationshipScorer: new RelationshipScorer(databaseService),
         pathFinder: null, // Will be created after graphQueries
         graphMetrics: new GraphMetrics(databaseService),
+        realDataService: null, // Will be created with blockchain service
         graphController: null // Will be created after all services
       };
       
@@ -41,13 +43,24 @@ function getServices(req) {
       
       logger.debug('Created PathFinder service');
       
+      // Create RealDataService if blockchain is available
+      const blockchainService = req.app.locals.blockchain;
+      if (blockchainService) {
+        req.app.locals.graphServices.realDataService = new RealDataService(
+          blockchainService,
+          databaseService
+        );
+        logger.debug('Created RealDataService');
+      }
+      
       // Create controller with all services
       req.app.locals.graphServices.graphController = new GraphController(
         databaseService,
         req.app.locals.graphServices.graphQueries,
         req.app.locals.graphServices.relationshipScorer,
         req.app.locals.graphServices.pathFinder,
-        req.app.locals.graphServices.graphMetrics
+        req.app.locals.graphServices.graphMetrics,
+        req.app.locals.graphServices.realDataService
       );
       
       logger.debug('Created GraphController');

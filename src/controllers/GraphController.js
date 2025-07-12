@@ -15,7 +15,7 @@ const controllerLogger = createLogger('GraphController');
  * Implements D3.js compatible format for all responses
  */
 export class GraphController {
-  constructor(databaseService, graphQueries, relationshipScorer, pathFinder, graphMetrics) {
+  constructor(databaseService, graphQueries, relationshipScorer, pathFinder, graphMetrics, realDataService) {
     const trackerId = logMethodEntry('GraphController', 'constructor');
     
     this.db = databaseService;
@@ -23,6 +23,7 @@ export class GraphController {
     this.relationshipScorer = relationshipScorer;
     this.pathFinder = pathFinder;
     this.graphMetrics = graphMetrics;
+    this.realDataService = realDataService;
     
     controllerLogger.info('GraphController initialized with all services');
     logMethodExit('GraphController', 'constructor', trackerId);
@@ -108,39 +109,66 @@ export class GraphController {
         riskThreshold: riskThreshold ? parseInt(riskThreshold) : null
       };
 
-      // Get graph data based on depth - Use relationships as fallback
+      // Get graph data - Try real data first if available
       let graphData;
       const graphQueryTimer = startPerformanceTimer('graph_query');
       
       try {
-        if (depth === 1) {
-          controllerLogger.debug('Fetching direct connections', { address, minVolume, limit: maxNodes });
-          graphData = this.graphQueries.getDirectConnections(address, {
+        // Check if we have real data service
+        if (this.realDataService && !process.env.SKIP_BLOCKCHAIN) {
+          controllerLogger.info('Using real blockchain data');
+          const realDataTimer = startPerformanceTimer('real_data_fetch');
+          
+          const realGraphData = await this.realDataService.buildGraphData(address, depth, {
+            maxNodes,
             minVolume,
-            limit: maxNodes
+            direction
           });
+          
+          endPerformanceTimer(realDataTimer, 'real_data_fetch');
+          
+          // Convert to expected format
+          graphData = {
+            nodes: realGraphData.nodes.map(n => ({
+              id: n.address,
+              ...n
+            })),
+            edges: realGraphData.edges
+          };
+          
+          controllerLogger.info(`Real data retrieved: ${graphData.nodes.length} nodes, ${graphData.edges.length} edges`);
         } else {
-          controllerLogger.debug('Fetching multi-hop connections', { address, depth, minVolume, limit: maxNodes });
-          graphData = this.graphQueries.getMultiHopConnections(address, depth, {
-            minVolume,
-            limit: maxNodes
-          });
+          // Use database queries
+          if (depth === 1) {
+            controllerLogger.debug('Fetching direct connections', { address, minVolume, limit: maxNodes });
+            graphData = this.graphQueries.getDirectConnections(address, {
+              minVolume,
+              limit: maxNodes
+            });
+          } else {
+            controllerLogger.debug('Fetching multi-hop connections', { address, depth, minVolume, limit: maxNodes });
+            graphData = this.graphQueries.getMultiHopConnections(address, depth, {
+              minVolume,
+              limit: maxNodes
+            });
+          }
+          
+          controllerLogger.info(`Graph data retrieved: ${graphData.nodes.length} nodes, ${graphData.edges.length} edges`);
+          
+          // If no graph data, fallback to relationship-based graph
+          if (!graphData.nodes || graphData.nodes.length === 0) {
+            controllerLogger.info('No graph data from queries, falling back to relationships');
+            const relationshipTimer = startPerformanceTimer('relationship_fallback');
+            graphData = await this._buildGraphFromRelationships(address, { minVolume, limit: maxNodes });
+            endPerformanceTimer(relationshipTimer, 'relationship_fallback');
+          }
         }
         
         endPerformanceTimer(graphQueryTimer, 'graph_query');
-        controllerLogger.info(`Graph data retrieved: ${graphData.nodes.length} nodes, ${graphData.edges.length} edges`);
-        
-        // If no graph data, fallback to relationship-based graph
-        if (!graphData.nodes || graphData.nodes.length === 0) {
-          controllerLogger.info('No graph data from queries, falling back to relationships');
-          const relationshipTimer = startPerformanceTimer('relationship_fallback');
-          graphData = await this._buildGraphFromRelationships(address, { minVolume, limit: maxNodes });
-          endPerformanceTimer(relationshipTimer, 'relationship_fallback');
-        }
       } catch (error) {
         endPerformanceTimer(graphQueryTimer, 'graph_query');
         logError(error, { context: 'graph_data_query', address, depth });
-        controllerLogger.error('Error getting graph data from queries, using relationships fallback');
+        controllerLogger.error('Error getting graph data, using relationships fallback');
         
         const relationshipTimer = startPerformanceTimer('relationship_fallback_error');
         graphData = await this._buildGraphFromRelationships(address, { minVolume, limit: maxNodes });

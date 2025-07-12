@@ -1,8 +1,25 @@
 import { logger } from '../utils/logger.js';
+import { subscanService } from '../services/SubscanService.js';
 
 export class AddressController {
   async search(db, query, limit) {
     try {
+      // Try Subscan first for real-time data
+      if (!process.env.SKIP_BLOCKCHAIN && query.length > 40) {
+        logger.debug('Searching via Subscan', { query });
+        const subscanResults = await subscanService.searchAccounts(query, limit);
+        if (subscanResults.length > 0) {
+          return subscanResults.map(account => ({
+            id: null,
+            address: account.address,
+            identity_display: account.identity?.display || null,
+            balance: account.balance?.free || '0',
+            identity_verified: account.identity?.verified || false
+          }));
+        }
+      }
+      
+      // Fall back to database search
       const results = db.searchAccounts(query, limit);
       logger.debug('Address search completed', { query, resultCount: results.length });
       return results;
