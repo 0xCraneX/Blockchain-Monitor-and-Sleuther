@@ -16,6 +16,9 @@
         <header>
             <h1>Polkadot Analysis Tool</h1>
             <p>Explore address relationships and transaction flows in the Polkadot ecosystem</p>
+            <div class="mock-data-disclaimer" style="background: #ff6b00; color: white; padding: 8px 15px; margin-top: 10px; border-radius: 4px; font-size: 14px; text-align: center;">
+                <strong>⚠️ Demo Mode:</strong> This visualization is using mock data for demonstration purposes only.
+            </div>
         </header>
 
         <main>
@@ -67,6 +70,12 @@
                         <div class="filter-group">
                             <label for="connection-filter">Min Connections:</label>
                             <input type="number" id="connection-filter" min="1" value="1">
+                        </div>
+
+                        <div class="filter-group">
+                            <label for="volume-threshold-filter">Highlight Volume Threshold (DOT):</label>
+                            <input type="number" id="volume-threshold-filter" min="0" value="" step="1000" placeholder="e.g. 10000">
+                            <small>Connections above this volume will be highlighted in red</small>
                         </div>
 
                         <button id="apply-filters" class="btn-primary">Apply Filters</button>
@@ -151,6 +160,7 @@
         </footer>
     </div>
 
+    <script src="/js/config.js"></script>
     <script src="/js/format-utils.js"></script>
     <script src="/js/address-validator.js"></script>
     <script src="/js/search.js"></script>

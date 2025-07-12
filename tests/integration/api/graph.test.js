@@ -27,12 +27,12 @@ describe('Graph API Endpoints', () => {
     server.close();
   });
 
-  describe('GET /api/v1/accounts/:address/graph', () => {
+  describe('GET /api/graph/:address', () => {
     it('should return graph data for valid address', async () => {
       const address = testAccounts[0].address;
       
       const response = await request(app)
-        .get(`/api/v1/accounts/${address}/graph`)
+        .get(`/api/graph/${address}`)
         .expect(200);
       
       expect(response.body).toHaveProperty('data');
@@ -61,11 +61,11 @@ describe('Graph API Endpoints', () => {
       const address = testAccounts[0].address;
       
       const depth1Response = await request(app)
-        .get(`/api/v1/accounts/${address}/graph?depth=1`)
+        .get(`/api/graph/${address}/graph?depth=1`)
         .expect(200);
       
       const depth2Response = await request(app)
-        .get(`/api/v1/accounts/${address}/graph?depth=2`)
+        .get(`/api/graph/${address}/graph?depth=2`)
         .expect(200);
       
       // Depth 2 should have more or equal nodes
@@ -78,7 +78,7 @@ describe('Graph API Endpoints', () => {
       const minVolume = '10000000000000'; // 10 DOT
       
       const response = await request(app)
-        .get(`/api/v1/accounts/${address}/graph?minVolume=${minVolume}`)
+        .get(`/api/graph/${address}/graph?minVolume=${minVolume}`)
         .expect(200);
       
       // All edges should have volume >= minVolume
@@ -93,7 +93,7 @@ describe('Graph API Endpoints', () => {
       
       const requests = addresses.map(address =>
         request(app)
-          .get(`/api/v1/accounts/${address}/graph?depth=2`)
+          .get(`/api/graph/${address}/graph?depth=2`)
           .expect(200)
       );
       
@@ -111,7 +111,7 @@ describe('Graph API Endpoints', () => {
       const invalidAddress = '5InvalidAddressDoesNotExistInDatabase1234567890';
       
       const response = await request(app)
-        .get(`/api/v1/accounts/${invalidAddress}/graph`)
+        .get(`/api/graph/${invalidAddress}/graph`)
         .expect(404);
       
       expect(response.body).toHaveProperty('error');
@@ -122,7 +122,7 @@ describe('Graph API Endpoints', () => {
       const address = testAccounts[0].address;
       
       const response = await request(app)
-        .get(`/api/v1/accounts/${address}/graph?depth=10`)
+        .get(`/api/graph/${address}/graph?depth=10`)
         .expect(400);
       
       expect(response.body).toHaveProperty('error');
@@ -135,7 +135,7 @@ describe('Graph API Endpoints', () => {
       const limit = 5;
       
       const response = await request(app)
-        .get(`/api/v1/accounts/${address}/graph?limit=${limit}`)
+        .get(`/api/graph/${address}/graph?limit=${limit}`)
         .expect(200);
       
       // Should respect the limit
@@ -146,7 +146,7 @@ describe('Graph API Endpoints', () => {
       const address = testAccounts[0].address;
       
       const response = await request(app)
-        .get(`/api/v1/accounts/${address}/graph?includeScores=true`)
+        .get(`/api/graph/${address}/graph?includeScores=true`)
         .expect(200);
       
       // Edges should include score information
@@ -421,7 +421,7 @@ describe('Graph API Endpoints', () => {
       for (let i = 0; i < 20; i++) {
         requests.push(
           request(app)
-            .get(`/api/v1/accounts/${address}/graph`)
+            .get(`/api/graph/${address}/graph`)
         );
       }
       
@@ -446,7 +446,7 @@ describe('Graph API Endpoints', () => {
       db.close();
       
       const response = await request(app)
-        .get(`/api/v1/accounts/${testAccounts[0].address}/graph`)
+        .get(`/api/graph/${testAccounts[0].address}/graph`)
         .expect(503);
       
       expect(response.body).toHaveProperty('error');
@@ -467,7 +467,7 @@ describe('Graph API Endpoints', () => {
       
       for (const address of invalidAddresses) {
         const response = await request(app)
-          .get(`/api/v1/accounts/${address}/graph`)
+          .get(`/api/graph/${address}/graph`)
           .expect(400);
         
         expect(response.body).toHaveProperty('error');

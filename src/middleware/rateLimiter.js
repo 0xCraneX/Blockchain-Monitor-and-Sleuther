@@ -10,7 +10,7 @@ export const rateLimiter = rateLimit({
   legacyHeaders: true, // Enable the `X-RateLimit-*` headers as requested
   handler: (req, res) => {
     const resetTime = new Date(Date.now() + parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 60 * 1000);
-    
+
     // Add custom rate limit headers
     res.set({
       'X-RateLimit-Limit': parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,
@@ -18,7 +18,7 @@ export const rateLimiter = rateLimit({
       'X-RateLimit-Reset': Math.ceil(resetTime.getTime() / 1000),
       'Retry-After': Math.ceil((resetTime.getTime() - Date.now()) / 1000)
     });
-    
+
     logger.warn('Rate limit exceeded', {
       ip: req.ip,
       url: req.url
@@ -48,14 +48,14 @@ export const searchRateLimiter = rateLimit({
   handler: (req, res) => {
     const resetTime = new Date(Date.now() + 60 * 1000);
     const maxRequests = process.env.NODE_ENV === 'test' ? 1000 : (process.env.NODE_ENV === 'development' ? 100 : 50);
-    
+
     res.set({
       'X-RateLimit-Limit': maxRequests,
       'X-RateLimit-Remaining': 0,
       'X-RateLimit-Reset': Math.ceil(resetTime.getTime() / 1000),
       'Retry-After': Math.ceil((resetTime.getTime() - Date.now()) / 1000)
     });
-    
+
     logger.warn('Search rate limit exceeded', {
       ip: req.ip,
       url: req.url,
@@ -82,14 +82,14 @@ export const expensiveOperationLimiter = rateLimit({
   handler: (req, res) => {
     const resetTime = new Date(Date.now() + 60 * 1000);
     const maxRequests = process.env.NODE_ENV === 'test' ? 1000 : (process.env.NODE_ENV === 'development' ? 40 : 20);
-    
+
     res.set({
       'X-RateLimit-Limit': maxRequests,
       'X-RateLimit-Remaining': 0,
       'X-RateLimit-Reset': Math.ceil(resetTime.getTime() / 1000),
       'Retry-After': Math.ceil((resetTime.getTime() - Date.now()) / 1000)
     });
-    
+
     logger.warn('Expensive operation rate limit exceeded', {
       ip: req.ip,
       url: req.url

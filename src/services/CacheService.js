@@ -12,24 +12,24 @@ export class CacheService {
       sets: 0,
       evictions: 0
     };
-    
+
     // Clean up expired entries every minute
     this.cleanupInterval = setInterval(() => this.cleanup(), 60000);
-    
+
     logger.info('CacheService initialized', { ttlSeconds });
   }
-  
+
   /**
    * Get a value from cache
    */
   get(key) {
     const entry = this.cache.get(key);
-    
+
     if (!entry) {
       this.stats.misses++;
       return null;
     }
-    
+
     // Check if expired
     if (Date.now() > entry.expiry) {
       this.cache.delete(key);
@@ -37,27 +37,27 @@ export class CacheService {
       this.stats.evictions++;
       return null;
     }
-    
+
     this.stats.hits++;
     return entry.value;
   }
-  
+
   /**
    * Set a value in cache
    */
   set(key, value, ttlOverride = null) {
     const ttl = ttlOverride !== null ? ttlOverride * 1000 : this.ttl;
     const expiry = Date.now() + ttl;
-    
+
     this.cache.set(key, { value, expiry });
     this.stats.sets++;
-    
+
     // Limit cache size
     if (this.cache.size > 10000) {
       this.cleanup();
     }
   }
-  
+
   /**
    * Check if key exists and is not expired
    */
@@ -65,14 +65,14 @@ export class CacheService {
     const value = this.get(key);
     return value !== null;
   }
-  
+
   /**
    * Delete a key from cache
    */
   delete(key) {
     return this.cache.delete(key);
   }
-  
+
   /**
    * Clear all cache entries
    */
@@ -81,27 +81,27 @@ export class CacheService {
     this.cache.clear();
     logger.info('Cache cleared', { entriesRemoved: size });
   }
-  
+
   /**
    * Clean up expired entries
    */
   cleanup() {
     const now = Date.now();
     let removed = 0;
-    
+
     for (const [key, entry] of this.cache.entries()) {
       if (now > entry.expiry) {
         this.cache.delete(key);
         removed++;
       }
     }
-    
+
     if (removed > 0) {
       this.stats.evictions += removed;
       logger.debug('Cache cleanup completed', { removed, remaining: this.cache.size });
     }
   }
-  
+
   /**
    * Get cache statistics
    */
@@ -113,7 +113,7 @@ export class CacheService {
       hitRate: total > 0 ? this.stats.hits / total : 0
     };
   }
-  
+
   /**
    * Destroy the cache service
    */

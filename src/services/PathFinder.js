@@ -9,11 +9,11 @@ export class PathFinder {
     this.db = databaseService?.db;
     this.databaseService = databaseService;
     this.graphQueries = graphQueries;
-    
+
     if (!this.db) {
       throw new Error('Database service is required for PathFinder');
     }
-    
+
     // Prepare commonly used statements
     this.prepareStatements();
   }
@@ -32,7 +32,7 @@ export class PathFinder {
       LEFT JOIN relationship_scores rs ON rs.from_address = ar.from_address AND rs.to_address = ar.to_address
       WHERE ar.from_address = ?
     `);
-    
+
     // Get all incoming edges for an address
     this.incomingEdgesStmt = this.db.prepare(`
       SELECT 
@@ -46,7 +46,7 @@ export class PathFinder {
       LEFT JOIN relationship_scores rs ON rs.from_address = ar.from_address AND rs.to_address = ar.to_address
       WHERE ar.to_address = ?
     `);
-    
+
     // Get edge details between two addresses
     this.edgeDetailsStmt = this.db.prepare(`
       SELECT 
@@ -79,10 +79,10 @@ export class PathFinder {
       maxDepth = 6,
       minVolume = '0'
     } = options;
-    
+
     try {
       logger.info(`Finding shortest path from ${from} to ${to}`, { weightType, maxDepth });
-      
+
       // Check if from and to are the same
       if (from === to) {
         return {
@@ -93,17 +93,17 @@ export class PathFinder {
           metadata: { executionTime: 0 }
         };
       }
-      
+
       // Initialize data structures
       const distances = new Map();
       const previous = new Map();
       const visited = new Set();
       const queue = new Map(); // Using Map as priority queue
-      
+
       // Initialize starting node
       distances.set(from, 0);
       queue.set(from, 0);
-      
+
       while (queue.size > 0 && !visited.has(to)) {
         // Find node with minimum distance
         let current = null;
@@ -114,32 +114,36 @@ export class PathFinder {
             minDist = dist;
           }
         }
-        
-        if (!current) break;
-        
+
+        if (!current) {
+          break;
+        }
+
         // Remove from queue and mark as visited
         queue.delete(current);
         visited.add(current);
-        
+
         // Check depth limit
         const currentDepth = this._getPathDepth(previous, current);
-        if (currentDepth >= maxDepth) continue;
-        
+        if (currentDepth >= maxDepth) {
+          continue;
+        }
+
         // Get neighbors
         const edges = this.outgoingEdgesStmt.all(current);
-        
+
         for (const edge of edges) {
           const neighbor = edge.to_address;
-          
+
           // Skip if already visited or volume too low
           if (visited.has(neighbor) || BigInt(edge.total_volume) < BigInt(minVolume)) {
             continue;
           }
-          
+
           // Calculate edge weight based on type
           const edgeWeight = this._calculateEdgeWeight(edge, weightType);
           const altDistance = distances.get(current) + edgeWeight;
-          
+
           // Update distance if shorter path found
           if (!distances.has(neighbor) || altDistance < distances.get(neighbor)) {
             distances.set(neighbor, altDistance);
@@ -148,7 +152,7 @@ export class PathFinder {
           }
         }
       }
-      
+
       // Check if path exists
       if (!distances.has(to)) {
         return {
@@ -156,19 +160,19 @@ export class PathFinder {
           message: `No path found from ${from} to ${to} within ${maxDepth} hops`
         };
       }
-      
+
       // Reconstruct path
       const path = this._reconstructPath(previous, to);
-      
+
       // Build detailed path information
       const pathDetails = this._buildPathDetails(path);
-      
+
       const executionTime = Date.now() - startTime;
       logger.info(`Shortest path found in ${executionTime}ms`, {
         pathLength: path.length,
         cost: distances.get(to)
       });
-      
+
       return {
         found: true,
         path: path,
@@ -182,7 +186,7 @@ export class PathFinder {
           weightType
         }
       };
-      
+
     } catch (error) {
       logger.error('Error finding shortest path', error);
       throw error;
@@ -199,21 +203,23 @@ export class PathFinder {
    */
   findAllPaths(from, to, maxDepth = 4, maxPaths = 100) {
     const startTime = Date.now();
-    
+
     try {
       logger.info(`Finding all paths from ${from} to ${to}`, { maxDepth, maxPaths });
-      
+
       const paths = [];
       const currentPath = [];
       const visited = new Set();
-      
+
       // DFS to find all paths
       const dfs = (current, depth) => {
-        if (paths.length >= maxPaths) return;
-        
+        if (paths.length >= maxPaths) {
+          return;
+        }
+
         currentPath.push(current);
         visited.add(current);
-        
+
         if (current === to && currentPath.length > 1) {
           // Found a path
           paths.push({
@@ -223,7 +229,7 @@ export class PathFinder {
         } else if (depth < maxDepth) {
           // Continue searching
           const edges = this.outgoingEdgesStmt.all(current);
-          
+
           for (const edge of edges) {
             const neighbor = edge.to_address;
             if (!visited.has(neighbor)) {
@@ -231,18 +237,18 @@ export class PathFinder {
             }
           }
         }
-        
+
         // Backtrack
         currentPath.pop();
         visited.delete(current);
       };
-      
+
       // Start DFS
       dfs(from, 0);
-      
+
       // Sort paths by length
       paths.sort((a, b) => a.hops - b.hops);
-      
+
       // Add details to each path
       const detailedPaths = paths.map(p => {
         const details = this._buildPathDetails(p.path);
@@ -253,10 +259,10 @@ export class PathFinder {
           minEdgeVolume: this._calculateMinEdgeVolume(p.path)
         };
       });
-      
+
       const executionTime = Date.now() - startTime;
       logger.info(`Found ${paths.length} paths in ${executionTime}ms`);
-      
+
       return {
         paths: detailedPaths,
         metadata: {
@@ -266,7 +272,7 @@ export class PathFinder {
           maxPaths
         }
       };
-      
+
     } catch (error) {
       logger.error('Error finding all paths', error);
       throw error;
@@ -282,10 +288,10 @@ export class PathFinder {
    */
   findHighValuePaths(from, to, minVolume) {
     const startTime = Date.now();
-    
+
     try {
       logger.info(`Finding high value paths from ${from} to ${to}`, { minVolume });
-      
+
       // Use SQL for efficient high-volume path finding
       const highValueQuery = this.db.prepare(`
         WITH RECURSIVE high_value_paths AS (
@@ -326,14 +332,14 @@ export class PathFinder {
         ORDER BY min_edge_volume DESC, hop_count ASC
         LIMIT 20
       `);
-      
+
       const results = highValueQuery.all(from, minVolume, minVolume, to, to);
-      
+
       // Convert SQL results to detailed path objects
       const paths = results.map(result => {
         const pathAddresses = result.path.split('->');
         const details = this._buildPathDetails(pathAddresses);
-        
+
         return {
           path: pathAddresses,
           hops: result.hop_count,
@@ -342,10 +348,10 @@ export class PathFinder {
           ...details
         };
       });
-      
+
       const executionTime = Date.now() - startTime;
       logger.info(`Found ${paths.length} high value paths in ${executionTime}ms`);
-      
+
       return {
         paths,
         metadata: {
@@ -354,7 +360,7 @@ export class PathFinder {
           pathsFound: paths.length
         }
       };
-      
+
     } catch (error) {
       logger.error('Error finding high value paths', error);
       throw error;
@@ -371,19 +377,19 @@ export class PathFinder {
   findQuickestPaths(from, to, timeWindow) {
     const startTime = Date.now();
     const cutoffTime = Math.floor(Date.now() / 1000) - timeWindow;
-    
+
     try {
       logger.info(`Finding quickest paths from ${from} to ${to}`, { timeWindow });
-      
+
       // Modified Dijkstra prioritizing recent edges
       const distances = new Map();
       const previous = new Map();
       const visited = new Set();
       const queue = new Map();
-      
+
       distances.set(from, 0);
       queue.set(from, 0);
-      
+
       while (queue.size > 0 && !visited.has(to)) {
         // Find node with minimum time cost
         let current = null;
@@ -394,25 +400,29 @@ export class PathFinder {
             minCost = cost;
           }
         }
-        
-        if (!current) break;
-        
+
+        if (!current) {
+          break;
+        }
+
         queue.delete(current);
         visited.add(current);
-        
+
         // Get recent edges only
         const edges = this.outgoingEdgesStmt.all(current);
         const recentEdges = edges.filter(e => e.last_transfer_time >= cutoffTime);
-        
+
         for (const edge of recentEdges) {
           const neighbor = edge.to_address;
-          
-          if (visited.has(neighbor)) continue;
-          
+
+          if (visited.has(neighbor)) {
+            continue;
+          }
+
           // Time-based weight (prefer more recent edges)
           const timeCost = Math.max(1, (Date.now() / 1000 - edge.last_transfer_time) / 3600); // Hours ago
           const altCost = distances.get(current) + timeCost;
-          
+
           if (!distances.has(neighbor) || altCost < distances.get(neighbor)) {
             distances.set(neighbor, altCost);
             previous.set(neighbor, current);
@@ -420,14 +430,14 @@ export class PathFinder {
           }
         }
       }
-      
+
       const paths = [];
-      
+
       // If path found, reconstruct it
       if (distances.has(to)) {
         const path = this._reconstructPath(previous, to);
         const details = this._buildPathDetails(path);
-        
+
         paths.push({
           path,
           hops: path.length - 1,
@@ -436,14 +446,14 @@ export class PathFinder {
           lastActivity: this._getPathLastActivity(path)
         });
       }
-      
+
       // Also find alternative recent paths
       const allPaths = this.findAllPaths(from, to, 4, 10);
       const recentPaths = allPaths.paths.filter(p => {
         const lastActivity = this._getPathLastActivity(p.path);
         return lastActivity >= cutoffTime;
       });
-      
+
       // Combine and deduplicate
       const uniquePaths = new Map();
       [...paths, ...recentPaths].forEach(p => {
@@ -452,13 +462,13 @@ export class PathFinder {
           uniquePaths.set(key, p);
         }
       });
-      
+
       const finalPaths = Array.from(uniquePaths.values())
         .sort((a, b) => b.lastActivity - a.lastActivity);
-      
+
       const executionTime = Date.now() - startTime;
       logger.info(`Found ${finalPaths.length} quickest paths in ${executionTime}ms`);
-      
+
       return {
         paths: finalPaths,
         metadata: {
@@ -468,7 +478,7 @@ export class PathFinder {
           pathsFound: finalPaths.length
         }
       };
-      
+
     } catch (error) {
       logger.error('Error finding quickest paths', error);
       throw error;
@@ -482,10 +492,10 @@ export class PathFinder {
    */
   analyzePathRisk(path) {
     const startTime = Date.now();
-    
+
     try {
       logger.info(`Analyzing risk for path of length ${path.length}`);
-      
+
       const riskFactors = {
         nodeRisks: [],
         edgeRisks: [],
@@ -494,7 +504,7 @@ export class PathFinder {
         avgNodeRisk: 0,
         suspiciousPatterns: []
       };
-      
+
       // Analyze each node
       for (const address of path) {
         const nodeMetrics = this.db.prepare(`
@@ -505,7 +515,7 @@ export class PathFinder {
           FROM node_metrics
           WHERE address = ?
         `).get(address);
-        
+
         const risk = nodeMetrics?.risk_score || 0;
         riskFactors.nodeRisks.push({
           address,
@@ -513,9 +523,9 @@ export class PathFinder {
           nodeType: nodeMetrics?.node_type || 'regular',
           patterns: JSON.parse(nodeMetrics?.patterns || '[]')
         });
-        
+
         riskFactors.maxNodeRisk = Math.max(riskFactors.maxNodeRisk, risk);
-        
+
         // Check for suspicious patterns
         if (nodeMetrics?.node_type === 'mixer' || nodeMetrics?.node_type === 'exchange') {
           riskFactors.suspiciousPatterns.push({
@@ -525,11 +535,11 @@ export class PathFinder {
           });
         }
       }
-      
+
       // Analyze edges
       for (let i = 0; i < path.length - 1; i++) {
         const edge = this.edgeDetailsStmt.get(path[i], path[i + 1]);
-        
+
         if (edge) {
           const edgeRisk = this._calculateEdgeRisk(edge);
           riskFactors.edgeRisks.push({
@@ -539,7 +549,7 @@ export class PathFinder {
             volume: edge.total_volume,
             transferCount: edge.transfer_count
           });
-          
+
           // Check for suspicious edge patterns
           if (edge.transfer_count === 1 && BigInt(edge.total_volume) > BigInt('1000000000000')) {
             riskFactors.suspiciousPatterns.push({
@@ -551,20 +561,20 @@ export class PathFinder {
           }
         }
       }
-      
+
       // Calculate aggregate risks
       riskFactors.avgNodeRisk = riskFactors.nodeRisks.reduce((sum, n) => sum + n.risk, 0) / riskFactors.nodeRisks.length;
       riskFactors.totalRisk = this._calculateTotalPathRisk(riskFactors);
-      
+
       // Classify risk level
       riskFactors.riskLevel = this._classifyRiskLevel(riskFactors.totalRisk);
-      
+
       const executionTime = Date.now() - startTime;
       logger.info(`Path risk analysis completed in ${executionTime}ms`, {
         riskLevel: riskFactors.riskLevel,
         totalRisk: riskFactors.totalRisk
       });
-      
+
       return {
         ...riskFactors,
         metadata: {
@@ -572,7 +582,7 @@ export class PathFinder {
           pathLength: path.length
         }
       };
-      
+
     } catch (error) {
       logger.error('Error analyzing path risk', error);
       throw error;
@@ -587,14 +597,14 @@ export class PathFinder {
    */
   findCriticalNodes(from, to) {
     const startTime = Date.now();
-    
+
     try {
       logger.info(`Finding critical nodes between ${from} and ${to}`);
-      
+
       // Find multiple paths
       const pathsResult = this.findAllPaths(from, to, 5, 100);
       const paths = pathsResult.paths;
-      
+
       if (paths.length === 0) {
         return {
           criticalNodes: [],
@@ -604,20 +614,20 @@ export class PathFinder {
           }
         };
       }
-      
+
       // Count node appearances
       const nodeFrequency = new Map();
       const nodePathParticipation = new Map();
-      
+
       paths.forEach((pathObj, pathIndex) => {
         const path = pathObj.path;
         // Skip first and last nodes (from and to)
         for (let i = 1; i < path.length - 1; i++) {
           const node = path[i];
-          
+
           // Update frequency
           nodeFrequency.set(node, (nodeFrequency.get(node) || 0) + 1);
-          
+
           // Track which paths this node participates in
           if (!nodePathParticipation.has(node)) {
             nodePathParticipation.set(node, new Set());
@@ -625,14 +635,14 @@ export class PathFinder {
           nodePathParticipation.get(node).add(pathIndex);
         }
       });
-      
+
       // Calculate criticality metrics
       const criticalNodes = [];
-      
+
       for (const [node, frequency] of nodeFrequency) {
         const participationRate = frequency / paths.length;
         const pathIndices = Array.from(nodePathParticipation.get(node));
-        
+
         // Get node details
         const nodeMetrics = this.db.prepare(`
           SELECT 
@@ -642,11 +652,11 @@ export class PathFinder {
           FROM node_metrics
           WHERE address = ?
         `).get(node);
-        
+
         // Check if removing this node would disconnect the graph
         const alternativePaths = this._findPathsAvoidingNode(from, to, node, 3);
         const isCritical = alternativePaths.length === 0;
-        
+
         criticalNodes.push({
           address: node,
           frequency,
@@ -664,13 +674,13 @@ export class PathFinder {
           })
         });
       }
-      
+
       // Sort by criticality score
       criticalNodes.sort((a, b) => b.criticalityScore - a.criticalityScore);
-      
+
       const executionTime = Date.now() - startTime;
       logger.info(`Found ${criticalNodes.length} critical nodes in ${executionTime}ms`);
-      
+
       return {
         criticalNodes,
         metadata: {
@@ -679,7 +689,7 @@ export class PathFinder {
           totalNodesAnalyzed: nodeFrequency.size
         }
       };
-      
+
     } catch (error) {
       logger.error('Error finding critical nodes', error);
       throw error;
@@ -695,12 +705,12 @@ export class PathFinder {
   _reconstructPath(cameFrom, target) {
     const path = [target];
     let current = target;
-    
+
     while (cameFrom.has(current)) {
       current = cameFrom.get(current);
       path.unshift(current);
     }
-    
+
     return path;
   }
 
@@ -712,21 +722,23 @@ export class PathFinder {
     switch (weightType) {
       case 'hops':
         return 1;
-        
+
       case 'volume':
         // Inverse of volume (higher volume = lower weight)
         return 1 / (1 + Math.log10(1 + Number(BigInt(edge.total_volume) / BigInt(1000000000))));
-        
-      case 'risk':
+
+      case 'risk': {
         // Higher risk score = higher weight
         const riskScore = edge.relationship_score;
         return 1 + (riskScore / 100);
-        
-      case 'time':
+      }
+
+      case 'time': {
         // Older edges have higher weight
         const ageInDays = (Date.now() / 1000 - edge.last_transfer_time) / 86400;
         return 1 + Math.log10(1 + ageInDays);
-        
+      }
+
       default:
         return 1;
     }
@@ -739,12 +751,12 @@ export class PathFinder {
   _getPathDepth(previous, node) {
     let depth = 0;
     let current = node;
-    
+
     while (previous.has(current)) {
       depth++;
       current = previous.get(current);
     }
-    
+
     return depth;
   }
 
@@ -755,12 +767,12 @@ export class PathFinder {
   _buildPathDetails(path) {
     const nodes = [];
     const edges = [];
-    
+
     // Build nodes
     for (let i = 0; i < path.length; i++) {
       const address = path[i];
       const account = this.databaseService.getAccount(address);
-      
+
       nodes.push({
         id: address,
         address,
@@ -771,11 +783,11 @@ export class PathFinder {
         isTarget: i === path.length - 1
       });
     }
-    
+
     // Build edges
     for (let i = 0; i < path.length - 1; i++) {
       const edge = this.edgeDetailsStmt.get(path[i], path[i + 1]);
-      
+
       if (edge) {
         edges.push({
           id: `${path[i]}->${path[i + 1]}`,
@@ -789,7 +801,7 @@ export class PathFinder {
         });
       }
     }
-    
+
     return { nodes, edges };
   }
 
@@ -799,14 +811,14 @@ export class PathFinder {
    */
   _calculatePathVolume(path) {
     let totalVolume = BigInt(0);
-    
+
     for (let i = 0; i < path.length - 1; i++) {
       const edge = this.edgeDetailsStmt.get(path[i], path[i + 1]);
       if (edge) {
         totalVolume += BigInt(edge.total_volume);
       }
     }
-    
+
     return totalVolume.toString();
   }
 
@@ -816,7 +828,7 @@ export class PathFinder {
    */
   _calculateMinEdgeVolume(path) {
     let minVolume = null;
-    
+
     for (let i = 0; i < path.length - 1; i++) {
       const edge = this.edgeDetailsStmt.get(path[i], path[i + 1]);
       if (edge) {
@@ -826,7 +838,7 @@ export class PathFinder {
         }
       }
     }
-    
+
     return minVolume ? minVolume.toString() : '0';
   }
 
@@ -836,14 +848,14 @@ export class PathFinder {
    */
   _getPathLastActivity(path) {
     let lastActivity = 0;
-    
+
     for (let i = 0; i < path.length - 1; i++) {
       const edge = this.edgeDetailsStmt.get(path[i], path[i + 1]);
       if (edge && edge.last_transfer_time > lastActivity) {
         lastActivity = edge.last_transfer_time;
       }
     }
-    
+
     return lastActivity;
   }
 
@@ -853,20 +865,20 @@ export class PathFinder {
    */
   _calculateEdgeRisk(edge) {
     let risk = 0;
-    
+
     // Factor 1: Risk scores of connected nodes
     risk += (edge.from_risk_score + edge.to_risk_score) / 2;
-    
+
     // Factor 2: Low relationship score indicates suspicious activity
     if (edge.relationship_score < 50) {
       risk += 20;
     }
-    
+
     // Factor 3: Single large transfers
     if (edge.transfer_count === 1 && BigInt(edge.total_volume) > BigInt('1000000000000')) {
       risk += 30;
     }
-    
+
     return Math.min(100, risk);
   }
 
@@ -879,13 +891,13 @@ export class PathFinder {
     const nodeRiskWeight = 0.4;
     const edgeRiskWeight = 0.3;
     const patternWeight = 0.3;
-    
+
     const avgEdgeRisk = riskFactors.edgeRisks.length > 0
       ? riskFactors.edgeRisks.reduce((sum, e) => sum + e.risk, 0) / riskFactors.edgeRisks.length
       : 0;
-    
+
     const patternRisk = riskFactors.suspiciousPatterns.length * 20;
-    
+
     return Math.min(100,
       riskFactors.avgNodeRisk * nodeRiskWeight +
       avgEdgeRisk * edgeRiskWeight +
@@ -898,9 +910,15 @@ export class PathFinder {
    * @private
    */
   _classifyRiskLevel(riskScore) {
-    if (riskScore < 20) return 'low';
-    if (riskScore < 50) return 'medium';
-    if (riskScore < 80) return 'high';
+    if (riskScore < 20) {
+      return 'low';
+    }
+    if (riskScore < 50) {
+      return 'medium';
+    }
+    if (riskScore < 80) {
+      return 'high';
+    }
     return 'critical';
   }
 
@@ -912,18 +930,20 @@ export class PathFinder {
     const paths = [];
     const currentPath = [];
     const visited = new Set();
-    
+
     const dfs = (current, depth) => {
-      if (current === avoidNode) return;
-      
+      if (current === avoidNode) {
+        return;
+      }
+
       currentPath.push(current);
       visited.add(current);
-      
+
       if (current === to && currentPath.length > 1) {
         paths.push([...currentPath]);
       } else if (depth < maxDepth) {
         const edges = this.outgoingEdgesStmt.all(current);
-        
+
         for (const edge of edges) {
           const neighbor = edge.to_address;
           if (!visited.has(neighbor)) {
@@ -931,11 +951,11 @@ export class PathFinder {
           }
         }
       }
-      
+
       currentPath.pop();
       visited.delete(current);
     };
-    
+
     dfs(from, 0);
     return paths;
   }
@@ -951,17 +971,17 @@ export class PathFinder {
       degree,
       betweenness
     } = metrics;
-    
+
     let score = participationRate * 40; // 40% weight on participation
-    
+
     if (isCritical) {
       score += 30; // 30% bonus for being critical
     }
-    
+
     // Normalize degree and betweenness contributions
     score += Math.min(15, degree / 10); // Up to 15% for degree
     score += Math.min(15, betweenness * 100); // Up to 15% for betweenness
-    
+
     return Math.min(100, score);
   }
 }

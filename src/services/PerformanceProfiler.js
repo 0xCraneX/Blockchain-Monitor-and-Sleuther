@@ -10,7 +10,7 @@ export class PerformanceProfiler {
     this.memorySnapshots = [];
     this.cpuSnapshots = [];
     this.queryPerformance = new Map();
-    
+
     // Performance thresholds (in milliseconds)
     this.thresholds = {
       api_response: 200,
@@ -19,7 +19,7 @@ export class PerformanceProfiler {
       cache_operation: 50,
       websocket_message: 50
     };
-    
+
     // Start continuous monitoring
     this.startMonitoring();
   }
@@ -33,14 +33,14 @@ export class PerformanceProfiler {
   startOperation(operationId, type, metadata = {}) {
     const startTime = performance.now();
     const memoryBefore = process.memoryUsage();
-    
+
     this.activeOperations.set(operationId, {
       type,
       startTime,
       memoryBefore,
       metadata
     });
-    
+
     return operationId;
   }
 
@@ -59,7 +59,7 @@ export class PerformanceProfiler {
     const endTime = performance.now();
     const duration = endTime - operation.startTime;
     const memoryAfter = process.memoryUsage();
-    
+
     const metrics = {
       operationId,
       type: operation.type,
@@ -119,7 +119,7 @@ export class PerformanceProfiler {
   async profileDatabaseQuery(query, executor, params = {}) {
     const operationId = `db_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const queryHash = this._hashQuery(query);
-    
+
     this.startOperation(operationId, 'database_query', {
       queryHash,
       queryPreview: query.substring(0, 100),
@@ -128,7 +128,7 @@ export class PerformanceProfiler {
 
     try {
       const result = await executor();
-      
+
       const metrics = this.endOperation(operationId, {
         resultCount: Array.isArray(result) ? result.length : (result ? 1 : 0),
         success: true
@@ -136,7 +136,7 @@ export class PerformanceProfiler {
 
       // Track query performance patterns
       this._trackQueryPerformance(queryHash, metrics);
-      
+
       return result;
     } catch (error) {
       this.endOperation(operationId, {
@@ -155,7 +155,7 @@ export class PerformanceProfiler {
   async profileAPIEndpoint(req, handler) {
     const operationId = `api_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const endpoint = `${req.method} ${req.route?.path || req.path}`;
-    
+
     this.startOperation(operationId, 'api_response', {
       endpoint,
       method: req.method,
@@ -167,12 +167,12 @@ export class PerformanceProfiler {
 
     try {
       const result = await handler();
-      
+
       this.endOperation(operationId, {
         responseSize: typeof result === 'string' ? result.length : JSON.stringify(result).length,
         success: true
       });
-      
+
       return result;
     } catch (error) {
       this.endOperation(operationId, {
@@ -191,8 +191,8 @@ export class PerformanceProfiler {
   getPerformanceStats(type, hours = 1) {
     const typeMetrics = this.metrics.get(type) || [];
     const cutoff = Date.now() - (hours * 60 * 60 * 1000);
-    
-    const recentMetrics = typeMetrics.filter(m => 
+
+    const recentMetrics = typeMetrics.filter(m =>
       new Date(m.timestamp).getTime() > cutoff
     );
 
@@ -280,7 +280,7 @@ export class PerformanceProfiler {
   getPerformanceReport(hours = 24) {
     const operationTypes = Array.from(this.metrics.keys());
     const stats = {};
-    
+
     for (const type of operationTypes) {
       stats[type] = this.getPerformanceStats(type, hours);
     }
@@ -312,7 +312,7 @@ export class PerformanceProfiler {
     // Collect system metrics every 30 seconds
     this.monitoringInterval = setInterval(() => {
       const metrics = this.getSystemMetrics();
-      
+
       this.memorySnapshots.push({
         timestamp: metrics.timestamp,
         heapUsed: metrics.memory.heapUsed,
@@ -389,7 +389,7 @@ export class PerformanceProfiler {
     queryStats.maxDuration = Math.max(queryStats.maxDuration, metrics.duration);
     queryStats.minDuration = Math.min(queryStats.minDuration, metrics.duration);
     queryStats.avgDuration = queryStats.totalDuration / queryStats.count;
-    
+
     if (!metrics.metadata.success) {
       queryStats.errors++;
     }
@@ -403,12 +403,16 @@ export class PerformanceProfiler {
   }
 
   _average(numbers) {
-    if (numbers.length === 0) return 0;
+    if (numbers.length === 0) {
+      return 0;
+    }
     return numbers.reduce((sum, num) => sum + num, 0) / numbers.length;
   }
 
   _percentile(sortedNumbers, percentile) {
-    if (sortedNumbers.length === 0) return 0;
+    if (sortedNumbers.length === 0) {
+      return 0;
+    }
     const index = Math.ceil((percentile / 100) * sortedNumbers.length) - 1;
     return sortedNumbers[Math.max(0, index)];
   }
@@ -417,7 +421,9 @@ export class PerformanceProfiler {
     const recommendations = [];
 
     for (const [type, typeStats] of Object.entries(stats)) {
-      if (typeStats.count === 0) continue;
+      if (typeStats.count === 0) {
+        continue;
+      }
 
       // High error rate
       if (parseFloat(typeStats.errorRate) > 5) {
@@ -453,7 +459,7 @@ export class PerformanceProfiler {
     return recommendations;
   }
 
-  _generateAlerts(stats) {
+  _generateAlerts(_stats) {
     const alerts = [];
     const systemMetrics = this.getSystemMetrics();
 
@@ -494,16 +500,18 @@ export class PerformanceProfiler {
 
   _calculateHealthScore(stats) {
     let score = 100;
-    
+
     for (const typeStats of Object.values(stats)) {
-      if (typeStats.count === 0) continue;
-      
+      if (typeStats.count === 0) {
+        continue;
+      }
+
       // Penalize high error rates
       score -= parseFloat(typeStats.errorRate) * 2;
-      
+
       // Penalize slow operations
       score -= parseFloat(typeStats.slowOperationRate) * 0.5;
-      
+
       // Penalize high average durations
       const threshold = this.thresholds[typeStats.type] || 1000;
       if (typeStats.avgDuration > threshold) {
@@ -515,7 +523,9 @@ export class PerformanceProfiler {
   }
 
   _checkMemoryLeaks() {
-    if (this.memorySnapshots.length < 10) return;
+    if (this.memorySnapshots.length < 10) {
+      return;
+    }
 
     const recent = this.memorySnapshots.slice(-10);
     const trend = this._calculateTrend(recent.map(s => s.heapUsed));
@@ -530,8 +540,10 @@ export class PerformanceProfiler {
   }
 
   _calculateTrend(values) {
-    if (values.length < 2) return 0;
-    
+    if (values.length < 2) {
+      return 0;
+    }
+
     const n = values.length;
     const sumX = (n * (n - 1)) / 2;
     const sumY = values.reduce((sum, val) => sum + val, 0);
@@ -540,15 +552,15 @@ export class PerformanceProfiler {
 
     const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
     const firstValue = values[0];
-    
+
     return firstValue > 0 ? slope / firstValue : 0;
   }
 
   _cleanupOldMetrics() {
     const cutoff = Date.now() - (24 * 60 * 60 * 1000); // 24 hours
-    
+
     for (const [type, typeMetrics] of this.metrics.entries()) {
-      const filtered = typeMetrics.filter(m => 
+      const filtered = typeMetrics.filter(m =>
         new Date(m.timestamp).getTime() > cutoff
       );
       this.metrics.set(type, filtered);

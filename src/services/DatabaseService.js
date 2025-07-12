@@ -1,25 +1,20 @@
 import Database from 'better-sqlite3';
 import fs from 'fs/promises';
-import path from 'path';
 import { fileURLToPath } from 'url';
-import { dirname } from 'path';
-import { 
-  logger, 
-  createLogger, 
-  logMethodEntry, 
-  logMethodExit, 
-  logDatabaseQuery, 
+import { dirname, join } from 'path';
+import {
+  logger,
+  createLogger,
+  logMethodEntry,
+  logMethodExit,
+  logDatabaseQuery,
   logError,
   startPerformanceTimer,
-  endPerformanceTimer 
+  endPerformanceTimer
 } from '../utils/logger.js';
-import { 
-  DatabaseConnectionError, 
-  DatabaseError, 
-  RecordNotFoundError,
-  createDatabaseError 
-} from '../errors/index.js';
-import { performance } from 'perf_hooks';
+// import {
+//   createDatabaseError
+// } from '../errors/index.js';
 
 const dbLogger = createLogger('DatabaseService');
 
@@ -29,7 +24,7 @@ const __dirname = dirname(__filename);
 export class DatabaseService {
   constructor() {
     const trackerId = logMethodEntry('DatabaseService', 'constructor');
-    
+
     this.db = null;
     this.dbPath = process.env.DATABASE_PATH || './data/analysis.db';
     this.preparedStatements = new Map();
@@ -40,11 +35,11 @@ export class DatabaseService {
       maxIdleTime: 30000, // 30 seconds
       lastActivity: Date.now()
     };
-    
+
     // Cleanup interval for prepared statements
     this.cleanupInterval = null;
     this.startCleanupMonitoring();
-    
+
     dbLogger.info('DatabaseService initialized', { dbPath: this.dbPath });
     logMethodExit('DatabaseService', 'constructor', trackerId);
   }
@@ -66,19 +61,19 @@ export class DatabaseService {
   async initialize() {
     const trackerId = logMethodEntry('DatabaseService', 'initialize');
     const initTimer = startPerformanceTimer('database_initialization');
-    
+
     try {
       // Ensure data directory exists
-      const dataDir = path.dirname(this.dbPath);
+      const dataDir = dirname(this.dbPath);
       dbLogger.debug('Creating data directory if needed', { dataDir });
       await fs.mkdir(dataDir, { recursive: true });
 
       // Open database connection
       dbLogger.info('Opening database connection', { dbPath: this.dbPath });
-      this.db = new Database(this.dbPath, { 
+      this.db = new Database(this.dbPath, {
         verbose: process.env.LOG_LEVEL === 'debug' ? (message, ...args) => {
           logDatabaseQuery(message, args);
-        } : null 
+        } : null
       });
 
       // Enable foreign keys and WAL mode for better performance
@@ -89,7 +84,9 @@ export class DatabaseService {
       // Register custom REGEXP function for SQLite
       dbLogger.debug('Registering custom REGEXP function');
       this.db.function('REGEXP', (pattern, text) => {
-        if (!pattern || !text) return 0;
+        if (!pattern || !text) {
+          return 0;
+        }
         try {
           const regex = new RegExp(pattern);
           return regex.test(String(text)) ? 1 : 0;
@@ -100,12 +97,12 @@ export class DatabaseService {
       });
 
       // Run main schema
-      const schemaPath = path.join(__dirname, '../database/schema.sql');
+      const schemaPath = join(__dirname, '../database/schema.sql');
       const schema = await fs.readFile(schemaPath, 'utf8');
       this.db.exec(schema);
-      
+
       // Run graph schema
-      const graphSchemaPath = path.join(__dirname, '../database/graph-schema.sql');
+      const graphSchemaPath = join(__dirname, '../database/graph-schema.sql');
       try {
         const graphSchema = await fs.readFile(graphSchemaPath, 'utf8');
         // Execute statements one by one to handle ALTER TABLE gracefully
@@ -113,7 +110,7 @@ export class DatabaseService {
         for (const statement of statements) {
           if (statement.trim()) {
             try {
-              this.db.exec(statement + ';');
+              this.db.exec(`${statement  };`);
             } catch (error) {
               // Ignore errors for ALTER TABLE if column already exists
               if (!error.message.includes('duplicate column name')) {
@@ -127,7 +124,7 @@ export class DatabaseService {
       }
 
       // Run relationship scoring schema
-      const scoringSchemaPath = path.join(__dirname, '../database/relationship_scoring.sql');
+      const scoringSchemaPath = join(__dirname, '../database/relationship_scoring.sql');
       try {
         const scoringSchema = await fs.readFile(scoringSchemaPath, 'utf8');
         // Execute statements one by one to handle ALTER TABLE and CREATE VIEW gracefully
@@ -135,10 +132,10 @@ export class DatabaseService {
         for (const statement of statements) {
           if (statement.trim()) {
             try {
-              this.db.exec(statement + ';');
+              this.db.exec(`${statement  };`);
             } catch (error) {
               // Ignore errors for ALTER TABLE if column already exists or VIEW already exists
-              if (!error.message.includes('duplicate column name') && 
+              if (!error.message.includes('duplicate column name') &&
                   !error.message.includes('already exists')) {
                 logger.warn('Error executing scoring schema statement:', error.message);
               }
@@ -170,20 +167,20 @@ export class DatabaseService {
   getAccount(address) {
     const queryTimer = startPerformanceTimer('getAccount');
     const query = 'SELECT * FROM accounts WHERE address = ?';
-    
+
     try {
       const stmt = this.db.prepare(query);
       const result = stmt.get(address);
-      
+
       const duration = endPerformanceTimer(queryTimer, 'getAccount');
       logDatabaseQuery(query, [address], duration);
-      
+
       if (result) {
         dbLogger.debug('Account found', { address, balance: result.balance });
       } else {
         dbLogger.debug('Account not found', { address });
       }
-      
+
       return result;
     } catch (error) {
       logError(error, { context: 'getAccount', address });
@@ -203,11 +200,11 @@ export class DatabaseService {
         updated_at = CURRENT_TIMESTAMP
       RETURNING *
     `;
-    
+
     try {
       dbLogger.debug('Creating/updating account', { address: account.address });
       const stmt = this.db.prepare(query);
-      
+
       // Ensure proper parameter mapping and data types
       const accountData = {
         address: account.address,
@@ -216,11 +213,11 @@ export class DatabaseService {
         balance: account.balance,
         firstSeenBlock: account.firstSeenBlock || account.first_seen_block
       };
-      
+
       const result = stmt.get(accountData);
       const duration = endPerformanceTimer(queryTimer, 'createAccount');
       logDatabaseQuery(query, [account.address], duration);
-      
+
       dbLogger.debug('Account created/updated', { address: account.address });
       return result;
     } catch (error) {
@@ -242,7 +239,7 @@ export class DatabaseService {
         updated_at = CURRENT_TIMESTAMP
       WHERE address = @address
     `);
-    
+
     // Convert boolean to integer for SQLite compatibility
     const identityData = {
       address,
@@ -254,7 +251,7 @@ export class DatabaseService {
       riot: identity.riot,
       verified: typeof identity.verified === 'boolean' ? (identity.verified ? 1 : 0) : identity.verified
     };
-    
+
     return stmt.run(identityData);
   }
 
@@ -273,10 +270,10 @@ export class DatabaseService {
         total_transfers_in + total_transfers_out DESC
       LIMIT @limit
     `);
-    return stmt.all({ 
-      query: `%${query}%`, 
+    return stmt.all({
+      query: `%${query}%`,
       exactQuery: query,
-      limit 
+      limit
     });
   }
 
@@ -292,7 +289,7 @@ export class DatabaseService {
       )
       ON CONFLICT(hash) DO NOTHING
     `);
-    
+
     // Ensure proper data types for SQLite binding
     const transferData = {
       hash: transfer.hash,
@@ -306,40 +303,90 @@ export class DatabaseService {
       method: transfer.method,
       section: transfer.section
     };
-    
+
     return stmt.run(transferData);
   }
 
   getTransfers(address, options = {}) {
     const { limit = 100, offset = 0, startTime, endTime } = options;
-    
+
     let query = `
       SELECT * FROM transfers 
       WHERE (from_address = @address OR to_address = @address)
     `;
-    
+
     const params = { address, limit, offset };
-    
+
     if (startTime) {
       query += ' AND timestamp >= @startTime';
       params.startTime = startTime;
     }
-    
+
     if (endTime) {
       query += ' AND timestamp <= @endTime';
       params.endTime = endTime;
     }
-    
+
     query += ' ORDER BY timestamp DESC LIMIT @limit OFFSET @offset';
-    
+
     const stmt = this.db.prepare(query);
     return stmt.all(params);
   }
 
+  getTransferStatistics(address) {
+    const statsQuery = `
+      SELECT 
+        COUNT(DISTINCT CASE WHEN from_address = @address THEN to_address ELSE from_address END) as uniqueCounterparties,
+        SUM(CASE WHEN to_address = @address THEN CAST(value AS INTEGER) ELSE 0 END) as totalIncoming,
+        SUM(CASE WHEN from_address = @address THEN CAST(value AS INTEGER) ELSE 0 END) as totalOutgoing,
+        SUM(CAST(value AS INTEGER)) as totalVolume,
+        COUNT(CASE WHEN to_address = @address THEN 1 END) as incomingCount,
+        COUNT(CASE WHEN from_address = @address THEN 1 END) as outgoingCount,
+        COUNT(*) as totalTransfers
+      FROM transfers
+      WHERE from_address = @address OR to_address = @address
+    `;
+    
+    const stats = this.db.prepare(statsQuery).get({ address });
+    
+    // Count rapid movements (multiple transfers within short time window)
+    const rapidMovementQuery = `
+      SELECT COUNT(*) as rapidMovementCount
+      FROM (
+        SELECT timestamp
+        FROM transfers
+        WHERE from_address = @address OR to_address = @address
+        ORDER BY timestamp
+      ) t1
+      JOIN (
+        SELECT timestamp
+        FROM transfers
+        WHERE from_address = @address OR to_address = @address
+        ORDER BY timestamp
+      ) t2
+      ON t2.timestamp > t1.timestamp 
+        AND t2.timestamp <= datetime(t1.timestamp, '+1 hour')
+        AND t2.rowid != t1.rowid
+    `;
+    
+    const rapidStats = this.db.prepare(rapidMovementQuery).get({ address });
+    
+    return {
+      uniqueCounterparties: stats?.uniqueCounterparties || 0,
+      totalIncoming: BigInt(stats?.totalIncoming || 0),
+      totalOutgoing: BigInt(stats?.totalOutgoing || 0),
+      totalVolume: BigInt(stats?.totalVolume || 0),
+      incomingCount: stats?.incomingCount || 0,
+      outgoingCount: stats?.outgoingCount || 0,
+      totalTransfers: stats?.totalTransfers || 0,
+      rapidMovementCount: rapidStats?.rapidMovementCount || 0
+    };
+  }
+
   // Relationship methods
   getRelationships(address, options = {}) {
-    const { depth = 1, minVolume = '0', limit = 100 } = options;
-    
+    const { minVolume = '0', limit = 100 } = options;
+
     // For now, implement single depth - can be extended for multi-depth
     const stmt = this.db.prepare(`
       SELECT 
@@ -359,7 +406,7 @@ export class DatabaseService {
       ORDER BY total_volume DESC
       LIMIT @limit
     `);
-    
+
     return stmt.all({ address, minVolume, limit });
   }
 
@@ -485,38 +532,38 @@ export class DatabaseService {
     this.cleanupInterval = setInterval(() => {
       try {
         const currentTime = Date.now();
-        
+
         // Update connection pool activity
         this.connectionPool.lastActivity = currentTime;
-        
+
         // Clear old prepared statements if needed
         if (this.preparedStatements.size > 50) {
           logger.debug('Cleaning up old prepared statements');
           const oldSize = this.preparedStatements.size;
-          
+
           // Keep only the most recently used statements
           const entries = Array.from(this.preparedStatements.entries());
           entries.sort((a, b) => (b[1].lastUsed || 0) - (a[1].lastUsed || 0));
-          
+
           this.preparedStatements.clear();
           entries.slice(0, 25).forEach(([key, value]) => {
             this.preparedStatements.set(key, value);
           });
-          
+
           logger.debug(`Cleaned up prepared statements: ${oldSize} -> ${this.preparedStatements.size}`);
         }
-        
+
         // Update connection metrics
-        if (this.connectionPool.maxIdleTime && 
+        if (this.connectionPool.maxIdleTime &&
             currentTime - this.connectionPool.lastActivity > this.connectionPool.maxIdleTime) {
           logger.debug('Database connection idle for extended period');
         }
-        
+
       } catch (error) {
         logger.error('Error during cleanup monitoring:', error);
       }
     }, 30000); // Run every 30 seconds
-    
+
     logger.debug('Database cleanup monitoring started');
   }
 
@@ -534,16 +581,16 @@ export class DatabaseService {
     try {
       // Stop cleanup monitoring
       this.stopCleanupMonitoring();
-      
+
       // Clear prepared statements cache
       this.preparedStatements.clear();
-      
+
       // Close database connection
       if (this.db) {
         this.db.close();
         logger.info('Database connection closed');
       }
-      
+
       this.isInitialized = false;
     } catch (error) {
       logger.error('Error closing database:', error);

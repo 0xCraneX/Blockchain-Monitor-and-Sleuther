@@ -17,11 +17,11 @@ const router = Router();
 function getServices(req) {
   const trackerId = logMethodEntry('GraphRoutes', 'getServices');
   const databaseService = req.app.locals.db;
-  
+
   if (!req.app.locals.graphServices) {
     logger.info('Initializing graph services for the first time');
     const serviceInitTimer = startPerformanceTimer('graph_services_init');
-    
+
     try {
       // Create services once and cache them
       req.app.locals.graphServices = {
@@ -32,17 +32,17 @@ function getServices(req) {
         realDataService: null, // Will be created with blockchain service
         graphController: null // Will be created after all services
       };
-      
+
       logger.debug('Created core graph services');
-      
+
       // Create PathFinder with graphQueries dependency
       req.app.locals.graphServices.pathFinder = new PathFinder(
-        databaseService, 
+        databaseService,
         req.app.locals.graphServices.graphQueries
       );
-      
+
       logger.debug('Created PathFinder service');
-      
+
       // Create RealDataService if blockchain is available
       const blockchainService = req.app.locals.blockchain;
       if (blockchainService) {
@@ -52,7 +52,7 @@ function getServices(req) {
         );
         logger.debug('Created RealDataService');
       }
-      
+
       // Create controller with all services
       req.app.locals.graphServices.graphController = new GraphController(
         databaseService,
@@ -62,7 +62,7 @@ function getServices(req) {
         req.app.locals.graphServices.graphMetrics,
         req.app.locals.graphServices.realDataService
       );
-      
+
       logger.debug('Created GraphController');
       endPerformanceTimer(serviceInitTimer, 'graph_services_init');
       logger.info('Graph services initialized successfully');
@@ -73,13 +73,13 @@ function getServices(req) {
   } else {
     logger.debug('Using cached graph services');
   }
-  
+
   logMethodExit('GraphRoutes', 'getServices', trackerId);
   return req.app.locals.graphServices;
 }
 
 // Validation schemas
-const addressSchema = z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{48,}$/, 'Invalid Substrate address format');
+const addressSchema = z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{46,}$/, 'Invalid Substrate address format');
 
 const graphQuerySchema = z.object({
   depth: z.coerce.number().min(1).max(5).default(2),
@@ -133,7 +133,7 @@ const validate = (schema, property = 'query') => {
       property,
       data: req[property]
     });
-    
+
     try {
       const validated = schema.parse(req[property]);
       req[property] = validated;
@@ -147,7 +147,7 @@ const validate = (schema, property = 'query') => {
         errors: error.errors,
         data: req[property]
       });
-      
+
       res.status(400).json({
         error: {
           code: 'VALIDATION_ERROR',
@@ -163,7 +163,7 @@ const validate = (schema, property = 'query') => {
 // Middleware to validate address parameter
 const validateAddress = (req, res, next) => {
   logger.debug('Validating address parameter', { address: req.params.address });
-  
+
   try {
     const address = addressSchema.parse(req.params.address);
     req.params.address = address;
@@ -174,7 +174,7 @@ const validateAddress = (req, res, next) => {
       address: req.params.address,
       error: error.message
     });
-    
+
     res.status(400).json({
       error: {
         code: 'INVALID_ADDRESS',
@@ -203,7 +203,7 @@ router.get(
       maxDepth: req.query.maxDepth,
       algorithm: req.query.algorithm
     });
-    
+
     try {
       const { graphController } = getServices(req);
       logger.info('Processing shortest path request', {
@@ -211,7 +211,7 @@ router.get(
         to: req.query.to,
         algorithm: req.query.algorithm
       });
-      
+
       await graphController.getShortestPath(req, res);
       logMethodExit('GraphRoutes', 'getShortestPath', trackerId);
     } catch (error) {
@@ -285,7 +285,7 @@ router.get(
       minVolume: req.query.minVolume,
       direction: req.query.direction
     });
-    
+
     try {
       const { graphController } = getServices(req);
       logger.info('Processing graph generation request', {
@@ -293,7 +293,7 @@ router.get(
         depth: req.query.depth,
         maxNodes: req.query.maxNodes
       });
-      
+
       await graphController.getGraph(req, res);
       logMethodExit('GraphRoutes', 'getGraph', trackerId);
     } catch (error) {

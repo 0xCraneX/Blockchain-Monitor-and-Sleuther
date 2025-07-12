@@ -1,12 +1,12 @@
-import { 
-  logger, 
-  createLogger, 
-  logMethodEntry, 
-  logMethodExit, 
-  logWebSocketEvent, 
+import {
+  logger,
+  createLogger,
+  logMethodEntry,
+  logMethodExit,
+  logWebSocketEvent,
   logError,
   startPerformanceTimer,
-  endPerformanceTimer 
+  endPerformanceTimer
 } from '../utils/logger.js';
 
 const wsLogger = createLogger('GraphWebSocket');
@@ -18,28 +18,28 @@ const wsLogger = createLogger('GraphWebSocket');
 export class GraphWebSocket {
   constructor() {
     const trackerId = logMethodEntry('GraphWebSocket', 'constructor');
-    
+
     this.io = null;
     this.subscribedClients = new Map(); // clientId -> Set of subscriptions
     this.addressSubscriptions = new Map(); // address -> Set of clientIds
     this.patternSubscriptions = new Set(); // clientIds subscribed to pattern alerts
     this.streamingSessions = new Map(); // clientId -> streaming session info
-    
+
     // Memory management settings
     this.maxSubscriptionsPerClient = 100;
     this.maxStreamingSessions = 50;
     this.maxPatternSubscriptions = 500;
     this.cleanupInterval = null;
-    
+
     // Start periodic cleanup
     this.startPeriodicCleanup();
-    
+
     wsLogger.info('GraphWebSocket service initialized', {
       maxSubscriptionsPerClient: this.maxSubscriptionsPerClient,
       maxStreamingSessions: this.maxStreamingSessions,
       maxPatternSubscriptions: this.maxPatternSubscriptions
     });
-    
+
     logMethodExit('GraphWebSocket', 'constructor', trackerId);
   }
 
@@ -50,80 +50,80 @@ export class GraphWebSocket {
   initializeHandlers(io) {
     const trackerId = logMethodEntry('GraphWebSocket', 'initializeHandlers');
     this.io = io;
-    
+
     io.on('connection', (socket) => {
       const connectionTimer = startPerformanceTimer('websocket_connection');
-      
+
       logWebSocketEvent('connection', socket.id, {
         address: socket.handshake.address,
         headers: socket.handshake.headers,
         query: socket.handshake.query
       });
-      
-      wsLogger.info('Client connected', { 
+
+      wsLogger.info('Client connected', {
         id: socket.id,
         transport: socket.conn.transport.name,
         address: socket.handshake.address
       });
-      
+
       // Initialize client tracking
       this.subscribedClients.set(socket.id, new Set());
-      
+
       // Handle address subscription
       socket.on('subscribe:address', (data) => {
         logWebSocketEvent('subscribe:address', socket.id, data);
         this.handleSubscription(socket, data);
       });
-      
+
       // Handle address unsubscription
       socket.on('unsubscribe:address', (data) => {
         logWebSocketEvent('unsubscribe:address', socket.id, data);
         this.handleUnsubscription(socket, data);
       });
-      
+
       // Handle pattern alert subscription
       socket.on('subscribe:patterns', () => {
         logWebSocketEvent('subscribe:patterns', socket.id);
         this.handlePatternSubscription(socket);
       });
-      
+
       // Handle pattern alert unsubscription
       socket.on('unsubscribe:patterns', () => {
         logWebSocketEvent('unsubscribe:patterns', socket.id);
         this.handlePatternUnsubscription(socket);
       });
-      
+
       // Handle progressive graph building
       socket.on('stream:graph', (data) => {
         logWebSocketEvent('stream:graph', socket.id, data);
         this.streamGraphBuilding(socket, data);
       });
-      
+
       // Handle stopping graph streaming
       socket.on('stream:stop', () => {
         logWebSocketEvent('stream:stop', socket.id);
         this.stopGraphStreaming(socket);
       });
-      
+
       // Handle heartbeat for connection health
       socket.on('ping', () => {
         wsLogger.debug('Ping received', { socketId: socket.id });
         socket.emit('pong', { timestamp: Date.now() });
       });
-      
+
       // Clean up on disconnect
       socket.on('disconnect', (reason) => {
         const duration = endPerformanceTimer(connectionTimer, 'websocket_connection');
         logWebSocketEvent('disconnect', socket.id, { reason, duration });
         this.handleDisconnect(socket);
       });
-      
+
       // Error handling
       socket.on('error', (error) => {
         logError(error, { socketId: socket.id, type: 'websocket_error' });
       });
     });
-    
+
     wsLogger.info('WebSocket handlers initialized successfully');
     logMethodExit('GraphWebSocket', 'initializeHandlers', trackerId);
   }
@@ -135,23 +135,23 @@ export class GraphWebSocket {
    */
   handleSubscription(socket, data) {
     const methodTimer = startPerformanceTimer('handle_subscription');
-    
+
     try {
       const { address, filters = {} } = data;
-      
+
       wsLogger.debug('Processing subscription request', {
         socketId: socket.id,
         address,
         filters
       });
-      
+
       if (!address || typeof address !== 'string') {
         wsLogger.warn('Invalid subscription request', {
           socketId: socket.id,
           address,
           reason: 'Invalid or missing address'
         });
-        
+
         socket.emit('error', {
           type: 'subscription_error',
           message: 'Invalid address provided'
@@ -183,19 +183,19 @@ export class GraphWebSocket {
         });
         return;
       }
-      
+
       // Add to address-specific room
       const roomName = `address:${address}`;
       socket.join(roomName);
-      
+
       // Track subscription
       clientSubscriptions.add(address);
-      
+
       if (!this.addressSubscriptions.has(address)) {
         this.addressSubscriptions.set(address, new Set());
       }
       this.addressSubscriptions.get(address).add(socket.id);
-      
+
       // Send confirmation
       socket.emit('subscription:confirmed', {
         type: 'address',
@@ -204,13 +204,13 @@ export class GraphWebSocket {
         room: roomName,
         timestamp: Date.now()
       });
-      
+
       logger.info('GraphWebSocket: Client subscribed to address', {
         clientId: socket.id,
         address,
         filters
       });
-      
+
     } catch (error) {
       logger.error('GraphWebSocket: Error handling subscription', error);
       socket.emit('error', {
@@ -228,7 +228,7 @@ export class GraphWebSocket {
   handleUnsubscription(socket, data) {
     try {
       const { address } = data;
-      
+
       if (!address) {
         socket.emit('error', {
           type: 'unsubscription_error',
@@ -236,17 +236,17 @@ export class GraphWebSocket {
         });
         return;
       }
-      
+
       // Remove from room
       const roomName = `address:${address}`;
       socket.leave(roomName);
-      
+
       // Update tracking
       const clientSubscriptions = this.subscribedClients.get(socket.id);
       if (clientSubscriptions) {
         clientSubscriptions.delete(address);
       }
-      
+
       const addressSubs = this.addressSubscriptions.get(address);
       if (addressSubs) {
         addressSubs.delete(socket.id);
@@ -254,18 +254,18 @@ export class GraphWebSocket {
           this.addressSubscriptions.delete(address);
         }
       }
-      
+
       socket.emit('unsubscription:confirmed', {
         type: 'address',
         address,
         timestamp: Date.now()
       });
-      
+
       logger.info('GraphWebSocket: Client unsubscribed from address', {
         clientId: socket.id,
         address
       });
-      
+
     } catch (error) {
       logger.error('GraphWebSocket: Error handling unsubscription', error);
     }
@@ -300,17 +300,17 @@ export class GraphWebSocket {
 
       socket.join('patterns:alerts');
       this.patternSubscriptions.add(socket.id);
-      
+
       socket.emit('subscription:confirmed', {
         type: 'patterns',
         room: 'patterns:alerts',
         timestamp: Date.now()
       });
-      
+
       logger.info('GraphWebSocket: Client subscribed to pattern alerts', {
         clientId: socket.id
       });
-      
+
     } catch (error) {
       logger.error('GraphWebSocket: Error handling pattern subscription', error);
     }
@@ -324,16 +324,16 @@ export class GraphWebSocket {
     try {
       socket.leave('patterns:alerts');
       this.patternSubscriptions.delete(socket.id);
-      
+
       socket.emit('unsubscription:confirmed', {
         type: 'patterns',
         timestamp: Date.now()
       });
-      
+
       logger.info('GraphWebSocket: Client unsubscribed from pattern alerts', {
         clientId: socket.id
       });
-      
+
     } catch (error) {
       logger.error('GraphWebSocket: Error handling pattern unsubscription', error);
     }
@@ -350,7 +350,7 @@ export class GraphWebSocket {
         logger.warn('GraphWebSocket: IO not initialized, skipping node update broadcast');
         return;
       }
-      
+
       const roomName = `address:${address}`;
       const updateData = {
         type: 'node_updated',
@@ -358,16 +358,16 @@ export class GraphWebSocket {
         changes,
         timestamp: Date.now()
       };
-      
+
       // Broadcast to address-specific room
       this.io.to(roomName).emit('graph:update', updateData);
-      
+
       logger.debug('GraphWebSocket: Node update broadcasted', {
         address,
         room: roomName,
         changeTypes: Object.keys(changes)
       });
-      
+
     } catch (error) {
       logger.error('GraphWebSocket: Error broadcasting node update', error);
     }
@@ -379,25 +379,27 @@ export class GraphWebSocket {
    */
   broadcastNodeAdded(node) {
     try {
-      if (!this.io) return;
-      
+      if (!this.io) {
+        return;
+      }
+
       const updateData = {
         type: 'node_added',
         node,
         timestamp: Date.now()
       };
-      
+
       // Broadcast to all relevant address rooms
       if (node.address) {
         const roomName = `address:${node.address}`;
         this.io.to(roomName).emit('graph:update', updateData);
       }
-      
+
       logger.debug('GraphWebSocket: Node addition broadcasted', {
         address: node.address,
         nodeType: node.nodeType
       });
-      
+
     } catch (error) {
       logger.error('GraphWebSocket: Error broadcasting node addition', error);
     }
@@ -409,21 +411,23 @@ export class GraphWebSocket {
    */
   broadcastNodeRemoved(address) {
     try {
-      if (!this.io) return;
-      
+      if (!this.io) {
+        return;
+      }
+
       const updateData = {
         type: 'node_removed',
         address,
         timestamp: Date.now()
       };
-      
+
       const roomName = `address:${address}`;
       this.io.to(roomName).emit('graph:update', updateData);
-      
+
       logger.debug('GraphWebSocket: Node removal broadcasted', {
         address
       });
-      
+
     } catch (error) {
       logger.error('GraphWebSocket: Error broadcasting node removal', error);
     }
@@ -440,7 +444,7 @@ export class GraphWebSocket {
         logger.warn('GraphWebSocket: IO not initialized, skipping edge update broadcast');
         return;
       }
-      
+
       const updateData = {
         type: 'edge_updated',
         edge: {
@@ -451,23 +455,23 @@ export class GraphWebSocket {
         changes,
         timestamp: Date.now()
       };
-      
+
       // Broadcast to both source and target address rooms
       const sourceRoom = `address:${edge.source}`;
       const targetRoom = `address:${edge.target}`;
-      
+
       this.io.to(sourceRoom).emit('graph:update', updateData);
       if (edge.source !== edge.target) {
         this.io.to(targetRoom).emit('graph:update', updateData);
       }
-      
+
       logger.debug('GraphWebSocket: Edge update broadcasted', {
         edgeId: edge.id,
         source: edge.source,
         target: edge.target,
         changeTypes: Object.keys(changes)
       });
-      
+
     } catch (error) {
       logger.error('GraphWebSocket: Error broadcasting edge update', error);
     }
@@ -479,29 +483,31 @@ export class GraphWebSocket {
    */
   broadcastEdgeAdded(edge) {
     try {
-      if (!this.io) return;
-      
+      if (!this.io) {
+        return;
+      }
+
       const updateData = {
         type: 'edge_added',
         edge,
         timestamp: Date.now()
       };
-      
+
       // Broadcast to both source and target rooms
       const sourceRoom = `address:${edge.source}`;
       const targetRoom = `address:${edge.target}`;
-      
+
       this.io.to(sourceRoom).emit('graph:update', updateData);
       if (edge.source !== edge.target) {
         this.io.to(targetRoom).emit('graph:update', updateData);
       }
-      
+
       logger.debug('GraphWebSocket: Edge addition broadcasted', {
         edgeId: edge.id,
         source: edge.source,
         target: edge.target
       });
-      
+
     } catch (error) {
       logger.error('GraphWebSocket: Error broadcasting edge addition', error);
     }
@@ -513,8 +519,10 @@ export class GraphWebSocket {
    */
   broadcastEdgeRemoved(edge) {
     try {
-      if (!this.io) return;
-      
+      if (!this.io) {
+        return;
+      }
+
       const updateData = {
         type: 'edge_removed',
         edge: {
@@ -524,22 +532,22 @@ export class GraphWebSocket {
         },
         timestamp: Date.now()
       };
-      
+
       // Broadcast to both source and target rooms
       const sourceRoom = `address:${edge.source}`;
       const targetRoom = `address:${edge.target}`;
-      
+
       this.io.to(sourceRoom).emit('graph:update', updateData);
       if (edge.source !== edge.target) {
         this.io.to(targetRoom).emit('graph:update', updateData);
       }
-      
+
       logger.debug('GraphWebSocket: Edge removal broadcasted', {
         edgeId: edge.id,
         source: edge.source,
         target: edge.target
       });
-      
+
     } catch (error) {
       logger.error('GraphWebSocket: Error broadcasting edge removal', error);
     }
@@ -555,7 +563,7 @@ export class GraphWebSocket {
         logger.warn('GraphWebSocket: IO not initialized, skipping pattern alert broadcast');
         return;
       }
-      
+
       const alertData = {
         type: 'pattern_detected',
         pattern: {
@@ -568,10 +576,10 @@ export class GraphWebSocket {
         },
         timestamp: Date.now()
       };
-      
+
       // Broadcast to pattern subscribers
       this.io.to('patterns:alerts').emit('pattern:alert', alertData);
-      
+
       // Also broadcast to specific address rooms if applicable
       if (pattern.addresses && Array.isArray(pattern.addresses)) {
         pattern.addresses.forEach(address => {
@@ -579,14 +587,14 @@ export class GraphWebSocket {
           this.io.to(roomName).emit('pattern:alert', alertData);
         });
       }
-      
+
       logger.info('GraphWebSocket: Pattern alert broadcasted', {
         patternId: pattern.id,
         patternType: pattern.type,
         riskLevel: pattern.riskLevel,
         addressCount: pattern.addresses?.length || 0
       });
-      
+
     } catch (error) {
       logger.error('GraphWebSocket: Error broadcasting pattern alert', error);
     }
@@ -598,8 +606,10 @@ export class GraphWebSocket {
    */
   broadcastRiskAlert(alert) {
     try {
-      if (!this.io) return;
-      
+      if (!this.io) {
+        return;
+      }
+
       const alertData = {
         type: 'risk_alert',
         alert: {
@@ -612,22 +622,22 @@ export class GraphWebSocket {
         },
         timestamp: Date.now()
       };
-      
+
       // Broadcast to pattern subscribers
       this.io.to('patterns:alerts').emit('risk:alert', alertData);
-      
+
       // Also broadcast to specific address room
       if (alert.address) {
         const roomName = `address:${alert.address}`;
         this.io.to(roomName).emit('risk:alert', alertData);
       }
-      
+
       logger.info('GraphWebSocket: Risk alert broadcasted', {
         alertId: alert.id,
         severity: alert.severity,
         address: alert.address
       });
-      
+
     } catch (error) {
       logger.error('GraphWebSocket: Error broadcasting risk alert', error);
     }
@@ -641,7 +651,7 @@ export class GraphWebSocket {
   async streamGraphBuilding(socket, query) {
     try {
       const { address, depth = 2, minVolume = '0', streamId } = query;
-      
+
       if (!address) {
         socket.emit('error', {
           type: 'stream_error',
@@ -668,9 +678,9 @@ export class GraphWebSocket {
         });
         return;
       }
-      
+
       const sessionId = streamId || `stream_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      
+
       // Store streaming session
       this.streamingSessions.set(socket.id, {
         sessionId,
@@ -679,7 +689,7 @@ export class GraphWebSocket {
         startTime: Date.now(),
         status: 'active'
       });
-      
+
       // Send stream start confirmation
       socket.emit('stream:started', {
         sessionId,
@@ -687,18 +697,18 @@ export class GraphWebSocket {
         depth,
         timestamp: Date.now()
       });
-      
+
       logger.info('GraphWebSocket: Graph streaming started', {
         clientId: socket.id,
         sessionId,
         address,
         depth
       });
-      
+
       // Simulate progressive graph building
       // In a real implementation, this would interface with GraphQueries
       await this._simulateProgressiveGraphBuilding(socket, sessionId, address, depth, minVolume);
-      
+
     } catch (error) {
       logger.error('GraphWebSocket: Error in graph streaming', error);
       socket.emit('stream:error', {
@@ -718,12 +728,12 @@ export class GraphWebSocket {
       if (session) {
         session.status = 'stopped';
         this.streamingSessions.delete(socket.id);
-        
+
         socket.emit('stream:stopped', {
           sessionId: session.sessionId,
           timestamp: Date.now()
         });
-        
+
         logger.info('GraphWebSocket: Graph streaming stopped', {
           clientId: socket.id,
           sessionId: session.sessionId
@@ -742,17 +752,21 @@ export class GraphWebSocket {
    * @param {number} depth - Graph depth
    * @param {string} minVolume - Minimum volume filter
    */
-  async _simulateProgressiveGraphBuilding(socket, sessionId, address, depth, minVolume) {
+  async _simulateProgressiveGraphBuilding(socket, sessionId, address, depth, _minVolume) {
     const session = this.streamingSessions.get(socket.id);
-    if (!session || session.status !== 'active') return;
-    
+    if (!session || session.status !== 'active') {
+      return;
+    }
+
     // Send progress updates
     for (let currentDepth = 1; currentDepth <= depth; currentDepth++) {
-      if (!session || session.status !== 'active') break;
-      
+      if (!session || session.status !== 'active') {
+        break;
+      }
+
       // Simulate delay
       await new Promise(resolve => setTimeout(resolve, 500));
-      
+
       // Send progress update
       socket.emit('stream:progress', {
         sessionId,
@@ -764,7 +778,7 @@ export class GraphWebSocket {
         },
         timestamp: Date.now()
       });
-      
+
       // Simulate nodes/edges being found
       const mockNodes = [{
         id: `node_${currentDepth}_1`,
@@ -772,14 +786,14 @@ export class GraphWebSocket {
         hopLevel: currentDepth,
         nodeType: 'discovered'
       }];
-      
+
       const mockEdges = currentDepth > 1 ? [{
         id: `edge_${currentDepth}_1`,
         source: `addr_${currentDepth - 1}_1`,
         target: `addr_${currentDepth}_1`,
         volume: '1000000'
       }] : [];
-      
+
       socket.emit('stream:data', {
         sessionId,
         batch: {
@@ -790,7 +804,7 @@ export class GraphWebSocket {
         timestamp: Date.now()
       });
     }
-    
+
     // Send completion
     if (session && session.status === 'active') {
       socket.emit('stream:completed', {
@@ -802,7 +816,7 @@ export class GraphWebSocket {
         },
         timestamp: Date.now()
       });
-      
+
       this.streamingSessions.delete(socket.id);
     }
   }
@@ -814,7 +828,7 @@ export class GraphWebSocket {
   handleDisconnect(socket) {
     try {
       logger.info('GraphWebSocket: Client disconnected', { id: socket.id });
-      
+
       // Clean up subscriptions
       const clientSubscriptions = this.subscribedClients.get(socket.id);
       if (clientSubscriptions) {
@@ -829,13 +843,13 @@ export class GraphWebSocket {
         });
         this.subscribedClients.delete(socket.id);
       }
-      
+
       // Clean up pattern subscriptions
       this.patternSubscriptions.delete(socket.id);
-      
+
       // Clean up streaming sessions
       this.streamingSessions.delete(socket.id);
-      
+
     } catch (error) {
       logger.error('GraphWebSocket: Error handling disconnect', error);
     }
@@ -888,7 +902,7 @@ export class GraphWebSocket {
             cleanedCount++;
           }
         }
-        
+
         if (validClientIds.size === 0) {
           this.addressSubscriptions.delete(address);
         } else if (validClientIds.size !== clientIds.size) {
@@ -909,7 +923,7 @@ export class GraphWebSocket {
 
       // Clean orphaned streaming sessions
       for (const [clientId, session] of this.streamingSessions.entries()) {
-        if (!this.subscribedClients.has(clientId) || 
+        if (!this.subscribedClients.has(clientId) ||
             Date.now() - session.startTime > 30 * 60 * 1000) { // 30 minute timeout
           this.streamingSessions.delete(clientId);
           cleanedCount++;
@@ -935,21 +949,23 @@ export class GraphWebSocket {
    */
   broadcastAnalytics(analytics) {
     try {
-      if (!this.io) return;
-      
+      if (!this.io) {
+        return;
+      }
+
       const analyticsData = {
         type: 'analytics_update',
         analytics,
         timestamp: Date.now()
       };
-      
+
       // Broadcast to all connected clients
       this.io.emit('analytics:update', analyticsData);
-      
+
       logger.debug('GraphWebSocket: Analytics update broadcasted', {
         metricsCount: Object.keys(analytics).length
       });
-      
+
     } catch (error) {
       logger.error('GraphWebSocket: Error broadcasting analytics', error);
     }
@@ -983,7 +999,7 @@ export class GraphWebSocket {
           message: 'Server is shutting down for maintenance',
           timestamp: Date.now()
         });
-        
+
         // Give clients time to disconnect gracefully
         await new Promise(resolve => setTimeout(resolve, 1000));
       }

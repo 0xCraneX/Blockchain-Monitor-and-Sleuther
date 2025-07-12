@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { logger } from '../../utils/logger.js';
 import { AddressController } from '../../controllers/AddressController.js';
 
 const router = Router();
@@ -61,11 +60,11 @@ router.get('/search', validate(searchSchema), async (req, res, next) => {
 router.get('/:address', validate(addressParamsSchema, 'params'), async (req, res, next) => {
   try {
     const account = await controller.getAccount(
-      req.app.locals.db, 
+      req.app.locals.db,
       req.app.locals.blockchain,
       req.params.address
     );
-    
+
     if (!account) {
       return res.status(404).json({
         error: {
@@ -74,14 +73,14 @@ router.get('/:address', validate(addressParamsSchema, 'params'), async (req, res
         }
       });
     }
-    
+
     res.json(account);
   } catch (error) {
     next(error);
   }
 });
 
-router.get('/:address/transfers', 
+router.get('/:address/transfers',
   validate(addressParamsSchema, 'params'),
   validate(transfersQuerySchema, 'query'),
   async (req, res, next) => {
@@ -91,7 +90,7 @@ router.get('/:address/transfers',
         req.params.address,
         req.query
       );
-      
+
       res.json({
         address: req.params.address,
         count: transfers.length,
@@ -116,7 +115,7 @@ router.get('/:address/relationships',
           limit: req.query.limit || 100
         }
       );
-      
+
       res.json({
         address: req.params.address,
         count: relationships.length,
@@ -136,7 +135,7 @@ router.get('/:address/patterns',
         req.app.locals.db,
         req.params.address
       );
-      
+
       res.json({
         address: req.params.address,
         count: patterns.length,

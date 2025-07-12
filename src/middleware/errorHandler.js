@@ -2,7 +2,7 @@ import { logger } from '../utils/logger.js';
 import { AppError } from '../errors/index.js';
 import { getRequestId } from './requestId.js';
 
-export function errorHandler(err, req, res, next) {
+export function errorHandler(err, req, res, _next) {
   const requestId = getRequestId(req);
   const isDevelopment = process.env.NODE_ENV === 'development';
 
@@ -97,7 +97,7 @@ export function errorHandler(err, req, res, next) {
 
   // Set response headers
   res.setHeader('Content-Type', 'application/json');
-  
+
   // Send error response
   res.status(errorResponse.error.status).json(errorResponse);
 }
@@ -107,7 +107,9 @@ export function errorHandler(err, req, res, next) {
  * Remove or mask sensitive fields to prevent data leaks
  */
 function filterSensitiveData(data) {
-  if (!data || typeof data !== 'object') return data;
+  if (!data || typeof data !== 'object') {
+    return data;
+  }
 
   const sensitiveFields = [
     'password', 'token', 'auth', 'authorization', 'secret', 'key',

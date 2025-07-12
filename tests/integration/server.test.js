@@ -66,12 +66,12 @@ describe('Server Integration Test', () => {
 
   it('should handle graph endpoint', async () => {
     const response = await request(app)
-      .get('/api/graph?address=5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY')
+      .get('/api/graph/5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY')
       .expect(200);
     
-    expect(response.body).toHaveProperty('nodes');
-    expect(response.body).toHaveProperty('edges');
-    expect(response.body).toHaveProperty('metadata');
+    expect(response.body).toHaveProperty('data');
+    expect(response.body.data).toHaveProperty('nodes');
+    expect(response.body.data).toHaveProperty('edges');
   });
 
   it('should handle investigations endpoint', async () => {

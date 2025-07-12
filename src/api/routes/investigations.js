@@ -53,14 +53,14 @@ router.get('/', async (req, res, next) => {
 router.post('/', validate(investigationSchema), async (req, res, next) => {
   try {
     const sessionId = `investigation_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-    
+
     const investigation = {
       sessionId,
       ...req.body
     };
-    
+
     req.app.locals.db.saveInvestigation(investigation);
-    
+
     res.status(201).json({
       sessionId,
       message: 'Investigation saved successfully'
@@ -73,7 +73,7 @@ router.post('/', validate(investigationSchema), async (req, res, next) => {
 router.get('/:sessionId', validate(sessionIdSchema, 'params'), async (req, res, next) => {
   try {
     const investigation = req.app.locals.db.getInvestigation(req.params.sessionId);
-    
+
     if (!investigation) {
       return res.status(404).json({
         error: {
@@ -82,14 +82,14 @@ router.get('/:sessionId', validate(sessionIdSchema, 'params'), async (req, res, 
         }
       });
     }
-    
+
     res.json(investigation);
   } catch (error) {
     next(error);
   }
 });
 
-router.put('/:sessionId', 
+router.put('/:sessionId',
   validate(sessionIdSchema, 'params'),
   validate(investigationSchema),
   async (req, res, next) => {
@@ -98,9 +98,9 @@ router.put('/:sessionId',
         sessionId: req.params.sessionId,
         ...req.body
       };
-      
+
       req.app.locals.db.saveInvestigation(investigation);
-      
+
       res.json({
         message: 'Investigation updated successfully'
       });

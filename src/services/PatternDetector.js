@@ -8,7 +8,7 @@ export class PatternDetector {
   constructor(databaseService) {
     this.db = databaseService?.db;
     this.databaseService = databaseService;
-    
+
     // Pattern types and their base confidence thresholds
     this.patternTypes = {
       RAPID_MOVEMENT: { baseConfidence: 0.7, severity: 'high' },
@@ -19,7 +19,7 @@ export class PatternDetector {
       ROUND_NUMBERS: { baseConfidence: 0.4, severity: 'low' },
       COMPLEX_ROUTING: { baseConfidence: 0.7, severity: 'medium' }
     };
-    
+
     if (this.db) {
       this.prepareStatements();
     }
@@ -52,7 +52,7 @@ export class PatternDetector {
       ORDER BY minutes_elapsed, amount1 DESC
     `);
 
-    // Circular flow detection query  
+    // Circular flow detection query
     this.circularFlowStmt = this.db.prepare(`
       WITH RECURSIVE circular_paths AS (
         SELECT 
@@ -211,7 +211,7 @@ export class PatternDetector {
 
       // Calculate confidence based on sequence characteristics
       let confidence = this.patternTypes.RAPID_MOVEMENT.baseConfidence;
-      
+
       // Boost confidence for very rapid sequences (< 1 minute)
       const veryRapidCount = sequences.filter(s => s.minutes_elapsed < 1).length;
       confidence += Math.min(veryRapidCount * 0.1, 0.2);
@@ -220,7 +220,7 @@ export class PatternDetector {
       confidence += Math.min(sequences.length * 0.05, 0.2);
 
       // Boost confidence for large amounts
-      const largeAmountSequences = sequences.filter(s => 
+      const largeAmountSequences = sequences.filter(s =>
         parseFloat(s.amount1) > 1000000000000 // > 1 DOT (assuming 10^12 planck units)
       ).length;
       confidence += Math.min(largeAmountSequences * 0.05, 0.15);
@@ -295,7 +295,7 @@ export class PatternDetector {
       confidence += Math.min(circularPaths.length * 0.05, 0.15);
 
       // Boost confidence for high-value flows
-      const highValuePaths = circularPaths.filter(p => 
+      const highValuePaths = circularPaths.filter(p =>
         parseFloat(p.min_volume_in_path) > 10000000000000 // > 10 DOT
       ).length;
       confidence += Math.min(highValuePaths * 0.05, 0.1);
@@ -367,7 +367,7 @@ export class PatternDetector {
       confidence += Math.min((avgSimilarPaths - 2) * 0.05, 0.15);
 
       // Boost confidence for consistent amounts throughout the chain
-      const consistentAmounts = layeringPaths.filter(p => 
+      const consistentAmounts = layeringPaths.filter(p =>
         Math.abs(parseFloat(p.original_amount) - parseFloat(p.current_amount)) / parseFloat(p.original_amount) < 0.05
       ).length;
       confidence += Math.min(consistentAmounts * 0.1, 0.15);
@@ -591,19 +591,25 @@ export class PatternDetector {
       let confidence = this.patternTypes.UNUSUAL_TIMING.baseConfidence;
 
       // Boost confidence for high percentage of unusual timing
-      if (unusualPercentage > 0.5) confidence += 0.3;
-      else if (unusualPercentage > 0.3) confidence += 0.2;
-      else if (unusualPercentage > 0.1) confidence += 0.1;
+      if (unusualPercentage > 0.5) {
+        confidence += 0.3;
+      } else if (unusualPercentage > 0.3) {
+        confidence += 0.2;
+      } else if (unusualPercentage > 0.1) {
+        confidence += 0.1;
+      }
 
       // Analyze timing patterns
       const nightTransfers = unusualTransfers.filter(t => t.timing_type === 'night').length;
       const weekendTransfers = unusualTransfers.filter(t => t.timing_type === 'weekend').length;
 
       // Boost confidence for concentration in night hours
-      if (nightTransfers / unusualTransfers.length > 0.7) confidence += 0.2;
+      if (nightTransfers / unusualTransfers.length > 0.7) {
+        confidence += 0.2;
+      }
 
       // Boost confidence for high-value unusual timing transfers
-      const highValueUnusual = unusualTransfers.filter(t => 
+      const highValueUnusual = unusualTransfers.filter(t =>
         parseFloat(t.value) > 10000000000000 // > 10 DOT
       ).length;
       confidence += Math.min(highValueUnusual * 0.05, 0.15);
@@ -624,7 +630,7 @@ export class PatternDetector {
         statistics: {
           totalTransfers,
           unusualCount: unusualTransfers.length,
-          unusualPercentage: (unusualPercentage * 100).toFixed(2) + '%',
+          unusualPercentage: `${(unusualPercentage * 100).toFixed(2)  }%`,
           nightTransfers,
           weekendTransfers,
           patternBreakdown: {
@@ -640,7 +646,7 @@ export class PatternDetector {
         address,
         unusualTransfersFound: unusualTransfers.length,
         totalTransfers,
-        unusualPercentage: (unusualPercentage * 100).toFixed(2) + '%',
+        unusualPercentage: `${(unusualPercentage * 100).toFixed(2)  }%`,
         confidence,
         executionTime: Date.now() - startTime
       });
@@ -660,7 +666,7 @@ export class PatternDetector {
 
   /**
    * Detect suspiciously round number patterns
-   * @param {string} address - Address to analyze  
+   * @param {string} address - Address to analyze
    * @returns {Object} Detection result with confidence and evidence
    */
   async detectRoundNumbers(address) {
@@ -703,9 +709,13 @@ export class PatternDetector {
       let confidence = this.patternTypes.ROUND_NUMBERS.baseConfidence;
 
       // Boost confidence for high percentage of round numbers
-      if (roundPercentage > 0.4) confidence += 0.3;
-      else if (roundPercentage > 0.2) confidence += 0.2;
-      else if (roundPercentage > 0.1) confidence += 0.1;
+      if (roundPercentage > 0.4) {
+        confidence += 0.3;
+      } else if (roundPercentage > 0.2) {
+        confidence += 0.2;
+      } else if (roundPercentage > 0.1) {
+        confidence += 0.1;
+      }
 
       // Analyze round number types
       const perfectRound = roundTransfers.filter(t => t.round_type === 'perfect_round').length;
@@ -733,7 +743,7 @@ export class PatternDetector {
         statistics: {
           totalTransfers,
           roundCount: roundTransfers.length,
-          roundPercentage: (roundPercentage * 100).toFixed(2) + '%',
+          roundPercentage: `${(roundPercentage * 100).toFixed(2)  }%`,
           perfectRoundCount: perfectRound,
           semiRoundCount: semiRound,
           patternBreakdown: {
@@ -749,7 +759,7 @@ export class PatternDetector {
         address,
         roundTransfersFound: roundTransfers.length,
         totalTransfers,
-        roundPercentage: (roundPercentage * 100).toFixed(2) + '%',
+        roundPercentage: `${(roundPercentage * 100).toFixed(2)  }%`,
         confidence,
         executionTime: Date.now() - startTime
       });
@@ -900,7 +910,9 @@ export class PatternDetector {
   }
 
   _analyzeTemporalPatterns(transfers) {
-    if (transfers.length < 2) return { suspicious: false, confidence: 0 };
+    if (transfers.length < 2) {
+      return { suspicious: false, confidence: 0 };
+    }
 
     const timestamps = transfers
       .map(t => new Date(t.timestamp))
@@ -948,11 +960,17 @@ export class PatternDetector {
     const addresses = new Set();
 
     transfers.forEach(t => {
-      if (t.from_address) addresses.add(t.from_address);
-      if (t.to_address) addresses.add(t.to_address);
-      
+      if (t.from_address) {
+        addresses.add(t.from_address);
+      }
+      if (t.to_address) {
+        addresses.add(t.to_address);
+      }
+
       const counterparty = t.from_address || t.to_address;
-      if (counterparty) counterparties.add(counterparty);
+      if (counterparty) {
+        counterparties.add(counterparty);
+      }
     });
 
     const uniqueCounterparties = counterparties.size;
@@ -970,7 +988,7 @@ export class PatternDetector {
     // Check for concentration with single counterparty
     const counterpartyCounts = {};
     counterparties.forEach(cp => {
-      counterpartyCounts[cp] = transfers.filter(t => 
+      counterpartyCounts[cp] = transfers.filter(t =>
         t.from_address === cp || t.to_address === cp
       ).length;
     });
@@ -995,7 +1013,9 @@ export class PatternDetector {
   }
 
   _analyzeFrequencyPatterns(transfers) {
-    if (transfers.length < 5) return { suspicious: false, confidence: 0 };
+    if (transfers.length < 5) {
+      return { suspicious: false, confidence: 0 };
+    }
 
     const timestamps = transfers.map(t => new Date(t.timestamp)).sort((a, b) => a - b);
     const timespan = timestamps[timestamps.length - 1] - timestamps[0];
@@ -1042,12 +1062,14 @@ export class PatternDetector {
   }
 
   _calculateUniformity(values) {
-    if (values.length < 2) return 0;
-    
+    if (values.length < 2) {
+      return 0;
+    }
+
     const mean = values.reduce((sum, v) => sum + v, 0) / values.length;
     const variance = values.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / values.length;
     const stdDev = Math.sqrt(variance);
-    
+
     // Return coefficient of variation inverted (higher = more uniform)
     const cv = stdDev / mean;
     return Math.max(0, 1 - cv);

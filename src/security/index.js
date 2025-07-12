@@ -1,9 +1,9 @@
 /**
  * Security Middleware and Utilities
- * 
+ *
  * This module provides comprehensive security features for the Polkadot Analysis Tool
  * including input validation, rate limiting, query protection, and monitoring.
- * 
+ *
  * Enhanced with centralized security configuration and environment-specific settings.
  */
 
@@ -13,13 +13,12 @@ import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
 import cors from 'cors';
 // import createDOMPurify from 'isomorphic-dompurify';
-import { 
-  securityConfig, 
-  getCorsConfig, 
-  getWebSocketCorsConfig, 
-  getCSPConfig, 
+import {
+  securityConfig,
+  getCorsConfig,
+  getCSPConfig,
   getRateLimitConfig,
-  initializeSecurityConfig 
+  initializeSecurityConfig
 } from '../../config/security.js';
 
 // const DOMPurify = createDOMPurify();
@@ -30,7 +29,7 @@ import {
 export class QueryValidator {
   static addressSchema = z.string()
     .regex(/^[1-9A-HJ-NP-Za-km-z]{48,}$/)
-    .refine((addr) => !this.containsHomographs(addr), 
+    .refine((addr) => !this.containsHomographs(addr),
       'Address contains suspicious characters');
 
   static validateAddress(address) {
@@ -50,13 +49,15 @@ export class QueryValidator {
 
   static safeJsonParse(jsonString, defaultValue = {}) {
     try {
-      if (typeof jsonString !== 'string') return defaultValue;
-      
+      if (typeof jsonString !== 'string') {
+        return defaultValue;
+      }
+
       // Temporarily disabled DOMPurify - need to install isomorphic-dompurify
-      // const sanitized = DOMPurify.sanitize(jsonString, { 
+      // const sanitized = DOMPurify.sanitize(jsonString, {
       //   USE_PROFILES: { html: false, svg: false, mathMl: false }
       // });
-      
+
       // return JSON.parse(sanitized);
       return JSON.parse(jsonString);
     } catch (error) {
@@ -71,7 +72,7 @@ export class QueryValidator {
       /[\u03b1-\u03c9]/, // Greek lowercase
       /[\u1e00-\u1eff]/  // Latin extended
     ];
-    
+
     return suspiciousPatterns.some(pattern => pattern.test(str));
   }
 }
@@ -100,9 +101,9 @@ export class RecursiveQueryProtection {
     const timeoutId = setTimeout(() => controller.abort(), timeout);
 
     try {
-      this.activeQueries.set(queryId, { 
-        controller, 
-        startTime: Date.now() 
+      this.activeQueries.set(queryId, {
+        controller,
+        startTime: Date.now()
       });
 
       const initialMemory = process.memoryUsage().heapUsed;
@@ -110,7 +111,7 @@ export class RecursiveQueryProtection {
       let rowCount = 0;
 
       const stmt = queryFn();
-      
+
       for (const row of stmt.iterate()) {
         if (controller.signal.aborted) {
           throw new Error('Query timeout');
@@ -160,10 +161,10 @@ export class CostBasedRateLimiter {
       const maxBudget = 100;
 
       const currentBudget = this.getCurrentBudget(ip);
-      
+
       if (currentBudget + cost > maxBudget) {
         const resetTime = Date.now() + window;
-        
+
         res.set({
           'X-RateLimit-Limit': maxBudget,
           'X-RateLimit-Remaining': Math.max(0, maxBudget - currentBudget),
@@ -188,14 +189,14 @@ export class CostBasedRateLimiter {
     const now = Date.now();
     const window = 60000;
     const userBudget = this.budgets.get(ip) || [];
-    
+
     // Filter out expired entries
-    const validEntries = userBudget.filter(entry => 
+    const validEntries = userBudget.filter(entry =>
       now - entry.timestamp < window
     );
-    
+
     this.budgets.set(ip, validEntries);
-    
+
     return validEntries.reduce((sum, entry) => sum + entry.cost, 0);
   }
 
@@ -230,19 +231,21 @@ export class QueryComplexityAnalyzer {
   }
 
   static calculateTimeRangeComplexity(startTime, endTime) {
-    if (!startTime || !endTime) return 0;
-    
+    if (!startTime || !endTime) {
+      return 0;
+    }
+
     const start = new Date(startTime).getTime();
     const end = new Date(endTime).getTime();
     const rangeDays = (end - start) / (1000 * 60 * 60 * 24);
-    
+
     return Math.log10(rangeDays + 1);
   }
 
   static complexityLimit(maxComplexity = 10) {
     return (req, res, next) => {
       const complexity = this.calculateComplexity(req.query);
-      
+
       if (complexity.total > maxComplexity) {
         return res.status(400).json({
           error: {
@@ -272,7 +275,7 @@ export class PrivacyProtection {
       if (this.shouldAnonymize(node, userId, userPermissions)) {
         const anonId = this.generateAnonymousId(node.address);
         anonymizedNodes.set(node.address, anonId);
-        
+
         return {
           ...node,
           address: anonId,
@@ -314,10 +317,18 @@ export class PrivacyProtection {
   }
 
   static shouldAnonymize(node, userId, permissions) {
-    if (node.user_id === userId) return false;
-    if (permissions.includes('view_all_identities')) return false;
-    if (node.risk_score > 0.7) return false;
-    if (node.is_exchange || node.is_validator) return false;
+    if (node.user_id === userId) {
+      return false;
+    }
+    if (permissions.includes('view_all_identities')) {
+      return false;
+    }
+    if (node.risk_score > 0.7) {
+      return false;
+    }
+    if (node.is_exchange || node.is_validator) {
+      return false;
+    }
 
     return true;
   }
@@ -327,14 +338,20 @@ export class PrivacyProtection {
       .createHash('sha256')
       .update(address + (process.env.ANONYMIZATION_SALT || 'default-salt'))
       .digest('hex');
-    
+
     return `anon_${hash.substring(0, 12)}`;
   }
 
   static bucketize(value) {
-    if (value < 10) return value;
-    if (value < 100) return Math.floor(value / 10) * 10;
-    if (value < 1000) return Math.floor(value / 100) * 100;
+    if (value < 10) {
+      return value;
+    }
+    if (value < 100) {
+      return Math.floor(value / 10) * 10;
+    }
+    if (value < 1000) {
+      return Math.floor(value / 100) * 100;
+    }
     return Math.floor(value / 1000) * 1000;
   }
 
@@ -351,7 +368,9 @@ export class PrivacyProtection {
     ];
 
     for (const range of ranges) {
-      if (amount < range.max) return range.label;
+      if (amount < range.max) {
+        return range.label;
+      }
     }
   }
 
@@ -360,8 +379,12 @@ export class PrivacyProtection {
   }
 
   static getAnonymizationLevel(permissions) {
-    if (permissions.includes('admin')) return 'none';
-    if (permissions.includes('analyst')) return 'minimal';
+    if (permissions.includes('admin')) {
+      return 'none';
+    }
+    if (permissions.includes('analyst')) {
+      return 'minimal';
+    }
     return 'standard';
   }
 }
@@ -391,7 +414,7 @@ export class SecurityMonitor {
       }
     };
 
-    console.log('SECURITY_EVENT:', JSON.stringify(enrichedEvent));
+    // console.log('SECURITY_EVENT:', JSON.stringify(enrichedEvent));
 
     if (this.shouldAlert(event)) {
       this.sendAlert(enrichedEvent);
@@ -463,20 +486,20 @@ export function configureSecurityHeaders(app) {
   const config = initializeSecurityConfig();
   const cspConfig = getCSPConfig();
   const corsConfig = getCorsConfig();
-  
+
   // Helmet configuration with environment-specific CSP
   const helmetConfig = {
     contentSecurityPolicy: {
       directives: cspConfig,
       reportOnly: config.environment === 'development'
     },
-    crossOriginEmbedderPolicy: 
-      config.environment === 'production' 
-        ? { policy: 'require-corp' } 
+    crossOriginEmbedderPolicy:
+      config.environment === 'production'
+        ? { policy: 'require-corp' }
         : false,
     crossOriginOpenerPolicy: { policy: 'same-origin' },
-    crossOriginResourcePolicy: { 
-      policy: config.environment === 'production' ? 'same-origin' : 'cross-origin' 
+    crossOriginResourcePolicy: {
+      policy: config.environment === 'production' ? 'same-origin' : 'cross-origin'
     },
     dnsPrefetchControl: { allow: false },
     frameguard: { action: 'deny' },
@@ -505,24 +528,24 @@ export function configureSecurityHeaders(app) {
     Object.entries(config.headers.additional).forEach(([header, value]) => {
       res.setHeader(header, value);
     });
-    
+
     // API-specific headers
     if (req.path.startsWith('/api/')) {
       res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');
-      
+
       // Add request tracking header
       const requestId = crypto.randomUUID();
       res.setHeader('X-Request-ID', requestId);
       req.requestId = requestId;
     }
-    
+
     // Security monitoring headers
     if (config.development.debugMode) {
       res.setHeader('X-Security-Debug', 'enabled');
     }
-    
+
     next();
   });
 }
@@ -554,7 +577,7 @@ export function createValidationMiddleware(schema, property = 'query') {
 // Enhanced rate limiters with environment-specific configuration
 export function createGraphQueryLimiter() {
   const config = getRateLimitConfig('graph');
-  
+
   return rateLimit({
     ...config,
     message: {
@@ -571,9 +594,9 @@ export function createGraphQueryLimiter() {
       const complexity = req.queryComplexity?.total || 1;
       return `graph:${req.ip}:${Math.floor(complexity)}`;
     },
-    skip: (req) => {
+    skip: (_req) => {
       // Skip rate limiting in development if configured
-      return securityConfig.development.bypassRateLimit && 
+      return securityConfig.development.bypassRateLimit &&
              securityConfig.environment === 'development';
     },
     handler: (req, res) => {
@@ -597,7 +620,7 @@ export function createGraphQueryLimiter() {
 
 export function createSearchLimiter() {
   const config = getRateLimitConfig('search');
-  
+
   return rateLimit({
     ...config,
     message: {
@@ -615,8 +638,8 @@ export function createSearchLimiter() {
       const queryHash = crypto.createHash('sha256').update(query).digest('hex').substring(0, 8);
       return `search:${req.ip}:${queryHash}`;
     },
-    skip: (req) => {
-      return securityConfig.development.bypassRateLimit && 
+    skip: (_req) => {
+      return securityConfig.development.bypassRateLimit &&
              securityConfig.environment === 'development';
     }
   });
@@ -624,7 +647,7 @@ export function createSearchLimiter() {
 
 export function createInvestigationLimiter() {
   const config = getRateLimitConfig('investigations');
-  
+
   return rateLimit({
     ...config,
     message: {
@@ -636,8 +659,8 @@ export function createInvestigationLimiter() {
     },
     standardHeaders: true,
     legacyHeaders: false,
-    skip: (req) => {
-      return securityConfig.development.bypassRateLimit && 
+    skip: (_req) => {
+      return securityConfig.development.bypassRateLimit &&
              securityConfig.environment === 'development';
     }
   });
@@ -645,7 +668,7 @@ export function createInvestigationLimiter() {
 
 export function createGlobalLimiter() {
   const config = getRateLimitConfig('global');
-  
+
   return rateLimit({
     ...config,
     message: {
@@ -657,8 +680,8 @@ export function createGlobalLimiter() {
     },
     standardHeaders: true,
     legacyHeaders: false,
-    skip: (req) => {
-      return securityConfig.development.bypassRateLimit && 
+    skip: (_req) => {
+      return securityConfig.development.bypassRateLimit &&
              securityConfig.environment === 'development';
     }
   });
@@ -677,11 +700,11 @@ export function createSecurityMonitoringMiddleware() {
   return (req, res, next) => {
     // Track request start time
     req.startTime = Date.now();
-    
+
     // Monitor failed validations
     res.on('finish', () => {
       const duration = Date.now() - req.startTime;
-      
+
       if (res.statusCode === 400 && res.locals.validationError) {
         monitor.logSecurityEvent({
           type: 'failed_validation',
@@ -737,7 +760,7 @@ export function createSecurityMonitoringMiddleware() {
       // Monitor memory usage
       const memoryUsage = process.memoryUsage();
       const memoryPercentage = memoryUsage.heapUsed / memoryUsage.heapTotal;
-      
+
       if (memoryPercentage > securityConfig.monitoring.alertThresholds.memoryUsage) {
         monitor.logSecurityEvent({
           type: 'memory_peak',

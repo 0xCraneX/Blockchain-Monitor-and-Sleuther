@@ -42,7 +42,7 @@ jobs:
         run: npm run test:unit
       
       - name: Upload coverage
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: unit-coverage
           path: coverage/
@@ -72,7 +72,7 @@ jobs:
     strategy:
       matrix:
         browser: [chromium, firefox, webkit]
-        origin: [localhost, '127.0.0.1']
+        origin: [localhost, 127_0_0_1]
     
     steps:
       - uses: actions/checkout@v3
@@ -91,7 +91,11 @@ jobs:
       
       - name: Run E2E tests - ${{ matrix.browser }} via ${{ matrix.origin }}
         run: |
-          export BASE_URL="http://${{ matrix.origin }}:3001"
+          ORIGIN="${{ matrix.origin }}"
+          if [ "$ORIGIN" = "127_0_0_1" ]; then
+            ORIGIN="127.0.0.1"
+          fi
+          export BASE_URL="http://${ORIGIN}:3001"
           npx playwright test --project=${{ matrix.browser }}
         env:
           NODE_ENV: test
@@ -100,7 +104,7 @@ jobs:
       
       - name: Upload test results
         if: failure()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: playwright-results-${{ matrix.browser }}-${{ matrix.origin }}
           path: test-results/
@@ -212,7 +216,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        host: [localhost, '0.0.0.0', '127.0.0.1']
+        host: [localhost, 0_0_0_0, 127_0_0_1]
     
     name: Smoke Test - HOST=${{ matrix.host }}
     steps:
@@ -231,11 +235,17 @@ jobs:
         run: npx playwright install chromium
       
       - name: Run smoke tests with HOST=${{ matrix.host }}
-        run: npm run test:e2e:smoke
+        run: |
+          HOST="${{ matrix.host }}"
+          if [ "$HOST" = "0_0_0_0" ]; then
+            HOST="0.0.0.0"
+          elif [ "$HOST" = "127_0_0_1" ]; then
+            HOST="127.0.0.1"
+          fi
+          export HOST TEST_HOST="$HOST"
+          npm run test:e2e:smoke
         env:
           NODE_ENV: test
-          HOST: ${{ matrix.host }}
-          TEST_HOST: ${{ matrix.host }}
 
   pre-deployment-check:
     runs-on: ubuntu-latest
@@ -272,7 +282,7 @@ jobs:
       
       - name: Upload deployment report
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: deployment-readiness-report
           path: deployment-report.md

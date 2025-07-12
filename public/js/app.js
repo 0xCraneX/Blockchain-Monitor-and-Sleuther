@@ -201,7 +201,8 @@ class PolkadotAnalysisApp {
      */
     initializeWebSocket() {
         if (typeof io !== 'undefined') {
-            this.socket = io();
+            const wsUrl = window.APP_CONFIG?.WS_URL || '';
+            this.socket = io(wsUrl);
             
             this.socket.on('connect', () => {
                 console.log('WebSocket connected');
@@ -312,7 +313,8 @@ class PolkadotAnalysisApp {
      */
     async fetchSearchSuggestions(query) {
         try {
-            const response = await fetch(`/api/addresses/search?q=${encodeURIComponent(query)}&limit=10`);
+            const apiUrl = window.APP_CONFIG?.API_BASE_URL || '';
+            const response = await fetch(`${apiUrl}/api/addresses/search?q=${encodeURIComponent(query)}&limit=10`);
             
             if (response.ok) {
                 const suggestions = await response.json();
@@ -419,7 +421,8 @@ class PolkadotAnalysisApp {
             }
             
             // Fetch graph data
-            const response = await fetch(`/api/graph/${address}?${params}`);
+            const apiUrl = window.APP_CONFIG?.API_BASE_URL || '';
+            const response = await fetch(`${apiUrl}/api/graph/${address}?${params}`);
             
             if (!response.ok) {
                 const errorData = await response.json();
@@ -437,7 +440,7 @@ class PolkadotAnalysisApp {
             
             // Load the graph data into visualization
             this.graph.loadGraphData(mappedData);
-            this.state.graphData = graphData;
+            this.state.graphData = mappedData; // Store the mapped data, not the raw response
             
             // Show visualization section
             this.showVisualizationSection();
@@ -489,7 +492,8 @@ class PolkadotAnalysisApp {
             direction: 'both',
             nodeTypes: [],
             timeRange: null,
-            riskThreshold: null
+            riskThreshold: null,
+            volumeThreshold: null
         };
         
         this.updateFilterUI();
@@ -504,6 +508,7 @@ class PolkadotAnalysisApp {
         const volumeFilter = document.getElementById('volume-filter');
         const timeFilter = document.getElementById('time-filter');
         const connectionFilter = document.getElementById('connection-filter');
+        const volumeThresholdFilter = document.getElementById('volume-threshold-filter');
         
         if (depthFilter) {
             this.state.filters.depth = parseInt(depthFilter.value);
@@ -522,6 +527,13 @@ class PolkadotAnalysisApp {
         if (connectionFilter) {
             this.state.filters.minConnections = parseInt(connectionFilter.value);
         }
+        
+        // Volume threshold for red highlighting
+        if (volumeThresholdFilter) {
+            const threshold = parseFloat(volumeThresholdFilter.value);
+            this.state.filters.volumeThreshold = threshold > 0 ? 
+                (BigInt(Math.floor(threshold * 1e12)).toString()) : null;
+        }
     }
     
     /**
@@ -532,6 +544,7 @@ class PolkadotAnalysisApp {
         const volumeFilter = document.getElementById('volume-filter');
         const timeFilter = document.getElementById('time-filter');
         const connectionFilter = document.getElementById('connection-filter');
+        const volumeThresholdFilter = document.getElementById('volume-threshold-filter');
         
         if (depthFilter) {
             depthFilter.value = this.state.filters.depth;
@@ -549,6 +562,12 @@ class PolkadotAnalysisApp {
         
         if (connectionFilter) {
             connectionFilter.value = this.state.filters.minConnections || 1;
+        }
+        
+        if (volumeThresholdFilter) {
+            const threshold = this.state.filters.volumeThreshold ? 
+                Number(BigInt(this.state.filters.volumeThreshold)) / 1e12 : '';
+            volumeThresholdFilter.value = threshold;
         }
     }
     
@@ -635,18 +654,19 @@ class PolkadotAnalysisApp {
         this.showLoading();
         
         try {
-            const cursor = address || this.state.graphData?.metadata?.nextCursor || this.state.currentAddress;
-            if (!cursor) {
+            const expandAddress = address || this.state.currentAddress;
+            if (!expandAddress) {
                 throw new Error('No address specified for expansion');
             }
             
+            // Use the regular graph endpoint to get data for this node
             const params = new URLSearchParams({
-                cursor: cursor,
-                limit: 20,
-                direction: 'outward'
+                depth: 1,
+                minVolume: this.state.filters.minVolume || 0
             });
             
-            const response = await fetch(`/api/graph/expand?${params}`);
+            const apiUrl = window.APP_CONFIG?.API_BASE_URL || '';
+            const response = await fetch(`${apiUrl}/api/graph/${expandAddress}?${params}`);
             
             if (!response.ok) {
                 throw new Error('Failed to expand graph');
@@ -656,8 +676,72 @@ class PolkadotAnalysisApp {
             
             // Merge new data with existing data
             if (expandedData.nodes && expandedData.nodes.length > 0) {
-                this.state.graphData.nodes.push(...expandedData.nodes);
-                this.state.graphData.links.push(...expandedData.edges);
+                // Initialize graphData if it doesn't exist
+                if (!this.state.graphData) {
+                    this.state.graphData = {
+                        nodes: [],
+                        links: [],
+                        metadata: {}
+                    };
+                }
+                
+                // Ensure arrays exist
+                if (!this.state.graphData.nodes) this.state.graphData.nodes = [];
+                if (!this.state.graphData.links) this.state.graphData.links = [];
+                
+                // Create maps for better lookup and update
+                const existingNodesMap = new Map(
+                    this.state.graphData.nodes.map(n => [n.id || n.address, n])
+                );
+                const existingEdgeIds = new Set(
+                    this.state.graphData.links.map(e => {
+                        const sourceId = e.source.id || e.source.address || e.source;
+                        const targetId = e.target.id || e.target.address || e.target;
+                        return `${sourceId}-${targetId}`;
+                    })
+                );
+                
+                // Process new nodes
+                expandedData.nodes.forEach(node => {
+                    const nodeId = node.id || node.address;
+                    if (existingNodesMap.has(nodeId)) {
+                        // Update existing node with new data (e.g., balance, identity)
+                        const existingNode = existingNodesMap.get(nodeId);
+                        if (node.balance && (!existingNode.balance || existingNode.balance.free === '0')) {
+                            existingNode.balance = node.balance;
+                        }
+                        if (node.identity && !existingNode.identity) {
+                            existingNode.identity = node.identity;
+                        }
+                        if (node.degree !== undefined) {
+                            existingNode.degree = node.degree;
+                        }
+                        if (node.totalVolume !== undefined) {
+                            existingNode.totalVolume = node.totalVolume;
+                        }
+                    } else {
+                        // Add new node with highlight
+                        node.isNew = true;
+                        node.suggestedColor = '#4CAF50'; // Green for new nodes
+                        this.state.graphData.nodes.push(node);
+                    }
+                });
+                
+                // Add new edges that don't already exist
+                const newEdges = (expandedData.edges || expandedData.links || []).filter(edge => {
+                    const sourceId = edge.source.id || edge.source.address || edge.source;
+                    const targetId = edge.target.id || edge.target.address || edge.target;
+                    const edgeId = `${sourceId}-${targetId}`;
+                    return !existingEdgeIds.has(edgeId);
+                });
+                
+                // Mark new edges for visual feedback
+                newEdges.forEach(edge => {
+                    edge.isNew = true;
+                    edge.suggestedColor = '#4CAF50'; // Green for new edges
+                });
+                
+                this.state.graphData.links.push(...newEdges);
                 
                 // Update metadata
                 if (expandedData.metadata) {
@@ -669,6 +753,34 @@ class PolkadotAnalysisApp {
                 
                 // Reload the graph with updated data
                 this.graph.loadGraphData(this.state.graphData);
+                
+                // Focus on the expanded node after a short delay
+                setTimeout(() => {
+                    const node = this.state.graphData.nodes.find(n => 
+                        (n.id || n.address) === expandAddress
+                    );
+                    if (node) {
+                        this.graph.focusOnNode(node);
+                    }
+                }, 500);
+                
+                // Remove highlights after animation
+                setTimeout(() => {
+                    this.state.graphData.nodes.forEach(n => {
+                        if (n.isNew) {
+                            delete n.isNew;
+                            delete n.suggestedColor;
+                        }
+                    });
+                    this.state.graphData.links.forEach(e => {
+                        if (e.isNew) {
+                            delete e.isNew;
+                            delete e.suggestedColor;
+                        }
+                    });
+                    this.graph.updateNodeAppearance();
+                    this.graph.updateEdgeAppearance();
+                }, 3000);
             }
             
         } catch (error) {
@@ -698,7 +810,9 @@ class PolkadotAnalysisApp {
         
         nodeInfoContainer.innerHTML = `
             <p><span class="label">Identity:</span> ${identity}</p>
-            <p><span class="label">Address:</span> ${address.substring(0, 20)}...</p>
+            <p><span class="label">Address:</span> 
+                <span style="font-size: 11px; word-break: break-all;">${address}</span>
+            </p>
             <p><span class="label">Type:</span> ${nodeType}</p>
             <p><span class="label">Balance:</span> ${balance}</p>
             <p><span class="label">Connections:</span> ${connections}</p>
@@ -939,7 +1053,8 @@ class PolkadotAnalysisApp {
                 timestamp: Date.now()
             };
             
-            const response = await fetch('/api/investigations', {
+            const apiUrl = window.APP_CONFIG?.API_BASE_URL || '';
+            const response = await fetch(`${apiUrl}/api/investigations`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -965,7 +1080,8 @@ class PolkadotAnalysisApp {
      */
     async loadSavedInvestigations() {
         try {
-            const response = await fetch('/api/investigations');
+            const apiUrl = window.APP_CONFIG?.API_BASE_URL || '';
+            const response = await fetch(`${apiUrl}/api/investigations`);
             if (response.ok) {
                 this.state.investigations = await response.json();
             }
@@ -1031,7 +1147,8 @@ class PolkadotAnalysisApp {
      * Search for identity
      */
     async searchIdentity(query) {
-        const response = await fetch(`/api/addresses/search?q=${encodeURIComponent(query)}`);
+        const apiUrl = window.APP_CONFIG?.API_BASE_URL || '';
+        const response = await fetch(`${apiUrl}/api/addresses/search?q=${encodeURIComponent(query)}`);
         
         if (!response.ok) {
             throw new Error('Search failed');
@@ -1063,14 +1180,15 @@ class PolkadotAnalysisApp {
         
         try {
             // Load detailed information about the node
-            const response = await fetch(`/api/graph/metrics/${address}`);
+            const apiUrl = window.APP_CONFIG?.API_BASE_URL || '';
+            const response = await fetch(`${apiUrl}/api/nodes/${address}`);
             
             if (response.ok) {
-                const metrics = await response.json();
-                console.log('Node metrics:', metrics);
+                const nodeDetails = await response.json();
+                console.log('Node details:', nodeDetails);
                 
-                // Could open a detailed view or modal
-                this.displayDetailedNodeInfo(metrics);
+                // Display the investigation results in a modal or panel
+                this.displayInvestigationResults(nodeDetails);
             }
             
         } catch (error) {
@@ -1099,6 +1217,83 @@ class PolkadotAnalysisApp {
      */
     getGraphStatistics() {
         return this.graph?.getStatistics() || {};
+    }
+    
+    /**
+     * Display investigation results for a node
+     */
+    displayInvestigationResults(nodeDetails) {
+        // Create a modal or update the side panel with detailed information
+        const modalContent = `
+            <div class="investigation-results">
+                <h3>Investigation: ${nodeDetails.address.substring(0, 8)}...${nodeDetails.address.slice(-6)}</h3>
+                
+                <div class="detail-section">
+                    <h4>Basic Information</h4>
+                    <p><strong>Type:</strong> ${nodeDetails.nodeType}</p>
+                    <p><strong>Balance:</strong> ${FormatUtils.formatBalance(nodeDetails.balance)}</p>
+                    ${nodeDetails.identity ? `<p><strong>Identity:</strong> ${nodeDetails.identity.display || 'None'}</p>` : ''}
+                </div>
+                
+                <div class="detail-section">
+                    <h4>Activity Summary</h4>
+                    <p><strong>First Seen:</strong> ${new Date(nodeDetails.firstSeen).toLocaleDateString()}</p>
+                    <p><strong>Last Active:</strong> ${new Date(nodeDetails.lastActive).toLocaleDateString()}</p>
+                    <p><strong>Total Connections:</strong> ${nodeDetails.degree}</p>
+                </div>
+                
+                <div class="detail-section">
+                    <h4>Transaction Volume</h4>
+                    <p><strong>Incoming:</strong> ${FormatUtils.formatBalance(nodeDetails.totalIncoming)} (${nodeDetails.incomingCount} transfers)</p>
+                    <p><strong>Outgoing:</strong> ${FormatUtils.formatBalance(nodeDetails.totalOutgoing)} (${nodeDetails.outgoingCount} transfers)</p>
+                </div>
+                
+                ${nodeDetails.tags && nodeDetails.tags.length > 0 ? `
+                <div class="detail-section">
+                    <h4>Tags</h4>
+                    <div class="tags">
+                        ${nodeDetails.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+                    </div>
+                </div>
+                ` : ''}
+            </div>
+        `;
+        
+        // Show in a modal or update the side panel
+        this.showModal('Node Investigation', modalContent);
+    }
+    
+    /**
+     * Show a modal with content
+     */
+    showModal(title, content) {
+        // Create modal overlay
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.innerHTML = `
+            <div class="modal">
+                <div class="modal-header">
+                    <h2>${title}</h2>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <div class="modal-content">
+                    ${content}
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(overlay);
+        
+        // Add close functionality
+        overlay.querySelector('.modal-close').addEventListener('click', () => {
+            overlay.remove();
+        });
+        
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                overlay.remove();
+            }
+        });
     }
 }
 

@@ -114,7 +114,8 @@ function isIdentitySearch(query) {
 
 async function fetchAccountData(query) {
   try {
-    const response = await fetch(`/api/addresses/search?q=${encodeURIComponent(query)}&limit=1`);
+    const apiUrl = window.APP_CONFIG?.API_BASE_URL || '';
+    const response = await fetch(`${apiUrl}/api/addresses/search?q=${encodeURIComponent(query)}&limit=1`);
     if (!response.ok) {
       throw new Error(`API error: ${response.status}`);
     }
@@ -126,7 +127,8 @@ async function fetchAccountData(query) {
     
     // If no results from search, try direct address lookup
     if (validateSearchQuery(query).isValid) {
-      const directResponse = await fetch(`/api/addresses/${encodeURIComponent(query)}`);
+      const apiUrl = window.APP_CONFIG?.API_BASE_URL || '';
+      const directResponse = await fetch(`${apiUrl}/api/addresses/${encodeURIComponent(query)}`);
       if (directResponse.ok) {
         return await directResponse.json();
       }

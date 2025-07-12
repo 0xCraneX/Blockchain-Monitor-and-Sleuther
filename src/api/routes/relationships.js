@@ -13,11 +13,11 @@ export function createRelationshipsRouter(databaseService) {
   router.get('/:from/:to/score', async (req, res) => {
     try {
       const { from, to } = req.params;
-      
+
       logger.info(`Calculating relationship score for ${from} -> ${to}`);
-      
+
       const score = await scorer.calculateTotalScore(from, to);
-      
+
       res.json({
         success: true,
         data: {
@@ -51,11 +51,11 @@ export function createRelationshipsRouter(databaseService) {
   router.post('/:from/:to/score', async (req, res) => {
     try {
       const { from, to } = req.params;
-      
+
       logger.info(`Updating relationship score for ${from} -> ${to}`);
-      
+
       const score = await scorer.updateScoresForRelationship(from, to);
-      
+
       res.json({
         success: true,
         data: {
@@ -82,7 +82,7 @@ export function createRelationshipsRouter(databaseService) {
     try {
       const limit = parseInt(req.query.limit) || 100;
       const minScore = parseFloat(req.query.minScore) || 0;
-      
+
       const stmt = databaseService.db.prepare(`
         SELECT 
           ar.*,
@@ -95,9 +95,9 @@ export function createRelationshipsRouter(databaseService) {
         ORDER BY ar.total_score DESC
         LIMIT ?
       `);
-      
+
       const relationships = stmt.all(minScore, limit);
-      
+
       res.json({
         success: true,
         data: relationships
@@ -120,7 +120,7 @@ export function createRelationshipsRouter(databaseService) {
       const minVolumeScore = parseFloat(req.query.minVolumeScore) || 70;
       const minRiskScore = parseFloat(req.query.minRiskScore) || 30;
       const limit = parseInt(req.query.limit) || 50;
-      
+
       const stmt = databaseService.db.prepare(`
         SELECT 
           from_address,
@@ -136,9 +136,9 @@ export function createRelationshipsRouter(databaseService) {
         ORDER BY risk_score DESC
         LIMIT ?
       `);
-      
+
       const relationships = stmt.all(minVolumeScore, minRiskScore, limit);
-      
+
       res.json({
         success: true,
         data: relationships
@@ -159,18 +159,18 @@ export function createRelationshipsRouter(databaseService) {
   router.post('/bulk-score', async (req, res) => {
     try {
       const { relationships } = req.body;
-      
+
       if (!Array.isArray(relationships)) {
         return res.status(400).json({
           success: false,
           error: 'relationships must be an array'
         });
       }
-      
+
       logger.info(`Calculating scores for ${relationships.length} relationships`);
-      
+
       const scores = await scorer.getBulkScores(relationships);
-      
+
       res.json({
         success: true,
         data: {
@@ -230,9 +230,9 @@ export function createRelationshipsRouter(databaseService) {
             ELSE 5
           END
       `);
-      
+
       const distribution = stmt.all();
-      
+
       res.json({
         success: true,
         data: distribution

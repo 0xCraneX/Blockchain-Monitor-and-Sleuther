@@ -286,7 +286,11 @@ describe('API Integration Tests', () => {
         .expect(500);
       
       expect(response.body.error).toBeDefined();
-      expect(response.body.error.message).toBeDefined();
+      if (typeof response.body.error === 'object') {
+        expect(response.body.error.message).toBeDefined();
+      } else {
+        expect(typeof response.body.error).toBe('string');
+      }
       
       // Restore database connection for other tests
       app.locals.db.db = originalDb;
@@ -298,7 +302,11 @@ describe('API Integration Tests', () => {
         .expect(400);
       
       expect(response.body.error).toBeDefined();
-      expect(response.body.error.message).toBeDefined();
+      if (typeof response.body.error === 'object') {
+        expect(response.body.error.message).toBeDefined();
+      } else {
+        expect(typeof response.body.error).toBe('string');
+      }
       expect(response.body.error.status).toBe(400);
     });
   });

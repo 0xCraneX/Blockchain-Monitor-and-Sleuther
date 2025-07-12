@@ -10,13 +10,13 @@ import apiRouter from './api/index.js';
 import { DatabaseService } from './services/DatabaseService.js';
 import { BlockchainService } from './services/BlockchainService.js';
 import { GraphWebSocket } from './services/GraphWebSocket.js';
-import { 
+import {
   configureSecurityHeaders,
   globalLimiter,
   securityMonitoringMiddleware,
   monitor
 } from './security/index.js';
-import { 
+import {
   getWebSocketCorsConfig,
   initializeSecurityConfig,
   validateSecurityEnvironment
@@ -53,7 +53,7 @@ const io = new Server(server, {
     // Additional WebSocket security checks
     const origin = req.headers.origin;
     const allowedOrigins = wsConfig.origin;
-    
+
     if (!origin) {
       if (securityConfig.environment === 'production') {
         return callback(new Error('Origin header required'), false);
@@ -61,7 +61,7 @@ const io = new Server(server, {
       // In development, allow connections without origin header (for local testing)
       return callback(null, true);
     }
-    
+
     if (Array.isArray(allowedOrigins) && !allowedOrigins.includes(origin)) {
       monitor.logSecurityEvent({
         type: 'websocket_unauthorized_origin',
@@ -71,7 +71,7 @@ const io = new Server(server, {
       });
       return callback(new Error('Origin not allowed'), false);
     }
-    
+
     callback(null, true);
   }
 });
@@ -81,14 +81,14 @@ configureSecurityHeaders(app); // Must be first
 app.use(compression());
 app.use(globalLimiter); // Global rate limiting
 app.use(securityMonitoringMiddleware); // Security monitoring
-app.use(express.json({ 
+app.use(express.json({
   limit: '10mb',
   strict: true,
   type: 'application/json'
 }));
-app.use(express.urlencoded({ 
-  extended: false, 
-  limit: '10mb' 
+app.use(express.urlencoded({
+  extended: false,
+  limit: '10mb'
 }));
 app.use(express.static('public', {
   maxAge: securityConfig.environment === 'production' ? '1d' : 0,
@@ -113,26 +113,26 @@ io.on('connection', (socket) => {
     origin: socket.handshake.headers.origin,
     timestamp: new Date().toISOString()
   };
-  
+
   logger.info('WebSocket connection established', clientInfo);
-  
+
   // Track connection for monitoring
   monitor.logSecurityEvent({
     type: 'websocket_connection',
     ...clientInfo
   });
-  
+
   // Set connection limits
   socket.setMaxListeners(10);
-  
+
   // Monitor for unusual activity
   let messageCount = 0;
   const startTime = Date.now();
-  
+
   socket.onAny(() => {
     messageCount++;
     const duration = Date.now() - startTime;
-    
+
     // Rate limiting: max 60 messages per minute
     if (messageCount > 60 && duration < 60000) {
       monitor.logSecurityEvent({
@@ -142,16 +142,16 @@ io.on('connection', (socket) => {
         duration,
         ip: clientInfo.ip
       });
-      
-      socket.emit('error', { 
+
+      socket.emit('error', {
         message: 'Rate limit exceeded',
-        code: 'WEBSOCKET_RATE_LIMIT' 
+        code: 'WEBSOCKET_RATE_LIMIT'
       });
       socket.disconnect(true);
       return;
     }
   });
-  
+
   socket.on('disconnect', (reason) => {
     logger.info('WebSocket disconnected', {
       id: socket.id,
@@ -160,7 +160,7 @@ io.on('connection', (socket) => {
       messageCount
     });
   });
-  
+
   socket.on('error', (error) => {
     monitor.logSecurityEvent({
       type: 'websocket_error',
@@ -181,22 +181,22 @@ async function initialize() {
     const db = new DatabaseService();
     await db.initialize();
     logger.info('Database initialized');
-    
+
     // Initialize blockchain connection
     const blockchain = new BlockchainService();
     await blockchain.connect();
     logger.info('Blockchain connection established');
-    
+
     // Make services available globally
     app.locals.db = db;
     app.locals.blockchain = blockchain;
     app.locals.io = io;
     app.locals.graphWebSocket = graphWebSocket;
-    
+
     // Start server
     const port = process.env.PORT || 3000;
     const host = process.env.HOST || 'localhost';
-    
+
     server.listen(port, host, () => {
       logger.info(`Server running at http://${host}:${port}`);
     });
@@ -234,7 +234,7 @@ process.on('unhandledRejection', (reason, promise) => {
 
 async function shutdown(signal) {
   logger.info(`Received ${signal}, shutting down gracefully...`);
-  
+
   // Log shutdown event for security monitoring
   monitor.logSecurityEvent({
     type: 'server_shutdown',
@@ -242,52 +242,52 @@ async function shutdown(signal) {
     uptime: process.uptime(),
     timestamp: new Date().toISOString()
   });
-  
+
   // Set a timeout for forced shutdown
   const forceShutdownTimeout = setTimeout(() => {
     logger.error('Forced shutdown after timeout');
     process.exit(1);
   }, 10000); // 10 seconds
-  
+
   try {
     // Stop accepting new connections
     server.close(() => {
       logger.info('HTTP server closed');
     });
-    
+
     // Close all WebSocket connections gracefully
-    io.emit('server_shutdown', { 
+    io.emit('server_shutdown', {
       message: 'Server is shutting down',
-      gracePeriod: 5000 
+      gracePeriod: 5000
     });
-    
+
     // Wait a moment for clients to disconnect
     await new Promise(resolve => setTimeout(resolve, 1000));
-    
+
     // Force close any remaining connections
     io.close(() => {
       logger.info('WebSocket server closed');
     });
-    
+
     // Close database connections
     if (app.locals.db) {
       await app.locals.db.close();
       logger.info('Database connections closed');
     }
-    
+
     // Disconnect from blockchain
     if (app.locals.blockchain) {
       await app.locals.blockchain.disconnect();
       logger.info('Blockchain connection closed');
     }
-    
+
     // Final security event log
     monitor.logSecurityEvent({
       type: 'server_shutdown_complete',
       signal,
       uptime: process.uptime()
     });
-    
+
     clearTimeout(forceShutdownTimeout);
     logger.info('Graceful shutdown completed');
     process.exit(0);
@@ -300,3 +300,6 @@ async function shutdown(signal) {
 
 // Start the application
 initialize();
+
+// Export for testing
+export { app, server };

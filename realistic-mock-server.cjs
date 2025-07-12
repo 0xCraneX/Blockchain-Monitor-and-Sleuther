@@ -1,5 +1,6 @@
 const express = require('express');
 const path = require('path');
+const { createProxyMiddleware } = require('http-proxy-middleware');
 
 const app = express();
 const PORT = 3001;
@@ -199,9 +200,35 @@ const graphCache = new Map();
 
 // Middleware
 app.use(express.json());
+
+// Proxy API requests to the backend server on port 3002
+app.use('/api', createProxyMiddleware({
+  target: 'http://localhost:3002',
+  changeOrigin: true,
+  logLevel: 'debug',
+  pathRewrite: {
+    '^/api': '/api'  // Keep the /api prefix
+  },
+  onError: (err, req, res) => {
+    console.error('Proxy error:', err);
+    res.status(502).json({ error: 'Unable to connect to API server' });
+  }
+}));
+
+// Proxy WebSocket connections
+app.use('/socket.io', createProxyMiddleware({
+  target: 'http://localhost:3002',
+  ws: true,
+  changeOrigin: true
+}));
+
 app.use(express.static(path.join(__dirname, 'public')));
 
-// API Routes
+// Remove all the mock API routes since we're proxying to the real server
+// The real API server on port 3002 will handle all /api/* requests
+
+/*
+// API Routes (commented out - using proxy instead)
 app.get('/api/graph/:address', (req, res) => {
   console.log(`API: Graph requested for ${req.params.address}`);
   
@@ -223,16 +250,18 @@ app.get('/api/graph/:address', (req, res) => {
     return BigInt(edge.volume) >= minVolume;
   });
   
-  // Get connected nodes
+  // Get connected nodes - always include the requested address
   const connectedNodeIds = new Set([req.params.address]);
+  
+  // Add all nodes connected by filtered edges
   filteredEdges.forEach(edge => {
     connectedNodeIds.add(edge.source);
     connectedNodeIds.add(edge.target);
   });
   
-  // Filter nodes
+  // If no edges remain after filtering, still include the target node
   const filteredNodes = graphData.nodes.filter(node => 
-    connectedNodeIds.has(node.id)
+    connectedNodeIds.has(node.id) || node.id === req.params.address
   );
   
   res.json({
@@ -277,6 +306,50 @@ app.get('/api/investigations', (req, res) => {
   res.json([]);
 });
 
+// Add the missing nodes endpoint for investigate node functionality
+app.get('/api/nodes/:address', (req, res) => {
+  console.log(`API: Node details requested for ${req.params.address}`);
+  
+  const address = req.params.address;
+  const graphData = graphCache.get(address) || generateRealisticData(address);
+  
+  // Find the specific node
+  const node = graphData.nodes.find(n => n.address === address);
+  
+  if (!node) {
+    return res.status(404).json({ error: 'Node not found' });
+  }
+  
+  // Calculate additional details
+  const incomingEdges = graphData.edges.filter(e => e.target === address);
+  const outgoingEdges = graphData.edges.filter(e => e.source === address);
+  
+  const totalIncoming = incomingEdges.reduce((sum, e) => sum + BigInt(e.volume || 0), BigInt(0));
+  const totalOutgoing = outgoingEdges.reduce((sum, e) => sum + BigInt(e.volume || 0), BigInt(0));
+  
+  res.json({
+    address: node.address,  // Full address, not abbreviated
+    identity: node.identity || null,
+    nodeType: node.nodeType || 'regular',
+    balance: node.balance || "0",
+    firstSeen: Date.now() - Math.floor(Math.random() * 30 * 24 * 60 * 60 * 1000), // Random date within 30 days
+    lastActive: Date.now() - Math.floor(Math.random() * 24 * 60 * 60 * 1000), // Random date within 24 hours
+    totalIncoming: totalIncoming.toString(),
+    totalOutgoing: totalOutgoing.toString(),
+    incomingCount: incomingEdges.length,
+    outgoingCount: outgoingEdges.length,
+    degree: node.degree || (incomingEdges.length + outgoingEdges.length),
+    tags: node.nodeType === 'exchange' ? ['Exchange'] : 
+          node.nodeType === 'validator' ? ['Validator'] : 
+          node.nodeType === 'mixer' ? ['Mixer', 'High Risk'] : [],
+    metadata: {
+      hasSubIdentity: false,
+      hasProxy: false,
+      isMultisig: false
+    }
+  });
+});
+
 app.get('/api/relationships/:address', (req, res) => {
   console.log(`API: Relationships requested for ${req.params.address}`);
   
@@ -302,6 +375,7 @@ app.get('/api/stats/:address', (req, res) => {
     totalVolume: graphData.metadata.totalVolume
   });
 });
+*/
 
 // Serve frontend for all other routes
 app.get('*', (req, res) => {
@@ -309,10 +383,8 @@ app.get('*', (req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Realistic mock server running at http://0.0.0.0:${PORT}`);
-  console.log(`Graph now shows:`);
-  console.log(`- Target address with balance`);
-  console.log(`- Multiple exchanges, validators, and regular accounts`);
-  console.log(`- Transfer amounts on edges`);
-  console.log(`- Realistic DOT amounts`);
+  console.log(`Frontend server running at http://0.0.0.0:${PORT}`);
+  console.log(`Proxying API requests to backend at http://localhost:3002`);
+  console.log(`- All /api/* requests will be forwarded to the backend`);
+  console.log(`- WebSocket connections will be proxied via /socket.io`);
 });

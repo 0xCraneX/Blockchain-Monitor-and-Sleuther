@@ -56,7 +56,7 @@ export class D3Formatter {
    */
   formatForceGraph(nodes, edges, options = {}) {
     const startTime = Date.now();
-    
+
     try {
       logger.info('Formatting data for D3.js force-directed graph', {
         nodeCount: nodes.length,
@@ -68,38 +68,38 @@ export class D3Formatter {
         const size = this.calculateNodeSize(node);
         const color = this.calculateNodeColor(node);
         const opacity = this.calculateNodeOpacity(node);
-        
+
         return {
           // Core D3 properties
           id: node.address,
-          
+
           // Original data
           ...node,
-          
+
           // Visual properties
           size,
           color,
           opacity,
-          
+
           // Physics properties
           radius: size / 2,
           mass: Math.max(1, size / 20),
-          
+
           // Labels and display
           label: this.getNodeLabel(node),
           shortLabel: this.getShortNodeLabel(node),
-          
+
           // Group for styling
           group: this.getNodeGroup(node),
-          
+
           // Fixed position (if specified in API)
           fx: node.fixedPosition?.x || null,
           fy: node.fixedPosition?.y || null,
-          
+
           // Additional visual hints
           strokeWidth: this.calculateStrokeWidth(node),
           strokeColor: this.calculateStrokeColor(node),
-          
+
           // Tooltip data
           tooltip: this.generateNodeTooltip(node)
         };
@@ -110,27 +110,27 @@ export class D3Formatter {
         const width = this.calculateEdgeWidth(edge);
         const color = this.calculateEdgeColor(edge);
         const opacity = this.calculateEdgeOpacity(edge);
-        
+
         return {
           // Core D3 properties
           source: edge.source,
           target: edge.target,
           id: edge.id || `${edge.source}-${edge.target}`,
-          
+
           // Original data
           ...edge,
-          
+
           // Visual properties
           width,
           color,
           opacity,
-          
+
           // Line styling
           strokeDasharray: this.calculateDashArray(edge),
-          
+
           // Animation
           animated: edge.animated || false,
-          
+
           // Tooltip data
           tooltip: this.generateEdgeTooltip(edge)
         };
@@ -170,7 +170,7 @@ export class D3Formatter {
    */
   calculateNodeSize(node) {
     const { min, max, default: defaultSize } = this.options.nodeSize;
-    
+
     try {
       // Base size factors
       let sizeFactor = 0;
@@ -280,7 +280,7 @@ export class D3Formatter {
    */
   calculateEdgeWidth(edge) {
     const { min, max, default: defaultWidth } = this.options.edgeWidth;
-    
+
     try {
       // Volume-based width
       if (edge.volume) {
@@ -308,11 +308,11 @@ export class D3Formatter {
    * @returns {number} Opacity value (0-1)
    */
   calculateNodeOpacity(node) {
-    const { min, max, default: defaultOpacity } = this.options.opacity;
-    
+    const { max, default: defaultOpacity } = this.options.opacity;
+
     try {
       const now = Date.now() / 1000; // Convert to seconds
-      
+
       // Recency factor
       if (node.lastActive) {
         const daysSinceActive = (now - node.lastActive) / 86400; // Days
@@ -337,15 +337,15 @@ export class D3Formatter {
 
   /**
    * Calculate edge opacity based on recency
-   * @param {Object} edge - Edge object  
+   * @param {Object} edge - Edge object
    * @returns {number} Opacity value (0-1)
    */
   calculateEdgeOpacity(edge) {
     const { min, max, default: defaultOpacity } = this.options.opacity;
-    
+
     try {
       const now = Date.now() / 1000;
-      
+
       if (edge.lastTransfer) {
         const daysSinceTransfer = (now - edge.lastTransfer) / 86400;
         if (daysSinceTransfer < 1) {
@@ -403,21 +403,21 @@ export class D3Formatter {
    * @param {Object} options - Layout options
    * @returns {Object} Layout configuration
    */
-  addLayoutHints(graph, options = {}) {
+  addLayoutHints(graph, _options = {}) {
     try {
       const nodeCount = graph.nodes.length;
       const linkCount = graph.links?.length || graph.edges?.length || 0;
-      
+
       // Adjust force parameters based on graph size
       const forceConfig = { ...this.options.force };
-      
+
       // Scale charge strength with node count
       forceConfig.chargeStrength = -Math.max(100, Math.min(1000, nodeCount * 5));
-      
+
       // Scale link distance with density
       const density = linkCount / (nodeCount * (nodeCount - 1) / 2);
       forceConfig.linkDistance = Math.max(30, Math.min(200, 80 / Math.max(0.01, density)));
-      
+
       // Adjust collision radius based on average node size
       const avgNodeSize = graph.nodes.reduce((sum, n) => sum + (n.size || 40), 0) / nodeCount;
       forceConfig.collideRadius = avgNodeSize * 0.6;
@@ -448,16 +448,16 @@ export class D3Formatter {
    * @param {Object} options - Formatting options
    * @returns {Object} D3.js tree format
    */
-  formatHierarchicalGraph(rootNode, options = {}) {
+  formatHierarchicalGraph(rootNode, _options = {}) {
     const startTime = Date.now();
-    
+
     try {
       logger.info('Formatting hierarchical graph', { rootAddress: rootNode.address });
 
       const formatNode = (node, depth = 0) => {
         const size = this.calculateNodeSize(node) * (1 - depth * 0.1); // Smaller at deeper levels
         const color = this.calculateNodeColor(node);
-        
+
         const formatted = {
           id: node.address,
           name: this.getNodeLabel(node),
@@ -477,7 +477,7 @@ export class D3Formatter {
       };
 
       const formattedTree = formatNode(rootNode);
-      
+
       const executionTime = Date.now() - startTime;
       logger.info(`Hierarchical graph formatted in ${executionTime}ms`);
 
@@ -503,15 +503,15 @@ export class D3Formatter {
    * @param {Object} options - Formatting options
    * @returns {Object} D3.js Sankey format
    */
-  formatSankeyDiagram(flows, options = {}) {
+  formatSankeyDiagram(flows, _options = {}) {
     const startTime = Date.now();
-    
+
     try {
       logger.info('Formatting Sankey diagram', { flowCount: flows.length });
 
       // Extract unique nodes from flows
       const nodeMap = new Map();
-      
+
       flows.forEach(flow => {
         if (!nodeMap.has(flow.source)) {
           nodeMap.set(flow.source, {
@@ -521,7 +521,7 @@ export class D3Formatter {
             category: this.getSankeyCategory(flow.sourceType)
           });
         }
-        
+
         if (!nodeMap.has(flow.target)) {
           nodeMap.set(flow.target, {
             id: flow.target,
@@ -583,17 +583,23 @@ export class D3Formatter {
 
   getShortNodeLabel(node) {
     const label = this.getNodeLabel(node);
-    return label.length > 20 ? label.substring(0, 17) + '...' : label;
+    return label.length > 20 ? `${label.substring(0, 17)  }...` : label;
   }
 
   shortenAddress(address) {
-    if (!address || address.length < 10) return address;
+    if (!address || address.length < 10) {
+      return address;
+    }
     return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
   }
 
   getNodeGroup(node) {
-    if (node.clusterId) return node.clusterId;
-    if (node.nodeType) return node.nodeType;
+    if (node.clusterId) {
+      return node.clusterId;
+    }
+    if (node.nodeType) {
+      return node.nodeType;
+    }
     return 'default';
   }
 
@@ -637,12 +643,12 @@ export class D3Formatter {
 
   calculateViewport(graph) {
     const nodeCount = graph.nodes.length;
-    
+
     // Estimate required space based on node count
     const baseSize = Math.sqrt(nodeCount) * 100;
     const width = Math.max(800, Math.min(2000, baseSize));
     const height = Math.max(600, Math.min(1500, baseSize * 0.75));
-    
+
     return {
       width,
       height,
@@ -655,7 +661,7 @@ export class D3Formatter {
   generateClusteringHints(graph) {
     // Group nodes by cluster for visual hints
     const clusters = new Map();
-    
+
     graph.nodes.forEach(node => {
       const clusterKey = node.clusterId || node.group || 'default';
       if (!clusters.has(clusterKey)) {
@@ -686,7 +692,7 @@ export class D3Formatter {
   generateRenderingHints(graph) {
     const nodeCount = graph.nodes.length;
     const linkCount = graph.links?.length || 0;
-    
+
     return {
       complexity: this.assessComplexity(nodeCount, linkCount),
       performance: {
@@ -705,9 +711,15 @@ export class D3Formatter {
 
   assessComplexity(nodeCount, linkCount) {
     const score = nodeCount + linkCount * 2;
-    if (score < 100) return 'low';
-    if (score < 500) return 'medium';
-    if (score < 2000) return 'high';
+    if (score < 100) {
+      return 'low';
+    }
+    if (score < 500) {
+      return 'medium';
+    }
+    if (score < 2000) {
+      return 'high';
+    }
     return 'very_high';
   }
 
@@ -748,29 +760,29 @@ export class D3Formatter {
 
   generateNodeTooltip(node) {
     const parts = [];
-    
+
     parts.push(`Address: ${this.shortenAddress(node.address)}`);
-    
+
     if (node.identity?.display) {
       parts.push(`Identity: ${node.identity.display}`);
     }
-    
+
     if (node.nodeType) {
       parts.push(`Type: ${node.nodeType}`);
     }
-    
+
     if (node.balance?.free) {
       parts.push(`Balance: ${this.formatBalance(node.balance.free)}`);
     }
-    
+
     if (node.degree !== undefined) {
       parts.push(`Connections: ${node.degree}`);
     }
-    
+
     if (node.totalVolume) {
       parts.push(`Volume: ${this.formatVolume(node.totalVolume)}`);
     }
-    
+
     if (node.riskScore !== undefined) {
       parts.push(`Risk Score: ${node.riskScore}/100`);
     }
@@ -780,22 +792,22 @@ export class D3Formatter {
 
   generateEdgeTooltip(edge) {
     const parts = [];
-    
+
     parts.push(`From: ${this.shortenAddress(edge.source)}`);
     parts.push(`To: ${this.shortenAddress(edge.target)}`);
-    
+
     if (edge.count) {
       parts.push(`Transactions: ${edge.count}`);
     }
-    
+
     if (edge.volume) {
       parts.push(`Volume: ${this.formatVolume(edge.volume)}`);
     }
-    
+
     if (edge.firstTransfer) {
       parts.push(`First: ${new Date(edge.firstTransfer * 1000).toLocaleDateString()}`);
     }
-    
+
     if (edge.lastTransfer) {
       parts.push(`Last: ${new Date(edge.lastTransfer * 1000).toLocaleDateString()}`);
     }

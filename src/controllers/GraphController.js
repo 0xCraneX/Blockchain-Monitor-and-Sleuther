@@ -1,11 +1,11 @@
-import { 
-  logger, 
-  createLogger, 
-  logMethodEntry, 
-  logMethodExit, 
-  logError, 
-  startPerformanceTimer, 
-  endPerformanceTimer 
+import {
+  logger,
+  createLogger,
+  logMethodEntry,
+  logMethodExit,
+  logError,
+  startPerformanceTimer,
+  endPerformanceTimer
 } from '../utils/logger.js';
 
 const controllerLogger = createLogger('GraphController');
@@ -17,14 +17,14 @@ const controllerLogger = createLogger('GraphController');
 export class GraphController {
   constructor(databaseService, graphQueries, relationshipScorer, pathFinder, graphMetrics, realDataService) {
     const trackerId = logMethodEntry('GraphController', 'constructor');
-    
+
     this.db = databaseService;
     this.graphQueries = graphQueries;
     this.relationshipScorer = relationshipScorer;
     this.pathFinder = pathFinder;
     this.graphMetrics = graphMetrics;
     this.realDataService = realDataService;
-    
+
     controllerLogger.info('GraphController initialized with all services');
     logMethodExit('GraphController', 'constructor', trackerId);
   }
@@ -40,7 +40,7 @@ export class GraphController {
     });
     const startTime = Date.now();
     const perfTimer = startPerformanceTimer('graph_generation');
-    
+
     try {
       const { address } = req.params;
       const {
@@ -76,7 +76,7 @@ export class GraphController {
       const accountLookupTimer = startPerformanceTimer('account_lookup');
       const centerAccount = this.db.getAccount(address);
       endPerformanceTimer(accountLookupTimer, 'account_lookup');
-      
+
       if (!centerAccount) {
         controllerLogger.warn(`Address not found in database: ${address}`);
         logMethodExit('GraphController', 'getGraph', methodTrackerId);
@@ -92,7 +92,7 @@ export class GraphController {
           }
         });
       }
-      
+
       controllerLogger.debug('Center account found', {
         address,
         balance: centerAccount.free_balance,
@@ -112,21 +112,21 @@ export class GraphController {
       // Get graph data - Try real data first if available
       let graphData;
       const graphQueryTimer = startPerformanceTimer('graph_query');
-      
+
       try {
         // Check if we have real data service
         if (this.realDataService && !process.env.SKIP_BLOCKCHAIN) {
           controllerLogger.info('Using real blockchain data');
           const realDataTimer = startPerformanceTimer('real_data_fetch');
-          
+
           const realGraphData = await this.realDataService.buildGraphData(address, depth, {
             maxNodes,
             minVolume,
             direction
           });
-          
+
           endPerformanceTimer(realDataTimer, 'real_data_fetch');
-          
+
           // Convert to expected format
           graphData = {
             nodes: realGraphData.nodes.map(n => ({
@@ -135,7 +135,7 @@ export class GraphController {
             })),
             edges: realGraphData.edges
           };
-          
+
           controllerLogger.info(`Real data retrieved: ${graphData.nodes.length} nodes, ${graphData.edges.length} edges`);
         } else {
           // Use database queries
@@ -152,9 +152,9 @@ export class GraphController {
               limit: maxNodes
             });
           }
-          
+
           controllerLogger.info(`Graph data retrieved: ${graphData.nodes.length} nodes, ${graphData.edges.length} edges`);
-          
+
           // If no graph data, fallback to relationship-based graph
           if (!graphData.nodes || graphData.nodes.length === 0) {
             controllerLogger.info('No graph data from queries, falling back to relationships');
@@ -163,13 +163,13 @@ export class GraphController {
             endPerformanceTimer(relationshipTimer, 'relationship_fallback');
           }
         }
-        
+
         endPerformanceTimer(graphQueryTimer, 'graph_query');
       } catch (error) {
         endPerformanceTimer(graphQueryTimer, 'graph_query');
         logError(error, { context: 'graph_data_query', address, depth });
         controllerLogger.error('Error getting graph data, using relationships fallback');
-        
+
         const relationshipTimer = startPerformanceTimer('relationship_fallback_error');
         graphData = await this._buildGraphFromRelationships(address, { minVolume, limit: maxNodes });
         endPerformanceTimer(relationshipTimer, 'relationship_fallback_error');
@@ -200,7 +200,7 @@ export class GraphController {
       } catch (error) {
         controllerLogger.warn('Failed to calculate clustering coefficient', { error: error.message });
       }
-      
+
       d3Graph.metadata = {
         ...d3Graph.metadata,
         totalNodes: d3Graph.nodes.length,
@@ -233,14 +233,14 @@ export class GraphController {
 
     } catch (error) {
       endPerformanceTimer(perfTimer, 'graph_generation');
-      logError(error, { 
+      logError(error, {
         context: 'getGraph',
         address: req.params.address,
         query: req.query,
         stage: 'graph_generation'
       });
       logger.error(`Error in getGraph: ${error.message}`);
-      
+
       if (error.message.includes('Depth must be between')) {
         return res.status(400).json({
           error: {
@@ -369,7 +369,7 @@ export class GraphController {
 
     } catch (error) {
       logger.error('Error in getShortestPath:', error);
-      
+
       if (error.message.includes('timeout')) {
         return res.status(504).json({
           error: {
@@ -479,10 +479,10 @@ export class GraphController {
 
     try {
       const { address } = req.params;
-      const { 
-        depth = 2, 
-        timeWindow = 86400, 
-        sensitivity = 'medium' 
+      const {
+        depth = 2,
+        timeWindow = 86400,
+        sensitivity = 'medium'
       } = req.query;
 
       logger.info(`Detecting patterns for ${address}`, { depth, timeWindow, sensitivity });
@@ -604,7 +604,7 @@ export class GraphController {
         });
       }
 
-      logger.info(`Expanding graph`, { cursor: cursor.slice(0, 20) + '...', limit, direction });
+      logger.info(`Expanding graph`, { cursor: `${cursor.slice(0, 20)  }...`, limit, direction });
 
       // Decode cursor
       let cursorData;
@@ -614,11 +614,11 @@ export class GraphController {
         cursorData = JSON.parse(decodedString);
         controllerLogger.debug('Parsed cursor data:', cursorData);
       } catch (e) {
-        controllerLogger.warn('Failed to decode cursor as JSON, checking if it looks like an address', { 
-          cursor: cursor.slice(0, 20) + '...', 
-          error: e.message 
+        controllerLogger.warn('Failed to decode cursor as JSON, checking if it looks like an address', {
+          cursor: `${cursor.slice(0, 20)  }...`,
+          error: e.message
         });
-        
+
         // Check if cursor looks like a Substrate address (48+ characters, alphanumeric)
         if (cursor.length >= 48 && /^[1-9A-HJ-NP-Za-km-z]+$/.test(cursor)) {
           controllerLogger.info('Cursor appears to be a Substrate address, treating as center address for expansion');
@@ -636,7 +636,7 @@ export class GraphController {
               message: 'Invalid cursor format - must be base64 encoded JSON or valid Substrate address',
               status: 400,
               details: {
-                cursor: cursor.slice(0, 20) + '...',
+                cursor: `${cursor.slice(0, 20)  }...`,
                 error: e.message
               }
             }
@@ -758,7 +758,7 @@ export class GraphController {
         addedNodes: limitedNodes.length,
         addedEdges: filteredEdges.length,
         hasMore,
-        nextCursor: nextCursor ? nextCursor.slice(0, 20) + '...' : null
+        nextCursor: nextCursor ? `${nextCursor.slice(0, 20)  }...` : null
       });
 
       res.json(result);
@@ -782,44 +782,44 @@ export class GraphController {
    * @private
    */
   async _transformToD3Format(graphData, options) {
-    const { centerAddress, includeRiskScores, filters, layout } = options;
-    
+    const { includeRiskScores } = options;
+
     // Transform nodes
     const d3Nodes = await Promise.all(graphData.nodes.map(async (node) => {
       const d3Node = {
         // Core properties
         address: node.address,
-        
+
         // Identity data
         identity: node.identity ? {
           display: node.identity,
           isConfirmed: true,
           isInvalid: false
         } : null,
-        
+
         // Balance information
         balance: node.balance ? {
           free: node.balance,
           reserved: '0',
           frozen: '0'
         } : null,
-        
+
         // Enhanced properties
         nodeType: node.nodeType || 'regular',
-        
+
         // Graph metrics
         degree: node.metrics?.degree || 0,
         inDegree: node.metrics?.inDegree || 0,
         outDegree: node.metrics?.outDegree || 0,
         totalVolume: node.metrics?.totalVolume || '0',
-        
+
         // Visual hints
         suggestedSize: this._calculateNodeSize(node),
         suggestedColor: this._getNodeColor(node),
-        
+
         // Temporal data
         firstSeen: Math.floor(Date.now() / 1000), // Placeholder
-        lastActive: Math.floor(Date.now() / 1000), // Placeholder
+        lastActive: Math.floor(Date.now() / 1000) // Placeholder
       };
 
       // Add risk data if requested
@@ -839,24 +839,24 @@ export class GraphController {
       target: edge.target,
       count: edge.transferCount || 1,
       volume: edge.volume || '0',
-      
+
       // Edge type
       edgeType: 'transfer',
-      
+
       // Temporal data
       firstTransfer: edge.firstTransferTime || Math.floor(Date.now() / 1000),
       lastTransfer: edge.lastTransferTime || Math.floor(Date.now() / 1000),
-      
+
       // Risk indicators
       suspiciousPattern: false,
       patternType: null,
-      
+
       // Visual hints
       suggestedWidth: this._calculateEdgeWidth(edge),
       suggestedColor: '#2196F3',
       suggestedOpacity: 0.8,
       animated: false,
-      
+
       // Direction hints
       bidirectional: false,
       dominantDirection: 'forward'
@@ -902,7 +902,9 @@ export class GraphController {
    * @private
    */
   _calculateNetworkDensity(nodeCount, edgeCount) {
-    if (nodeCount <= 1) return 0;
+    if (nodeCount <= 1) {
+      return 0;
+    }
     const maxPossibleEdges = nodeCount * (nodeCount - 1);
     return edgeCount / maxPossibleEdges;
   }
@@ -915,7 +917,7 @@ export class GraphController {
     // Sample a few nodes for performance
     const sampleSize = Math.min(10, nodes.length);
     const sampleNodes = nodes.slice(0, sampleSize);
-    
+
     let totalCoefficient = 0;
     let validNodes = 0;
 
@@ -941,7 +943,7 @@ export class GraphController {
     try {
       const addresses = nodes.map(n => n.address);
       const communityResult = this.graphMetrics.detectCommunities(addresses, algorithm);
-      
+
       return communityResult.communities.map((community, index) => ({
         clusterId: `cluster_${algorithm}_${index}`,
         nodes: community.members,
@@ -971,8 +973,12 @@ export class GraphController {
    */
   _calculateRenderingComplexity(nodeCount, edgeCount) {
     const totalElements = nodeCount + edgeCount;
-    if (totalElements < 50) return 'low';
-    if (totalElements < 200) return 'medium';
+    if (totalElements < 50) {
+      return 'low';
+    }
+    if (totalElements < 200) {
+      return 'medium';
+    }
     return 'high';
   }
 
@@ -982,9 +988,13 @@ export class GraphController {
    */
   _suggestLayout(nodeCount, edgeCount) {
     const density = this._calculateNetworkDensity(nodeCount, edgeCount);
-    
-    if (nodeCount < 20) return 'circular';
-    if (density > 0.1) return 'hierarchical';
+
+    if (nodeCount < 20) {
+      return 'circular';
+    }
+    if (density > 0.1) {
+      return 'hierarchical';
+    }
     return 'force';
   }
 
@@ -1034,7 +1044,9 @@ export class GraphController {
    * @private
    */
   _calculateBottleneckVolume(edges) {
-    if (edges.length === 0) return '0';
+    if (edges.length === 0) {
+      return '0';
+    }
     return edges.reduce((min, edge) => {
       const vol = BigInt(edge.volume || '0');
       return min === null || vol < min ? vol : min;
@@ -1072,17 +1084,17 @@ export class GraphController {
   _calculateEdgeWidth(edge) {
     // Handle edge volume safely - BigInt cannot handle decimals
     let volumeStr = edge.volume || '0';
-    
+
     // If volume is a number, convert to string
     if (typeof volumeStr === 'number') {
       volumeStr = Math.floor(volumeStr).toString();
     }
-    
+
     // Remove decimal part if present
     if (volumeStr.includes('.')) {
       volumeStr = volumeStr.split('.')[0];
     }
-    
+
     const volume = Number(BigInt(volumeStr)) / 1e12; // Convert to DOT
     return Math.min(10, Math.max(1, Math.log10(volume + 1) * 2));
   }
@@ -1100,7 +1112,7 @@ export class GraphController {
    * Calculate closeness centrality approximation
    * @private
    */
-  async _calculateClosenessCentrality(address) {
+  async _calculateClosenessCentrality(_address) {
     // Simplified calculation - would need shortest paths to all nodes
     return 0.0156; // Placeholder
   }
@@ -1109,7 +1121,7 @@ export class GraphController {
    * Calculate node rankings
    * @private
    */
-  async _calculateNodeRankings(address, metrics) {
+  async _calculateNodeRankings(_address, _metrics) {
     // This would require comparing with all other nodes
     // For now, return placeholders
     return {
@@ -1126,7 +1138,7 @@ export class GraphController {
    */
   _classifyNodeInfluence(metrics, rankings) {
     const avgRank = Object.values(rankings).reduce((a, b) => a + b, 0) / Object.values(rankings).length;
-    
+
     let category, influence;
     if (avgRank <= 20) {
       category = 'hub';
@@ -1197,7 +1209,7 @@ export class GraphController {
    * Calculate risk assessment
    * @private
    */
-  _calculateRiskAssessment(patterns, address) {
+  _calculateRiskAssessment(patterns, _address) {
     const weights = {
       'circular_flow': 30,
       'rapid_sequential': 20,
@@ -1211,7 +1223,7 @@ export class GraphController {
       const weight = weights[pattern.type] || 5;
       const contribution = weight * pattern.confidence;
       overallRisk += contribution;
-      
+
       riskFactors.push(pattern.type);
     });
 
@@ -1240,20 +1252,20 @@ export class GraphController {
    */
   async _buildGraphFromRelationships(address, options = {}) {
     const { minVolume = '0', limit = 100 } = options;
-    
+
     try {
       logger.info(`Building graph from relationships for ${address}`);
-      
+
       // Get relationships using the same method as the relationships API
       const relationships = this.db.getRelationships(address, {
         depth: 1,
         minVolume,
         limit
       });
-      
+
       const nodes = new Map();
       const edges = [];
-      
+
       // Add center node
       const centerAccount = this.db.getAccount(address);
       nodes.set(address, {
@@ -1265,15 +1277,15 @@ export class GraphController {
         hopLevel: 0,
         metrics: {
           degree: relationships.length,
-          totalVolume: relationships.reduce((sum, rel) => 
+          totalVolume: relationships.reduce((sum, rel) =>
             BigInt(sum) + BigInt(rel.total_volume || '0'), BigInt(0)).toString()
         }
       });
-      
+
       // Add connected nodes and edges
-      relationships.forEach((rel, index) => {
+      relationships.forEach((rel, _index) => {
         const connectedAddr = rel.connected_address;
-        
+
         // Add connected node
         if (!nodes.has(connectedAddr)) {
           const connectedAccount = this.db.getAccount(connectedAddr);
@@ -1290,7 +1302,7 @@ export class GraphController {
             }
           });
         }
-        
+
         // Add edge
         edges.push({
           id: `${address}->${connectedAddr}`,
@@ -1304,9 +1316,9 @@ export class GraphController {
           direction: rel.outgoing_count > rel.incoming_count ? 'outgoing' : 'incoming'
         });
       });
-      
+
       logger.info(`Built graph from relationships: ${nodes.size} nodes, ${edges.length} edges`);
-      
+
       return {
         nodes: Array.from(nodes.values()),
         edges: edges,
@@ -1316,7 +1328,7 @@ export class GraphController {
           source: 'relationships'
         }
       };
-      
+
     } catch (error) {
       logger.error('Error building graph from relationships:', error);
       return {

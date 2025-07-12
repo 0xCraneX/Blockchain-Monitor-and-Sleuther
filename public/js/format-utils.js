@@ -14,7 +14,14 @@ class FormatUtils {
      */
     static formatNumber(value, decimals = 10, formatDecimals = 2, ticker = 'DOT') {
         // Convert to BigInt if not already
-        const bigValue = typeof value === 'bigint' ? value : BigInt(value || 0);
+        // Handle decimal numbers by truncating to integer
+        let processedValue = value;
+        if (typeof value === 'number' && !Number.isInteger(value)) {
+            processedValue = Math.floor(value);
+        } else if (typeof value === 'string' && value.includes('.')) {
+            processedValue = value.split('.')[0];
+        }
+        const bigValue = typeof processedValue === 'bigint' ? processedValue : BigInt(processedValue || 0);
         
         // Convert to string and pad with zeros
         let str = bigValue.toString();
@@ -78,9 +85,19 @@ class FormatUtils {
      * Used for stroke width, opacity, etc.
      */
     static getVisualScale(value, min, max) {
-        const bigValue = typeof value === 'bigint' ? value : BigInt(value || 0);
-        const bigMin = typeof min === 'bigint' ? min : BigInt(min || 0);
-        const bigMax = typeof max === 'bigint' ? max : BigInt(max || 1);
+        // Handle decimal numbers by truncating to integer
+        const processValue = (v) => {
+            if (typeof v === 'number' && !Number.isInteger(v)) {
+                return Math.floor(v);
+            } else if (typeof v === 'string' && v.includes('.')) {
+                return v.split('.')[0];
+            }
+            return v;
+        };
+        
+        const bigValue = typeof value === 'bigint' ? value : BigInt(processValue(value) || 0);
+        const bigMin = typeof min === 'bigint' ? min : BigInt(processValue(min) || 0);
+        const bigMax = typeof max === 'bigint' ? max : BigInt(processValue(max) || 1);
         
         if (bigValue <= bigMin) return 0;
         if (bigValue >= bigMax) return 1;

@@ -31,7 +31,7 @@ const validate = (schema, property = 'query') => {
 router.get('/', validate(statsQuerySchema), async (req, res, next) => {
   try {
     const { metric, days } = req.query;
-    
+
     if (metric) {
       // Get specific metric
       const stats = req.app.locals.db.getStatistics(metric, days);
@@ -49,7 +49,7 @@ router.get('/', validate(statsQuerySchema), async (req, res, next) => {
         lastSyncBlock: 0,
         syncStatus: 'idle'
       };
-      
+
       // TODO: Calculate actual stats from database
       res.json(overview);
     }
@@ -62,7 +62,7 @@ router.get('/sync', async (req, res, next) => {
   try {
     const chainId = req.query.chain || 'polkadot';
     const syncStatus = req.app.locals.db.getSyncStatus(chainId);
-    
+
     res.json({
       chainId,
       status: syncStatus || {

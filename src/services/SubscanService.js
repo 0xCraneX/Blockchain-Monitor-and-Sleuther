@@ -11,7 +11,7 @@ export class SubscanService {
       'Content-Type': 'application/json',
       'User-Agent': 'polkadot-analysis-tool/1.0'
     };
-    
+
     if (this.apiKey) {
       this.headers['X-API-Key'] = this.apiKey;
     }
@@ -19,9 +19,9 @@ export class SubscanService {
 
   async request(path, data = {}) {
     const url = `${this.endpoint}${path}`;
-    
+
     logger.debug('Subscan API request', { path, hasApiKey: !!this.apiKey });
-    
+
     try {
       const response = await fetch(url, {
         method: 'POST',
@@ -34,7 +34,7 @@ export class SubscanService {
       }
 
       const result = await response.json();
-      
+
       if (result.code !== 0) {
         throw new Error(`Subscan API error: ${result.message || 'Unknown error'}`);
       }
@@ -53,14 +53,14 @@ export class SubscanService {
   async getAccountInfo(address) {
     try {
       const data = await this.request('/api/v2/scan/accounts', { address: [address] });
-      
+
       // API returns a list, get the first item if available
       const account = data.list && data.list.length > 0 ? data.list[0] : null;
-      
+
       if (!account) {
         return null;
       }
-      
+
       return {
         address: account.address || address,
         identity: {
@@ -105,12 +105,18 @@ export class SubscanService {
         page
       };
 
-      if (from_block) params.from_block = from_block;
-      if (to_block) params.to_block = to_block;
-      if (direction !== 'all') params.direction = direction;
+      if (from_block) {
+        params.from_block = from_block;
+      }
+      if (to_block) {
+        params.to_block = to_block;
+      }
+      if (direction !== 'all') {
+        params.direction = direction;
+      }
 
       const data = await this.request('/api/v2/scan/transfers', params);
-      
+
       return {
         transfers: (data.transfers || []).map(t => ({
           hash: t.hash,
@@ -138,7 +144,7 @@ export class SubscanService {
    */
   async getAccountRelationships(address, options = {}) {
     const { limit = 100 } = options;
-    
+
     try {
       // Get both sent and received transfers
       const [sent, received] = await Promise.all([
@@ -202,8 +208,8 @@ export class SubscanService {
         total_volume: (rel.sent_volume + rel.received_volume).toString(),
         first_interaction: rel.first_interaction,
         last_interaction: rel.last_interaction,
-        relationship_type: rel.sent_count > 0 && rel.received_count > 0 ? 'bidirectional' : 
-                          rel.sent_count > 0 ? 'outgoing' : 'incoming'
+        relationship_type: rel.sent_count > 0 && rel.received_count > 0 ? 'bidirectional' :
+          rel.sent_count > 0 ? 'outgoing' : 'incoming'
       }));
 
       // Sort by total volume descending
@@ -223,7 +229,7 @@ export class SubscanService {
   /**
    * Search for accounts by address or identity
    */
-  async searchAccounts(query, limit = 10) {
+  async searchAccounts(query, _limit = 10) {
     try {
       // First try direct address lookup
       if (query.length > 40) {
@@ -236,7 +242,7 @@ export class SubscanService {
       // For identity search, we need to use a different approach
       // Subscan doesn't have a direct identity search endpoint in free tier
       // Would need to implement local caching or use paid features
-      
+
       logger.info('Identity search requires Subscan paid tier or local indexing');
       return [];
     } catch (error) {

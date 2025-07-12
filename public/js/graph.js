@@ -19,15 +19,15 @@ class PolkadotGraphVisualization {
             width: options.width || 1200,
             height: options.height || 600,
             
-            // Force simulation settings - optimized for manual control
+            // Force simulation settings - improved spacing and slower convergence
             forces: {
-                charge: options.chargeStrength || -150,
-                linkDistance: options.linkDistance || 100,
-                linkStrength: options.linkStrength || 0.3,
-                collideRadius: options.collideRadius || 15,
-                alpha: options.alpha || 0.3,
-                alphaDecay: options.alphaDecay || 0.05,
-                velocityDecay: options.velocityDecay || 0.8
+                charge: options.chargeStrength || -800,           // Stronger repulsion between nodes
+                linkDistance: options.linkDistance || 150,        // Shorter default links for tighter network
+                linkStrength: options.linkStrength || 0.3,        // Slightly stronger link force
+                collideRadius: options.collideRadius || 45,       // Larger collision radius to prevent overlap
+                alpha: options.alpha || 0.3,                      // Lower starting energy for smoother animation
+                alphaDecay: options.alphaDecay || 0.008,          // Much slower decay to prevent rapid clustering
+                velocityDecay: options.velocityDecay || 0.4       // Lower velocity decay for smoother movement
             },
             
             // Visual styling
@@ -247,7 +247,9 @@ class PolkadotGraphVisualization {
                 this.config.width / 2, 
                 this.config.height / 2))
             .force('collision', d3.forceCollide()
-                .radius(d => this.getNodeRadius(d) + this.config.forces.collideRadius))
+                .radius(d => this.getNodeRadius(d) * 2 + this.config.forces.collideRadius)
+                .strength(1.5)
+                .iterations(3))
             .alpha(this.config.forces.alpha)
             .alphaDecay(this.config.forces.alphaDecay)
             .velocityDecay(this.config.forces.velocityDecay)
@@ -433,8 +435,11 @@ class PolkadotGraphVisualization {
         // Apply balance filter
         if (filters.minBalance && filters.minBalance !== '0') {
             const minBalance = BigInt(filters.minBalance);
-            filteredNodes = filteredNodes.filter(node => 
-                BigInt(node.balance?.free || '0') >= minBalance);
+            filteredNodes = filteredNodes.filter(node => {
+                // Handle both balance formats (nested and flat)
+                const balance = node.balance?.free || node.balance || '0';
+                return BigInt(balance) >= minBalance;
+            });
         }
         
         // Apply time range filter
@@ -447,14 +452,17 @@ class PolkadotGraphVisualization {
         }
         
         // Filter nodes to only include those connected by remaining links
-        const connectedNodeIds = new Set();
-        filteredLinks.forEach(link => {
-            connectedNodeIds.add(link.source.address || link.source);
-            connectedNodeIds.add(link.target.address || link.target);
-        });
-        
-        filteredNodes = filteredNodes.filter(node => 
-            connectedNodeIds.has(node.address));
+        // But if there are no links at all after filtering, show all filtered nodes
+        if (filteredLinks.length > 0) {
+            const connectedNodeIds = new Set();
+            filteredLinks.forEach(link => {
+                connectedNodeIds.add(link.source.address || link.source);
+                connectedNodeIds.add(link.target.address || link.target);
+            });
+            
+            filteredNodes = filteredNodes.filter(node => 
+                connectedNodeIds.has(node.address));
+        }
         
         // Update filtered data
         this.state.filteredData = {
@@ -477,25 +485,35 @@ class PolkadotGraphVisualization {
         const nodeCount = this.state.filteredData.nodes.length;
         const linkCount = this.state.filteredData.links.length;
         
-        // Adjust charge strength based on node count - reduced for less aggressive physics
-        const chargeStrength = -Math.max(50, Math.min(400, nodeCount * 2));
+        // Stronger repulsion for better spacing - scales with node count
+        const chargeStrength = -Math.max(200, Math.min(1200, 400 + nodeCount * 10));
         this.simulation.force('charge').strength(chargeStrength);
         
-        // Adjust link distance based on density
+        // Dynamic link distance based on graph density
         const density = linkCount / (nodeCount * (nodeCount - 1) / 2 || 1);
-        const linkDistance = Math.max(30, Math.min(200, 80 / Math.max(0.01, density)));
+        const baseLinkDistance = this.config.forces.linkDistance;
+        const linkDistance = Math.max(80, Math.min(300, baseLinkDistance + (density > 0.3 ? 50 : 0)));
         this.simulation.force('link').distance(linkDistance);
         
-        // Adjust collision radius based on average node size - reduced for less aggressive physics
+        // Better collision detection with generous spacing
         const avgNodeSize = this.state.filteredData.nodes.reduce((sum, n) => 
-            sum + this.getNodeRadius(n), 0) / nodeCount || 0;
-        this.simulation.force('collision').radius(d => 
-            this.getNodeRadius(d) + Math.min(avgNodeSize * 0.05, 5));
+            sum + this.getNodeRadius(n), 0) / nodeCount || 15;
+        this.simulation.force('collision')
+            .radius(d => this.getNodeRadius(d) + avgNodeSize * 0.8 + 20)  // More generous spacing
+            .strength(0.9)  // Strong collision prevention
+            .iterations(3); // More collision iterations for better results
         
-        console.log('Simulation parameters updated:', {
+        // Restart simulation with slower parameters to prevent rapid clustering
+        this.simulation
+            .alpha(0.2)  // Lower restart energy
+            .alphaDecay(0.005)  // Even slower decay
+            .restart();
+        
+        console.log('Simulation parameters updated for better spacing:', {
             chargeStrength,
             linkDistance,
-            avgNodeSize
+            avgNodeSize,
+            density: density.toFixed(3)
         });
     }
     
@@ -732,9 +750,11 @@ class PolkadotGraphVisualization {
         // Add background rectangle for better readability
         labelEnter.append('rect')
             .attr('class', 'label-background')
-            .attr('fill', 'rgba(0, 0, 0, 0.7)')
-            .attr('stroke', 'rgba(255, 255, 255, 0.3)')
-            .attr('stroke-width', 0.5)
+            .attr('fill', '#000000')
+            .attr('fill-opacity', 0.85)
+            .attr('stroke', '#ffffff')
+            .attr('stroke-width', 1)
+            .attr('stroke-opacity', 0.3)
             .attr('rx', 3)
             .attr('ry', 3);
         
@@ -743,8 +763,9 @@ class PolkadotGraphVisualization {
             .attr('class', 'label-text')
             .attr('text-anchor', 'middle')
             .attr('font-family', this.config.nodes.labelFont)
-            .attr('font-size', '12px')
-            .attr('fill', this.config.colors.text)
+            .attr('font-size', '14px')
+            .attr('fill', '#ffffff')
+            .attr('font-weight', 'bold')
             .attr('pointer-events', 'none')
             .style('user-select', 'none');
         
@@ -767,11 +788,14 @@ class PolkadotGraphVisualization {
                     text.append('tspan')
                         .attr('x', 0)
                         .attr('dy', i === 0 ? 0 : '1.2em')
-                        .text(line);
+                        .text(line)
+                        .attr('fill', '#ffffff')
+                        .attr('font-weight', 'bold');
                 });
             })
-            .attr('font-size', '12px')
-            .attr('opacity', 0.9);
+            .attr('font-size', '14px')
+            .attr('fill', '#ffffff')
+            .attr('opacity', 1);
         
         // Update background rectangles with collision detection
         labelUpdate.each(function(d) {
@@ -1294,6 +1318,35 @@ class PolkadotGraphVisualization {
         return baseWidth;
     }
     
+    /**
+     * Interpolate between two colors
+     */
+    interpolateColor(color1, color2, t) {
+        // Convert hex to RGB
+        const c1 = this.hexToRgb(color1);
+        const c2 = this.hexToRgb(color2);
+        
+        // Interpolate
+        const r = Math.round(c1.r + (c2.r - c1.r) * t);
+        const g = Math.round(c1.g + (c2.g - c1.g) * t);
+        const b = Math.round(c1.b + (c2.b - c1.b) * t);
+        
+        // Convert back to hex
+        return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+    }
+    
+    /**
+     * Convert hex color to RGB
+     */
+    hexToRgb(hex) {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+            r: parseInt(result[1], 16),
+            g: parseInt(result[2], 16),
+            b: parseInt(result[3], 16)
+        } : { r: 0, g: 0, b: 0 };
+    }
+    
     getEdgeColor(edgeData) {
         if (edgeData.suggestedColor) {
             return edgeData.suggestedColor;
@@ -1301,6 +1354,44 @@ class PolkadotGraphVisualization {
         
         if (edgeData.suspiciousPattern) {
             return this.config.colors.high;
+        }
+        
+        // Check volume threshold filter for red highlighting
+        if (this.state.currentFilters?.volumeThreshold) {
+            const threshold = this.state.currentFilters.volumeThreshold;
+            if (edgeData.volume && BigInt(edgeData.volume) >= BigInt(threshold)) {
+                return '#FF0000'; // Bright red for connections above threshold
+            }
+        }
+        
+        // Color based on volume - higher volume = more alert color
+        if (edgeData.volume && edgeData.volume !== '0') {
+            const allVolumes = this.state.filteredData.links
+                .map(l => l.volume ? BigInt(l.volume) : BigInt(0))
+                .filter(v => v > BigInt(0));
+            
+            if (allVolumes.length > 0) {
+                const minVolume = allVolumes.reduce((a, b) => a < b ? a : b);
+                const maxVolume = allVolumes.reduce((a, b) => a > b ? a : b);
+                const scale = FormatUtils.getVisualScale(edgeData.volume, minVolume, maxVolume);
+                
+                // Smooth gradient from gray to yellow to orange to red based on volume
+                if (scale < 0.25) {
+                    return '#666666'; // Very low volume - gray
+                } else if (scale < 0.5) {
+                    // Gradient from gray to yellow
+                    const t = (scale - 0.25) * 4;
+                    return this.interpolateColor('#666666', '#FFC107', t);
+                } else if (scale < 0.75) {
+                    // Gradient from yellow to orange
+                    const t = (scale - 0.5) * 4;
+                    return this.interpolateColor('#FFC107', '#FF9800', t);
+                } else {
+                    // Gradient from orange to red
+                    const t = (scale - 0.75) * 4;
+                    return this.interpolateColor('#FF9800', '#F44336', t);
+                }
+            }
         }
         
         return '#666666';
@@ -1797,6 +1888,88 @@ class PolkadotGraphVisualization {
         });
         
         return csv;
+    }
+    
+    /**
+     * Focus on a specific node
+     */
+    focusOnNode(nodeOrAddress) {
+        const address = typeof nodeOrAddress === 'string' ? nodeOrAddress : nodeOrAddress.address;
+        const node = this.state.filteredData.nodes.find(n => 
+            (n.id || n.address) === address
+        );
+        
+        if (!node || !node.x || !node.y) {
+            console.warn('Node not found or not positioned:', address);
+            return;
+        }
+        
+        // Calculate zoom to fit the node and its immediate neighbors
+        const k = 2; // Zoom level
+        const duration = 750;
+        
+        this.svg.transition()
+            .duration(duration)
+            .call(
+                this.zoom.transform,
+                d3.zoomIdentity
+                    .translate(this.config.width / 2, this.config.height / 2)
+                    .scale(k)
+                    .translate(-node.x, -node.y)
+            );
+        
+        // Highlight the node temporarily
+        const nodeElement = this.nodeSelection.filter(d => 
+            (d.id || d.address) === address
+        );
+        
+        if (!nodeElement.empty()) {
+            const originalRadius = this.getNodeRadius(node);
+            nodeElement.select('circle')
+                .transition()
+                .duration(300)
+                .attr('r', originalRadius * 1.5)
+                .attr('stroke-width', 4)
+                .transition()
+                .duration(300)
+                .attr('r', originalRadius)
+                .attr('stroke-width', 2);
+        }
+    }
+    
+    /**
+     * Update node appearance after data changes
+     */
+    updateNodeAppearance() {
+        if (!this.nodeSelection) return;
+        
+        this.nodeSelection.select('circle')
+            .transition()
+            .duration(300)
+            .attr('r', d => this.getNodeRadius(d))
+            .attr('fill', d => this.getNodeColor(d))
+            .attr('stroke', d => this.getNodeStrokeColor(d))
+            .attr('stroke-width', d => this.getNodeStrokeWidth(d));
+        
+        // Update labels if balance changed
+        this.renderLabels();
+    }
+    
+    /**
+     * Update edge appearance after data changes
+     */
+    updateEdgeAppearance() {
+        if (!this.edgeSelection) return;
+        
+        this.edgeSelection
+            .transition()
+            .duration(300)
+            .attr('stroke', d => this.getEdgeColor(d))
+            .attr('stroke-width', d => this.getEdgeWidth(d))
+            .attr('stroke-opacity', d => this.getEdgeOpacity(d));
+        
+        // Update edge labels
+        this.renderEdgeLabels();
     }
     
     /**

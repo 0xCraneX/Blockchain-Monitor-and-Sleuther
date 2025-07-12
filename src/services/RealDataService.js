@@ -17,18 +17,20 @@ export class RealDataService {
   async getAccountData(address) {
     const cacheKey = `account:${address}`;
     const cached = this.getFromCache(cacheKey);
-    if (cached) return cached;
+    if (cached) {
+      return cached;
+    }
 
     try {
       // Try Subscan first for richer data
       let accountInfo = await subscanService.getAccountInfo(address);
-      
+
       // Fallback to blockchain RPC if Subscan fails
       if (!accountInfo && this.blockchain?.api) {
         try {
           const account = await this.blockchain.api.query.system.account(address);
           let identity = null;
-          
+
           // Try to get identity info if available
           try {
             if (this.blockchain.api.query.identity?.identityOf) {
@@ -41,7 +43,7 @@ export class RealDataService {
           } catch (identityError) {
             logger.debug('Failed to get identity from blockchain', { address, error: identityError.message });
           }
-          
+
           accountInfo = {
             address,
             identity: {
@@ -67,7 +69,7 @@ export class RealDataService {
 
       if (accountInfo) {
         this.setCache(cacheKey, accountInfo);
-        
+
         // Update database
         await this.updateAccountInDatabase(accountInfo);
       }
@@ -75,7 +77,7 @@ export class RealDataService {
       return accountInfo;
     } catch (error) {
       logger.error('Failed to get account data', { address, error: error.message });
-      
+
       // Try database as last resort
       return await this.database?.getAccount(address);
     }
@@ -88,14 +90,16 @@ export class RealDataService {
     const { limit = 50, minVolume = '0' } = options;
     const cacheKey = `relationships:${address}:${limit}:${minVolume}`;
     const cached = this.getFromCache(cacheKey);
-    if (cached) return cached;
+    if (cached) {
+      return cached;
+    }
 
     try {
       // Get relationships from Subscan
       const relationships = await subscanService.getAccountRelationships(address, { limit });
-      
+
       // Filter by minimum volume
-      const filtered = relationships.filter(rel => 
+      const filtered = relationships.filter(rel =>
         BigInt(rel.total_volume) >= BigInt(minVolume)
       );
 
@@ -111,14 +115,14 @@ export class RealDataService {
       }));
 
       this.setCache(cacheKey, enriched);
-      
+
       // Update database with relationships
       await this.updateRelationshipsInDatabase(address, enriched);
 
       return enriched;
     } catch (error) {
       logger.error('Failed to get relationships', { address, error: error.message });
-      
+
       // Fallback to database
       return await this.database?.getAddressRelationships(address, limit, minVolume);
     }
@@ -130,8 +134,7 @@ export class RealDataService {
   async buildGraphData(centerAddress, depth = 2, options = {}) {
     const {
       maxNodes = 100,
-      minVolume = '0',
-      direction = 'both'
+      minVolume = '0'
     } = options;
 
     const nodes = new Map();
@@ -152,8 +155,10 @@ export class RealDataService {
 
     while (queue.length > 0 && nodes.size < maxNodes) {
       const { address, currentDepth } = queue.shift();
-      
-      if (visited.has(address) || currentDepth >= depth) continue;
+
+      if (visited.has(address) || currentDepth >= depth) {
+        continue;
+      }
       visited.add(address);
 
       // Get relationships
@@ -164,9 +169,11 @@ export class RealDataService {
 
       for (const rel of relationships) {
         const connectedAddress = rel.connected_address;
-        
+
         // Skip if we have enough nodes
-        if (nodes.size >= maxNodes) break;
+        if (nodes.size >= maxNodes) {
+          break;
+        }
 
         // Add connected node if not exists
         if (!nodes.has(connectedAddress)) {
@@ -190,7 +197,7 @@ export class RealDataService {
         // Create edge
         const edgeId = `${address}->${connectedAddress}`;
         const reverseEdgeId = `${connectedAddress}->${address}`;
-        
+
         // Check if reverse edge exists (bidirectional)
         if (edges.has(reverseEdgeId)) {
           const existingEdge = edges.get(reverseEdgeId);
@@ -214,10 +221,10 @@ export class RealDataService {
         // Update node degrees and volumes
         const sourceNode = nodes.get(address);
         const targetNode = nodes.get(connectedAddress);
-        
+
         sourceNode.degree++;
         targetNode.degree++;
-        
+
         sourceNode.totalVolume = (BigInt(sourceNode.totalVolume) + BigInt(rel.sent_volume || 0)).toString();
         targetNode.totalVolume = (BigInt(targetNode.totalVolume) + BigInt(rel.received_volume || 0)).toString();
       }
@@ -227,9 +234,9 @@ export class RealDataService {
     const nodeArray = Array.from(nodes.values()).map(node => ({
       ...node,
       suggestedSize: Math.min(20 + node.degree * 2, 60),
-      suggestedColor: node.nodeType === 'center' ? '#e6007a' : 
-                     node.riskScore > 0.7 ? '#f44336' :
-                     node.riskScore > 0.3 ? '#ff9800' : '#2196F3'
+      suggestedColor: node.nodeType === 'center' ? '#e6007a' :
+        node.riskScore > 0.7 ? '#f44336' :
+          node.riskScore > 0.3 ? '#ff9800' : '#2196F3'
     }));
 
     const edgeArray = Array.from(edges.values()).map(edge => ({
@@ -257,7 +264,9 @@ export class RealDataService {
    * Update account in database
    */
   async updateAccountInDatabase(accountInfo) {
-    if (!this.database?.db) return;
+    if (!this.database?.db) {
+      return;
+    }
 
     try {
       const stmt = this.database.db.prepare(`
@@ -289,7 +298,9 @@ export class RealDataService {
    * Update relationships in database
    */
   async updateRelationshipsInDatabase(address, relationships) {
-    if (!this.database?.db) return;
+    if (!this.database?.db) {
+      return;
+    }
 
     try {
       const stmt = this.database.db.prepare(`

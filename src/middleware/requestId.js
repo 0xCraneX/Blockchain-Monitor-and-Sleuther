@@ -6,8 +6,8 @@ import { randomUUID } from 'crypto';
  */
 export function requestIdMiddleware(req, res, next) {
   // Check if request already has an ID (from load balancer or proxy)
-  const existingId = req.headers['x-request-id'] || 
-                    req.headers['x-correlation-id'] || 
+  const existingId = req.headers['x-request-id'] ||
+                    req.headers['x-correlation-id'] ||
                     req.headers['request-id'];
 
   // Generate new ID if none exists

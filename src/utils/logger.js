@@ -1,7 +1,6 @@
 import pino from 'pino';
-import path from 'path';
 import { fileURLToPath } from 'url';
-import { dirname } from 'path';
+import { dirname, join } from 'path';
 import fs from 'fs';
 import { performance } from 'perf_hooks';
 
@@ -14,7 +13,7 @@ const isDevelopment = process.env.NODE_ENV === 'development';
 const enableFileLogging = process.env.ENABLE_FILE_LOGGING === 'true';
 
 // Create logs directory if it doesn't exist
-const logsDir = path.join(process.cwd(), 'logs');
+const logsDir = join(process.cwd(), 'logs');
 if (!fs.existsSync(logsDir)) {
   fs.mkdirSync(logsDir, { recursive: true });
 }
@@ -24,7 +23,7 @@ const pinoConfig = {
   level: logLevel,
   formatters: {
     bindings: (bindings) => {
-      return { 
+      return {
         pid: bindings.pid,
         host: bindings.hostname,
         node_version: process.version,
@@ -63,7 +62,7 @@ if (enableFileLogging || logLevel === 'debug') {
   transports.push({
     target: 'pino/file',
     options: {
-      destination: path.join(logsDir, `app-${new Date().toISOString().split('T')[0]}.log`),
+      destination: join(logsDir, `app-${new Date().toISOString().split('T')[0]}.log`),
       mkdir: true
     }
   });
@@ -91,7 +90,7 @@ export const createLogger = (context) => {
 export const logMethodEntry = (className, methodName, args = {}) => {
   const trackerId = `${className}.${methodName}-${Date.now()}`;
   performanceTrackers.set(trackerId, performance.now());
-  
+
   logger.debug({
     type: 'method_entry',
     class: className,
@@ -99,7 +98,7 @@ export const logMethodEntry = (className, methodName, args = {}) => {
     args: Object.keys(args).length > 0 ? args : undefined,
     trackerId
   }, `Entering ${className}.${methodName}`);
-  
+
   return trackerId;
 };
 
@@ -107,7 +106,7 @@ export const logMethodExit = (className, methodName, trackerId, result = undefin
   const startTime = performanceTrackers.get(trackerId);
   const duration = startTime ? performance.now() - startTime : 0;
   performanceTrackers.delete(trackerId);
-  
+
   logger.debug({
     type: 'method_exit',
     class: className,
@@ -190,17 +189,17 @@ export const endPerformanceTimer = (timerId, operation) => {
     logger.warn(`Performance timer ${timerId} not found`);
     return;
   }
-  
+
   const duration = performance.now() - startTime;
   performanceTrackers.delete(timerId);
-  
+
   logger.debug({
     type: 'performance',
     operation,
     duration: `${duration.toFixed(2)}ms`,
     timerId
   }, `Performance: ${operation} took ${duration.toFixed(2)}ms`);
-  
+
   return duration;
 };
 
@@ -254,7 +253,7 @@ process.on('uncaughtException', (error) => {
     },
     timestamp: new Date().toISOString()
   }, 'Uncaught exception - shutting down');
-  
+
   // Give time for logs to flush
   setTimeout(() => {
     process.exit(1);
@@ -272,7 +271,7 @@ process.on('unhandledRejection', (reason, promise) => {
     promise: promise.toString(),
     timestamp: new Date().toISOString()
   }, 'Unhandled rejection - shutting down');
-  
+
   // Give time for logs to flush
   setTimeout(() => {
     process.exit(1);

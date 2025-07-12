@@ -17,9 +17,9 @@ export class BlockchainService {
         logger.info('Skipping blockchain connection (SKIP_BLOCKCHAIN=true)');
         return;
       }
-      
+
       logger.info(`Connecting to ${this.chainId} at ${this.endpoint}`);
-      
+
       this.provider = new WsProvider(this.endpoint, 1000, {}, 5000);
       this.api = await ApiPromise.create({ provider: this.provider });
 
@@ -67,7 +67,7 @@ export class BlockchainService {
     this.api.rpc.chain.subscribeNewHeads(async (header) => {
       const blockNumber = header.number.toNumber();
       logger.debug(`New block: #${blockNumber}`);
-      
+
       // Emit block event for other services
       this.emit('newBlock', {
         number: blockNumber,
@@ -84,13 +84,13 @@ export class BlockchainService {
     try {
       const [accountInfo, identity] = await Promise.all([
         this.api.query.system.account(address),
-        this.api.query.identity?.identityOf ? 
-          this.api.query.identity.identityOf(address) : 
+        this.api.query.identity?.identityOf ?
+          this.api.query.identity.identityOf(address) :
           Promise.resolve(null)
       ]);
 
       const balance = accountInfo.data.free.toString();
-      
+
       // Parse identity if available
       let identityInfo = null;
       if (identity && identity.isSome) {
@@ -112,7 +112,9 @@ export class BlockchainService {
 
   parseIdentity(info) {
     const parseField = (field) => {
-      if (field.isNone) return null;
+      if (field.isNone) {
+        return null;
+      }
       const raw = field.isRaw ? field.asRaw.toHuman() : field.toString();
       return raw ? raw.replace(/^0x/, '') : null;
     };
@@ -158,24 +160,24 @@ export class BlockchainService {
       // Process extrinsics
       block.extrinsics.forEach((extrinsic, index) => {
         const { method: { method, section } } = extrinsic;
-        
+
         // Check for balance transfers
-        if (section === 'balances' && 
+        if (section === 'balances' &&
             (method === 'transfer' || method === 'transferKeepAlive' || method === 'transferAll')) {
-          
+
           const [dest, value] = extrinsic.method.args;
           const from = extrinsic.signer.toString();
           const to = dest.toString();
-          
+
           // Find corresponding events
           const extrinsicEvents = block.events.filter(({ phase }) =>
             phase.isApplyExtrinsic && phase.asApplyExtrinsic.eq(index)
           );
-          
+
           const success = extrinsicEvents.some(({ event }) =>
             event.section === 'system' && event.method === 'ExtrinsicSuccess'
           );
-          
+
           // Get fee from events
           let fee = '0';
           const feeEvent = extrinsicEvents.find(({ event }) =>
@@ -184,7 +186,7 @@ export class BlockchainService {
           if (feeEvent) {
             fee = feeEvent.event.data[1].toString();
           }
-          
+
           transfers.push({
             hash: extrinsic.hash.toString(),
             blockNumber,
@@ -204,14 +206,14 @@ export class BlockchainService {
       block.events.forEach(({ event }) => {
         if (event.section === 'balances' && event.method === 'Transfer') {
           const [from, to, value] = event.data;
-          
+
           // Check if this transfer is already captured from extrinsics
-          const exists = transfers.some(t => 
-            t.fromAddress === from.toString() && 
+          const exists = transfers.some(t =>
+            t.fromAddress === from.toString() &&
             t.toAddress === to.toString() &&
             t.value === value.toString()
           );
-          
+
           if (!exists) {
             transfers.push({
               hash: `${block.hash}-event-${event.index}`,

@@ -4,8 +4,8 @@ import addressRoutes from './routes/addresses.js';
 import graphRoutes from './routes/graph.js';
 import investigationRoutes from './routes/investigations.js';
 import statsRoutes from './routes/stats.js';
+import nodesRoutes from './routes/nodes.js';
 import { createRelationshipsRouter } from './routes/relationships.js';
-import { DatabaseService } from '../services/DatabaseService.js';
 import { createLogger, logApiRequest, logApiResponse, logError } from '../utils/logger.js';
 import { performance } from 'perf_hooks';
 
@@ -17,16 +17,16 @@ const router = Router();
 router.use((req, res, next) => {
   const startTime = performance.now();
   req.startTime = startTime;
-  
+
   // Log incoming request
   logApiRequest(req);
-  
+
   // Override res.json to log responses
   const originalJson = res.json;
   res.json = function(data) {
     const duration = performance.now() - startTime;
     logApiResponse(req, res, duration);
-    
+
     // Log response data in debug mode
     if (process.env.LOG_LEVEL === 'debug') {
       logger.debug({
@@ -37,10 +37,10 @@ router.use((req, res, next) => {
         requestId: req.id
       }, 'Response data sent');
     }
-    
+
     return originalJson.call(this, data);
   };
-  
+
   next();
 });
 
@@ -55,7 +55,8 @@ router.get('/', (req, res) => {
       graph: '/api/graph',
       relationships: '/api/relationships',
       investigations: '/api/investigations',
-      stats: '/api/stats'
+      stats: '/api/stats',
+      nodes: '/api/nodes'
     }
   });
 });
@@ -81,10 +82,15 @@ router.use('/stats', (req, res, next) => {
   next();
 }, statsRoutes);
 
+router.use('/nodes', (req, res, next) => {
+  logger.debug('Routing to nodes endpoint', { path: req.path, query: req.query });
+  next();
+}, nodesRoutes);
+
 // Mount relationships router (factory function)
 router.use('/relationships', (req, res, next) => {
   logger.debug('Routing to relationships endpoint', { path: req.path, query: req.query });
-  
+
   // Get database service from app locals
   const databaseService = req.app.locals.db;
   if (!databaseService) {
@@ -93,7 +99,7 @@ router.use('/relationships', (req, res, next) => {
       error: 'Database service not available'
     });
   }
-  
+
   // Create and use relationships router
   try {
     const relationshipsRouter = createRelationshipsRouter(databaseService);
@@ -107,7 +113,7 @@ router.use('/relationships', (req, res, next) => {
 });
 
 // Error handling middleware
-router.use((error, req, res, next) => {
+router.use((error, req, res, _next) => {
   const duration = req.startTime ? performance.now() - req.startTime : 0;
   logError(error, {
     path: req.path,
@@ -115,7 +121,7 @@ router.use((error, req, res, next) => {
     duration: `${duration.toFixed(2)}ms`,
     requestId: req.id
   });
-  
+
   res.status(error.status || 500).json({
     error: error.message || 'Internal server error',
     requestId: req.id

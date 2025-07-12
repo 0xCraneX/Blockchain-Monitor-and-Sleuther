@@ -18,7 +18,7 @@ export class AddressController {
           }));
         }
       }
-      
+
       // Fall back to database search
       const results = db.searchAccounts(query, limit);
       logger.debug('Address search completed', { query, resultCount: results.length });
@@ -33,21 +33,21 @@ export class AddressController {
     try {
       // Try to get from database first
       let account = db.getAccount(address);
-      
+
       // If not in database or data is stale, fetch from blockchain
       if (!account || this.isDataStale(account.updated_at)) {
         const chainData = await blockchain.getAccount(address);
-        
+
         // Check if this is an empty/unused account (common pattern for invalid addresses)
-        const isEmpty = chainData.balance === '0' && 
-                       chainData.nonce === 0 && 
-                       !chainData.identity && 
+        const isEmpty = chainData.balance === '0' &&
+                       chainData.nonce === 0 &&
+                       !chainData.identity &&
                        !account; // And not in our database
-        
+
         if (isEmpty) {
           return null; // Address not found
         }
-        
+
         // Update database
         account = db.createAccount({
           address: chainData.address,
@@ -56,7 +56,7 @@ export class AddressController {
           balance: chainData.balance,
           firstSeenBlock: account?.first_seen_block || null
         });
-        
+
         // Update identity if available
         if (chainData.identity) {
           db.updateAccountIdentity(address, {
@@ -65,7 +65,7 @@ export class AddressController {
           });
         }
       }
-      
+
       return account;
     } catch (error) {
       logger.error('Failed to get account', { address, error });
@@ -76,14 +76,14 @@ export class AddressController {
   async getTransfers(db, address, options) {
     try {
       const transfers = db.getTransfers(address, options);
-      
+
       // Enhance transfers with account info
       const enhancedTransfers = transfers.map(transfer => ({
         ...transfer,
         direction: transfer.from_address === address ? 'out' : 'in',
         counterparty: transfer.from_address === address ? transfer.to_address : transfer.from_address
       }));
-      
+
       return enhancedTransfers;
     } catch (error) {
       logger.error('Failed to get transfers', { address, options, error });
@@ -94,7 +94,7 @@ export class AddressController {
   async getRelationships(db, address, options) {
     try {
       const relationships = db.getRelationships(address, options);
-      
+
       // Enhance with account info for connected addresses
       const enhancedRelationships = await Promise.all(
         relationships.map(async (rel) => {
@@ -106,7 +106,7 @@ export class AddressController {
           };
         })
       );
-      
+
       return enhancedRelationships;
     } catch (error) {
       logger.error('Failed to get relationships', { address, options, error });
@@ -125,7 +125,9 @@ export class AddressController {
   }
 
   isDataStale(updatedAt, maxAgeHours = 24) {
-    if (!updatedAt) return true;
+    if (!updatedAt) {
+      return true;
+    }
     const age = Date.now() - new Date(updatedAt).getTime();
     return age > maxAgeHours * 60 * 60 * 1000;
   }

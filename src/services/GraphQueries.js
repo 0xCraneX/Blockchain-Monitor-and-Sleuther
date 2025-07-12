@@ -4,7 +4,7 @@ export class GraphQueries {
   constructor(databaseService) {
     this.db = databaseService?.db;
     this.databaseService = databaseService;
-    
+
     // Prepare commonly used statements if db is available
     if (this.db) {
       this.prepareStatements();
@@ -62,28 +62,28 @@ export class GraphQueries {
   getDirectConnections(address, options = {}) {
     const startTime = Date.now();
     const { minVolume = '0', limit = 100 } = options;
-    
+
     try {
       logger.info(`Getting direct connections for ${address}`, { minVolume, limit });
-      
+
       if (!this.db) {
         throw new Error('Database not initialized');
       }
-      
+
       // Get direct connections
       const connections = this.directConnectionsStmt.all(address, minVolume, limit);
-      
+
       // Build graph structure
       const nodes = new Map();
       const edges = [];
-      
+
       // Add center node
       const centerAccount = this.databaseService.getAccount(address);
       if (!centerAccount) {
         logger.warn(`Address not found: ${address}`);
         return { nodes: [], edges: [] };
       }
-      
+
       nodes.set(address, {
         id: address,
         address: address,
@@ -101,11 +101,11 @@ export class GraphQueries {
           }, BigInt(0)).toString()
         }
       });
-      
+
       // Process connections
       connections.forEach(conn => {
         const connectedAddr = conn.connected_address;
-        
+
         // Add connected node
         if (!nodes.has(connectedAddr)) {
           nodes.set(connectedAddr, {
@@ -119,7 +119,7 @@ export class GraphQueries {
             }
           });
         }
-        
+
         // Add edge
         edges.push({
           id: `${conn.direction === 'outgoing' ? address : connectedAddr}->${conn.direction === 'outgoing' ? connectedAddr : address}`,
@@ -132,13 +132,13 @@ export class GraphQueries {
           direction: conn.direction
         });
       });
-      
+
       const executionTime = Date.now() - startTime;
       logger.info(`Direct connections query completed in ${executionTime}ms`, {
         nodesCount: nodes.size,
         edgesCount: edges.length
       });
-      
+
       return {
         nodes: Array.from(nodes.values()),
         edges: edges,
@@ -148,7 +148,7 @@ export class GraphQueries {
           depth: 1
         }
       };
-      
+
     } catch (error) {
       logger.error('Error getting direct connections', error);
       throw error;
@@ -165,18 +165,18 @@ export class GraphQueries {
   getMultiHopConnections(address, depth = 2, options = {}) {
     const startTime = Date.now();
     const { minVolume = '0', limit = 500 } = options;
-    
+
     // Validate depth
     if (depth < 1 || depth > 3) {
       throw new Error('Depth must be between 1 and 3');
     }
-    
+
     // Set timeout based on depth
-    const timeout = depth === 1 ? 1000 : depth === 2 ? 1000 : 5000;
-    
+    const _timeout = depth === 1 ? 1000 : depth === 2 ? 1000 : 5000;
+
     try {
       logger.info(`Getting ${depth}-hop connections for ${address}`, { minVolume, limit });
-      
+
       // Prepare recursive query
       const recursiveQuery = this.db.prepare(`
         WITH RECURSIVE graph_traversal AS (
@@ -232,16 +232,16 @@ export class GraphQueries {
         ORDER BY min_hops, best_path_volume DESC
         LIMIT ?
       `);
-      
+
       // Execute query synchronously (better-sqlite3 is synchronous)
       // For timeout handling, we'll rely on SQLite's built-in timeout mechanism
       const pathResults = recursiveQuery.all(address, minVolume, depth, minVolume, address, limit);
-      
+
       // Build graph from results
       const nodes = new Map();
       const edges = new Map();
       const processedPaths = new Set();
-      
+
       // Add center node
       const centerAccount = this.databaseService.getAccount(address);
       nodes.set(address, {
@@ -251,7 +251,7 @@ export class GraphQueries {
         nodeType: 'center',
         hopLevel: 0
       });
-      
+
       // Process path results
       pathResults.forEach(result => {
         // Add destination node
@@ -267,19 +267,21 @@ export class GraphQueries {
             bestPathVolume: result.best_path_volume
           });
         }
-        
+
         // Extract edges from paths
         const paths = result.all_paths.split(' | ');
         paths.forEach(path => {
-          if (processedPaths.has(path)) return;
+          if (processedPaths.has(path)) {
+            return;
+          }
           processedPaths.add(path);
-          
+
           const segments = path.split(' -> ');
           for (let i = 0; i < segments.length - 1; i++) {
             const source = segments[i];
             const target = segments[i + 1];
             const edgeId = `${source}->${target}`;
-            
+
             // Add intermediate nodes if not exists
             if (!nodes.has(source)) {
               const account = this.databaseService.getAccount(source);
@@ -291,7 +293,7 @@ export class GraphQueries {
                 hopLevel: i
               });
             }
-            
+
             if (!nodes.has(target)) {
               const account = this.databaseService.getAccount(target);
               nodes.set(target, {
@@ -302,7 +304,7 @@ export class GraphQueries {
                 hopLevel: i + 1
               });
             }
-            
+
             // Add edge if not exists
             if (!edges.has(edgeId)) {
               const relationship = this.db.prepare(`
@@ -310,7 +312,7 @@ export class GraphQueries {
                 FROM account_relationships
                 WHERE from_address = ? AND to_address = ?
               `).get(source, target);
-              
+
               if (relationship) {
                 edges.set(edgeId, {
                   id: edgeId,
@@ -325,14 +327,14 @@ export class GraphQueries {
           }
         });
       });
-      
+
       const executionTime = Date.now() - startTime;
       logger.info(`Multi-hop query completed in ${executionTime}ms`, {
         depth,
         nodesCount: nodes.size,
         edgesCount: edges.size
       });
-      
+
       return {
         nodes: Array.from(nodes.values()),
         edges: Array.from(edges.values()),
@@ -343,7 +345,7 @@ export class GraphQueries {
           totalPaths: processedPaths.size
         }
       };
-      
+
     } catch (error) {
       logger.error('Error getting multi-hop connections', error);
       throw error;
@@ -360,10 +362,10 @@ export class GraphQueries {
   extractSubgraph(centerAddress, depth = 2, filters = {}) {
     const startTime = Date.now();
     const { minVolume = '0', nodeTypes = [], riskScoreRange = [] } = filters;
-    
+
     try {
       logger.info(`Extracting subgraph for ${centerAddress}`, { depth, filters });
-      
+
       // Prepare subgraph extraction query
       const subgraphQuery = this.db.prepare(`
         WITH RECURSIVE subgraph_nodes AS (
@@ -428,19 +430,23 @@ export class GraphQueries {
           ) as data
         FROM subgraph_edges
       `);
-      
+
       // Build parameters
       const params = [centerAddress, depth, minVolume];
-      if (nodeTypes.length > 0) params.push(...nodeTypes);
-      if (riskScoreRange.length === 2) params.push(...riskScoreRange);
-      
+      if (nodeTypes.length > 0) {
+        params.push(...nodeTypes);
+      }
+      if (riskScoreRange.length === 2) {
+        params.push(...riskScoreRange);
+      }
+
       // Execute query
       const results = subgraphQuery.all(...params);
-      
+
       // Parse results
       const nodes = [];
       const edges = [];
-      
+
       results.forEach(row => {
         const data = JSON.parse(row.data);
         if (row.result_type === 'nodes') {
@@ -457,13 +463,13 @@ export class GraphQueries {
           });
         }
       });
-      
+
       const executionTime = Date.now() - startTime;
       logger.info(`Subgraph extraction completed in ${executionTime}ms`, {
         nodesCount: nodes.length,
         edgesCount: edges.length
       });
-      
+
       return {
         nodes,
         edges,
@@ -474,7 +480,7 @@ export class GraphQueries {
           filters
         }
       };
-      
+
     } catch (error) {
       logger.error('Error extracting subgraph', error);
       throw error;
@@ -491,17 +497,17 @@ export class GraphQueries {
   findShortestPath(fromAddress, toAddress, options = {}) {
     const startTime = Date.now();
     const { maxDepth = 4 } = options;
-    
+
     try {
       logger.info(`Finding shortest path from ${fromAddress} to ${toAddress}`);
-      
+
       // First check for direct connection
       const directCheck = this.db.prepare(`
         SELECT total_volume, transfer_count
         FROM account_relationships
         WHERE from_address = ? AND to_address = ?
       `).get(fromAddress, toAddress);
-      
+
       if (directCheck) {
         // Direct connection found
         return {
@@ -527,7 +533,7 @@ export class GraphQueries {
           }
         };
       }
-      
+
       // If no direct connection, use recursive search
       const pathQuery = this.db.prepare(`
         WITH RECURSIVE path_search AS (
@@ -560,21 +566,21 @@ export class GraphQueries {
         ORDER BY hop_count, total_volume DESC
         LIMIT 1
       `);
-      
+
       const result = pathQuery.get(fromAddress, maxDepth, toAddress, toAddress);
-      
+
       if (!result) {
         return {
           found: false,
           message: `No path found between ${fromAddress} and ${toAddress} within ${maxDepth} hops`
         };
       }
-      
+
       // Parse path segments
       const segments = result.full_path.split(' -> ');
       const nodes = [];
       const edges = [];
-      
+
       // Build nodes and edges from path
       segments.forEach((address, index) => {
         const account = this.databaseService.getAccount(address);
@@ -584,7 +590,7 @@ export class GraphQueries {
           identity: account?.identity_display,
           pathIndex: index
         });
-        
+
         if (index < segments.length - 1) {
           const nextAddress = segments[index + 1];
           const relationship = this.db.prepare(`
@@ -592,7 +598,7 @@ export class GraphQueries {
             FROM account_relationships
             WHERE from_address = ? AND to_address = ?
           `).get(address, nextAddress);
-          
+
           edges.push({
             id: `${address}->${nextAddress}`,
             source: address,
@@ -602,9 +608,9 @@ export class GraphQueries {
           });
         }
       });
-      
+
       const executionTime = Date.now() - startTime;
-      
+
       return {
         found: true,
         path: result.full_path,
@@ -618,7 +624,7 @@ export class GraphQueries {
           toAddress
         }
       };
-      
+
     } catch (error) {
       logger.error('Error finding shortest path', error);
       throw error;
@@ -634,10 +640,10 @@ export class GraphQueries {
   detectCircularFlows(address, options = {}) {
     const startTime = Date.now();
     const { maxDepth = 5, minVolume = '0' } = options;
-    
+
     try {
       logger.info(`Detecting circular flows for ${address}`);
-      
+
       const circularQuery = this.db.prepare(`
         WITH RECURSIVE circular_paths AS (
           SELECT 
@@ -674,14 +680,14 @@ export class GraphQueries {
         WHERE is_circular = 1
         ORDER BY depth, total_volume DESC
       `);
-      
+
       const results = circularQuery.all(address, minVolume, maxDepth);
-      
+
       const executionTime = Date.now() - startTime;
       logger.info(`Circular flow detection completed in ${executionTime}ms`, {
         circularPathsFound: results.length
       });
-      
+
       return {
         circularPaths: results,
         metadata: {
@@ -691,7 +697,7 @@ export class GraphQueries {
           minVolume
         }
       };
-      
+
     } catch (error) {
       logger.error('Error detecting circular flows', error);
       throw error;
@@ -712,7 +718,7 @@ export class GraphQueries {
         uniqueNodes.set(node.id, node);
       }
     });
-    
+
     // Ensure unique edges
     const uniqueEdges = new Map();
     edges.forEach(edge => {
@@ -720,7 +726,7 @@ export class GraphQueries {
         uniqueEdges.set(edge.id, edge);
       }
     });
-    
+
     // Calculate graph metrics
     const nodeMetrics = new Map();
     uniqueEdges.forEach(edge => {
@@ -730,14 +736,14 @@ export class GraphQueries {
       }
       nodeMetrics.get(edge.source).outDegree++;
       nodeMetrics.get(edge.source).totalVolume += BigInt(edge.volume || 0);
-      
+
       // In-degree for target
       if (!nodeMetrics.has(edge.target)) {
         nodeMetrics.set(edge.target, { outDegree: 0, inDegree: 0, totalVolume: BigInt(0) });
       }
       nodeMetrics.get(edge.target).inDegree++;
     });
-    
+
     // Enhance nodes with metrics
     uniqueNodes.forEach((node, id) => {
       const metrics = nodeMetrics.get(id);
@@ -751,15 +757,15 @@ export class GraphQueries {
         };
       }
     });
-    
+
     return {
       nodes: Array.from(uniqueNodes.values()),
       edges: Array.from(uniqueEdges.values()),
       metrics: {
         nodeCount: uniqueNodes.size,
         edgeCount: uniqueEdges.size,
-        avgDegree: uniqueNodes.size > 0 
-          ? Array.from(nodeMetrics.values()).reduce((sum, m) => sum + m.inDegree + m.outDegree, 0) / uniqueNodes.size 
+        avgDegree: uniqueNodes.size > 0
+          ? Array.from(nodeMetrics.values()).reduce((sum, m) => sum + m.inDegree + m.outDegree, 0) / uniqueNodes.size
           : 0
       }
     };
@@ -778,7 +784,7 @@ export class GraphQueries {
         INSERT INTO query_performance_log (query_type, parameters, execution_time_ms, rows_returned)
         VALUES (?, ?, ?, ?)
       `);
-      
+
       stmt.run(queryType, JSON.stringify(parameters), executionTime, rowsReturned);
     } catch (error) {
       logger.error('Error logging query performance', error);
