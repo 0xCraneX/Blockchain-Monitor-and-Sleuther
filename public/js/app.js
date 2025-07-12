@@ -388,6 +388,9 @@ class PolkadotAnalysisApp {
             // Show visualization section
             this.showVisualizationSection();
             
+            // Update statistics
+            this.updateStatistics();
+            
             // Update address history
             this.updateAddressHistory(address);
             
@@ -578,8 +581,13 @@ class PolkadotAnalysisApp {
         this.showLoading();
         
         try {
+            const cursor = address || this.state.graphData?.metadata?.nextCursor || this.state.currentAddress;
+            if (!cursor) {
+                throw new Error('No address specified for expansion');
+            }
+            
             const params = new URLSearchParams({
-                cursor: this.state.graphData?.metadata?.nextCursor || '',
+                cursor: cursor,
                 limit: 20,
                 direction: 'outward'
             });
@@ -684,16 +692,20 @@ class PolkadotAnalysisApp {
         const totalVolumeEl = document.getElementById('total-volume');
         
         if (nodeCountEl) {
-            nodeCountEl.textContent = stats.visibleNodes || 0;
+            // Use graph data if available
+            const nodeCount = this.state.graphData?.nodes?.length || stats.visibleNodes || 0;
+            nodeCountEl.textContent = nodeCount;
         }
         
         if (edgeCountEl) {
-            edgeCountEl.textContent = stats.visibleEdges || 0;
+            // Use graph data if available (edges or links)
+            const edgeCount = this.state.graphData?.edges?.length || this.state.graphData?.links?.length || stats.visibleEdges || 0;
+            edgeCountEl.textContent = edgeCount;
         }
         
         if (totalVolumeEl && this.state.graphData) {
             const totalVolume = this.calculateTotalVolume();
-            totalVolumeEl.textContent = totalVolume.toLocaleString();
+            totalVolumeEl.textContent = totalVolume.toFixed(2);
         }
     }
     
@@ -701,11 +713,25 @@ class PolkadotAnalysisApp {
      * Calculate total volume in the current graph
      */
     calculateTotalVolume() {
-        if (!this.state.graphData?.links) return 0;
+        // Check for both links and edges format
+        const edges = this.state.graphData?.links || this.state.graphData?.edges || [];
+        if (!edges || edges.length === 0) return 0;
         
-        return this.state.graphData.links.reduce((total, link) => {
-            const volume = link.volume ? Number(BigInt(link.volume)) / 1e12 : 0;
-            return total + volume;
+        return edges.reduce((total, edge) => {
+            try {
+                if (edge.volume) {
+                    // Handle decimal values
+                    let volumeStr = edge.volume.toString();
+                    if (volumeStr.includes('.')) {
+                        volumeStr = volumeStr.split('.')[0];
+                    }
+                    const volume = Number(BigInt(volumeStr)) / 1e12;
+                    return total + volume;
+                }
+            } catch (e) {
+                console.warn('Error calculating volume:', e);
+            }
+            return total;
         }, 0);
     }
     

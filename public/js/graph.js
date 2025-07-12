@@ -1022,8 +1022,17 @@ class PolkadotGraphVisualization {
         }
         
         if (nodeData.balance?.free) {
-            const balance = Number(BigInt(nodeData.balance.free) / BigInt('1000000000000'));
-            parts.push(`<strong>Balance:</strong> ${balance.toLocaleString()} DOT`);
+            try {
+                // Handle decimal values by converting to string and removing decimals
+                let balanceStr = nodeData.balance.free.toString();
+                if (balanceStr.includes('.')) {
+                    balanceStr = balanceStr.split('.')[0];
+                }
+                const balance = Number(BigInt(balanceStr) / BigInt('1000000000000'));
+                parts.push(`<strong>Balance:</strong> ${balance.toLocaleString()} DOT`);
+            } catch (e) {
+                console.warn('Error converting balance:', e);
+            }
         }
         
         if (nodeData.degree !== undefined) {
@@ -1031,8 +1040,17 @@ class PolkadotGraphVisualization {
         }
         
         if (nodeData.totalVolume && nodeData.totalVolume !== '0') {
-            const volume = Number(BigInt(nodeData.totalVolume) / BigInt('1000000000000'));
-            parts.push(`<strong>Total Volume:</strong> ${volume.toLocaleString()} DOT`);
+            try {
+                // Handle decimal values by converting to string and removing decimals
+                let volumeStr = nodeData.totalVolume.toString();
+                if (volumeStr.includes('.')) {
+                    volumeStr = volumeStr.split('.')[0];
+                }
+                const volume = Number(BigInt(volumeStr) / BigInt('1000000000000'));
+                parts.push(`<strong>Total Volume:</strong> ${volume.toLocaleString()} DOT`);
+            } catch (e) {
+                console.warn('Error converting volume:', e);
+            }
         }
         
         if (nodeData.riskScore !== undefined) {
