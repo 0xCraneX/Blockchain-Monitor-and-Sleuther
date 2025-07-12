@@ -6,39 +6,62 @@ import { GraphQueries } from '../../services/GraphQueries.js';
 import { RelationshipScorer } from '../../services/RelationshipScorer.js';
 import { PathFinder } from '../../services/PathFinder.js';
 import { GraphMetrics } from '../../services/GraphMetrics.js';
+import { createLogger, logMethodEntry, logMethodExit, logError, startPerformanceTimer, endPerformanceTimer } from '../../utils/logger.js';
+
+const logger = createLogger('GraphRoutes');
 
 const router = Router();
 
 // Helper to get or create services from app locals
 function getServices(req) {
+  const trackerId = logMethodEntry('GraphRoutes', 'getServices');
   const databaseService = req.app.locals.db;
   
   if (!req.app.locals.graphServices) {
-    // Create services once and cache them
-    req.app.locals.graphServices = {
-      graphQueries: new GraphQueries(databaseService),
-      relationshipScorer: new RelationshipScorer(databaseService),
-      pathFinder: null, // Will be created after graphQueries
-      graphMetrics: new GraphMetrics(databaseService),
-      graphController: null // Will be created after all services
-    };
+    logger.info('Initializing graph services for the first time');
+    const serviceInitTimer = startPerformanceTimer('graph_services_init');
     
-    // Create PathFinder with graphQueries dependency
-    req.app.locals.graphServices.pathFinder = new PathFinder(
-      databaseService, 
-      req.app.locals.graphServices.graphQueries
-    );
-    
-    // Create controller with all services
-    req.app.locals.graphServices.graphController = new GraphController(
-      databaseService,
-      req.app.locals.graphServices.graphQueries,
-      req.app.locals.graphServices.relationshipScorer,
-      req.app.locals.graphServices.pathFinder,
-      req.app.locals.graphServices.graphMetrics
-    );
+    try {
+      // Create services once and cache them
+      req.app.locals.graphServices = {
+        graphQueries: new GraphQueries(databaseService),
+        relationshipScorer: new RelationshipScorer(databaseService),
+        pathFinder: null, // Will be created after graphQueries
+        graphMetrics: new GraphMetrics(databaseService),
+        graphController: null // Will be created after all services
+      };
+      
+      logger.debug('Created core graph services');
+      
+      // Create PathFinder with graphQueries dependency
+      req.app.locals.graphServices.pathFinder = new PathFinder(
+        databaseService, 
+        req.app.locals.graphServices.graphQueries
+      );
+      
+      logger.debug('Created PathFinder service');
+      
+      // Create controller with all services
+      req.app.locals.graphServices.graphController = new GraphController(
+        databaseService,
+        req.app.locals.graphServices.graphQueries,
+        req.app.locals.graphServices.relationshipScorer,
+        req.app.locals.graphServices.pathFinder,
+        req.app.locals.graphServices.graphMetrics
+      );
+      
+      logger.debug('Created GraphController');
+      endPerformanceTimer(serviceInitTimer, 'graph_services_init');
+      logger.info('Graph services initialized successfully');
+    } catch (error) {
+      logError(error, { context: 'graph_services_initialization' });
+      throw error;
+    }
+  } else {
+    logger.debug('Using cached graph services');
   }
   
+  logMethodExit('GraphRoutes', 'getServices', trackerId);
   return req.app.locals.graphServices;
 }
 
@@ -84,11 +107,27 @@ const expandQuerySchema = z.object({
 // Middleware to validate request
 const validate = (schema, property = 'query') => {
   return (req, res, next) => {
+    const validationTimer = startPerformanceTimer('request_validation');
+    logger.debug(`Validating ${property} against schema`, {
+      path: req.path,
+      property,
+      data: req[property]
+    });
+    
     try {
       const validated = schema.parse(req[property]);
       req[property] = validated;
+      endPerformanceTimer(validationTimer, 'request_validation');
+      logger.debug('Validation successful', { property, validated });
       next();
     } catch (error) {
+      endPerformanceTimer(validationTimer, 'request_validation');
+      logger.warn('Validation failed', {
+        property,
+        errors: error.errors,
+        data: req[property]
+      });
+      
       res.status(400).json({
         error: {
           code: 'VALIDATION_ERROR',
@@ -103,11 +142,19 @@ const validate = (schema, property = 'query') => {
 
 // Middleware to validate address parameter
 const validateAddress = (req, res, next) => {
+  logger.debug('Validating address parameter', { address: req.params.address });
+  
   try {
     const address = addressSchema.parse(req.params.address);
     req.params.address = address;
+    logger.debug('Address validation successful', { address });
     next();
   } catch (error) {
+    logger.warn('Invalid address format', {
+      address: req.params.address,
+      error: error.message
+    });
+    
     res.status(400).json({
       error: {
         code: 'INVALID_ADDRESS',
@@ -130,10 +177,29 @@ router.get(
   rateLimiter,
   validate(pathQuerySchema),
   async (req, res, next) => {
+    const trackerId = logMethodEntry('GraphRoutes', 'getShortestPath', {
+      from: req.query.from,
+      to: req.query.to,
+      maxDepth: req.query.maxDepth,
+      algorithm: req.query.algorithm
+    });
+    
     try {
       const { graphController } = getServices(req);
+      logger.info('Processing shortest path request', {
+        from: req.query.from,
+        to: req.query.to,
+        algorithm: req.query.algorithm
+      });
+      
       await graphController.getShortestPath(req, res);
+      logMethodExit('GraphRoutes', 'getShortestPath', trackerId);
     } catch (error) {
+      logError(error, {
+        endpoint: 'getShortestPath',
+        query: req.query
+      });
+      logMethodExit('GraphRoutes', 'getShortestPath', trackerId);
       next(error);
     }
   }
@@ -192,10 +258,31 @@ router.get(
   validateAddress,
   validate(graphQuerySchema),
   async (req, res, next) => {
+    const trackerId = logMethodEntry('GraphRoutes', 'getGraph', {
+      address: req.params.address,
+      depth: req.query.depth,
+      maxNodes: req.query.maxNodes,
+      minVolume: req.query.minVolume,
+      direction: req.query.direction
+    });
+    
     try {
       const { graphController } = getServices(req);
+      logger.info('Processing graph generation request', {
+        address: req.params.address,
+        depth: req.query.depth,
+        maxNodes: req.query.maxNodes
+      });
+      
       await graphController.getGraph(req, res);
+      logMethodExit('GraphRoutes', 'getGraph', trackerId);
     } catch (error) {
+      logError(error, {
+        endpoint: 'getGraph',
+        address: req.params.address,
+        query: req.query
+      });
+      logMethodExit('GraphRoutes', 'getGraph', trackerId);
       next(error);
     }
   }

@@ -3,19 +3,33 @@ import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
-import { logger } from '../utils/logger.js';
+import { 
+  logger, 
+  createLogger, 
+  logMethodEntry, 
+  logMethodExit, 
+  logDatabaseQuery, 
+  logError,
+  startPerformanceTimer,
+  endPerformanceTimer 
+} from '../utils/logger.js';
 import { 
   DatabaseConnectionError, 
   DatabaseError, 
   RecordNotFoundError,
   createDatabaseError 
 } from '../errors/index.js';
+import { performance } from 'perf_hooks';
+
+const dbLogger = createLogger('DatabaseService');
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 export class DatabaseService {
   constructor() {
+    const trackerId = logMethodEntry('DatabaseService', 'constructor');
+    
     this.db = null;
     this.dbPath = process.env.DATABASE_PATH || './data/analysis.db';
     this.preparedStatements = new Map();
@@ -30,6 +44,9 @@ export class DatabaseService {
     // Cleanup interval for prepared statements
     this.cleanupInterval = null;
     this.startCleanupMonitoring();
+    
+    dbLogger.info('DatabaseService initialized', { dbPath: this.dbPath });
+    logMethodExit('DatabaseService', 'constructor', trackerId);
   }
 
   // Utility method to safely convert values for SQLite binding
@@ -47,28 +64,37 @@ export class DatabaseService {
   }
 
   async initialize() {
+    const trackerId = logMethodEntry('DatabaseService', 'initialize');
+    const initTimer = startPerformanceTimer('database_initialization');
+    
     try {
       // Ensure data directory exists
       const dataDir = path.dirname(this.dbPath);
+      dbLogger.debug('Creating data directory if needed', { dataDir });
       await fs.mkdir(dataDir, { recursive: true });
 
       // Open database connection
+      dbLogger.info('Opening database connection', { dbPath: this.dbPath });
       this.db = new Database(this.dbPath, { 
-        verbose: process.env.NODE_ENV === 'development' ? logger.debug : null 
+        verbose: process.env.LOG_LEVEL === 'debug' ? (message, ...args) => {
+          logDatabaseQuery(message, args);
+        } : null 
       });
 
       // Enable foreign keys and WAL mode for better performance
+      dbLogger.debug('Setting database pragmas');
       this.db.pragma('foreign_keys = ON');
       this.db.pragma('journal_mode = WAL');
 
       // Register custom REGEXP function for SQLite
+      dbLogger.debug('Registering custom REGEXP function');
       this.db.function('REGEXP', (pattern, text) => {
         if (!pattern || !text) return 0;
         try {
           const regex = new RegExp(pattern);
           return regex.test(String(text)) ? 1 : 0;
         } catch (error) {
-          logger.warn('Invalid regex pattern:', pattern);
+          dbLogger.warn('Invalid regex pattern', { pattern, error: error.message });
           return 0;
         }
       });
@@ -124,21 +150,50 @@ export class DatabaseService {
         logger.warn('Relationship scoring schema not found or error loading:', error.message);
       }
 
-      logger.info('Database initialized successfully');
+      this.isInitialized = true;
+      endPerformanceTimer(initTimer, 'database_initialization');
+      dbLogger.info('Database initialized successfully', {
+        dbPath: this.dbPath,
+        walMode: true,
+        foreignKeys: true
+      });
+      logMethodExit('DatabaseService', 'initialize', trackerId);
     } catch (error) {
-      logger.error('Failed to initialize database', error);
+      endPerformanceTimer(initTimer, 'database_initialization');
+      logError(error, { context: 'database_initialization', dbPath: this.dbPath });
+      logMethodExit('DatabaseService', 'initialize', trackerId);
       throw error;
     }
   }
 
   // Account methods
   getAccount(address) {
-    const stmt = this.db.prepare('SELECT * FROM accounts WHERE address = ?');
-    return stmt.get(address);
+    const queryTimer = startPerformanceTimer('getAccount');
+    const query = 'SELECT * FROM accounts WHERE address = ?';
+    
+    try {
+      const stmt = this.db.prepare(query);
+      const result = stmt.get(address);
+      
+      const duration = endPerformanceTimer(queryTimer, 'getAccount');
+      logDatabaseQuery(query, [address], duration);
+      
+      if (result) {
+        dbLogger.debug('Account found', { address, balance: result.balance });
+      } else {
+        dbLogger.debug('Account not found', { address });
+      }
+      
+      return result;
+    } catch (error) {
+      logError(error, { context: 'getAccount', address });
+      throw error;
+    }
   }
 
   createAccount(account) {
-    const stmt = this.db.prepare(`
+    const queryTimer = startPerformanceTimer('createAccount');
+    const query = `
       INSERT INTO accounts (address, public_key, identity_display, balance, first_seen_block)
       VALUES (@address, @publicKey, @identityDisplay, @balance, @firstSeenBlock)
       ON CONFLICT(address) DO UPDATE SET
@@ -147,18 +202,31 @@ export class DatabaseService {
         balance = COALESCE(@balance, balance),
         updated_at = CURRENT_TIMESTAMP
       RETURNING *
-    `);
+    `;
     
-    // Ensure proper parameter mapping and data types
-    const accountData = {
-      address: account.address,
-      publicKey: account.publicKey || account.public_key,
-      identityDisplay: account.identityDisplay || account.identity_display,
-      balance: account.balance,
-      firstSeenBlock: account.firstSeenBlock || account.first_seen_block
-    };
-    
-    return stmt.get(accountData);
+    try {
+      dbLogger.debug('Creating/updating account', { address: account.address });
+      const stmt = this.db.prepare(query);
+      
+      // Ensure proper parameter mapping and data types
+      const accountData = {
+        address: account.address,
+        publicKey: account.publicKey || account.public_key,
+        identityDisplay: account.identityDisplay || account.identity_display,
+        balance: account.balance,
+        firstSeenBlock: account.firstSeenBlock || account.first_seen_block
+      };
+      
+      const result = stmt.get(accountData);
+      const duration = endPerformanceTimer(queryTimer, 'createAccount');
+      logDatabaseQuery(query, [account.address], duration);
+      
+      dbLogger.debug('Account created/updated', { address: account.address });
+      return result;
+    } catch (error) {
+      logError(error, { context: 'createAccount', address: account.address });
+      throw error;
+    }
   }
 
   updateAccountIdentity(address, identity) {

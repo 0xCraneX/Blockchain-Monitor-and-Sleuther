@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Test</title>
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+</head>
+<body>
+    <h1>WebSocket Connection Test</h1>
+    <div id="status">Connecting...</div>
+    <div id="messages"></div>
+    
+    <script>
+        const socket = io('http://127.0.0.1:3001', {
+            transports: ['websocket', 'polling']
+        });
+        
+        const status = document.getElementById('status');
+        const messages = document.getElementById('messages');
+        
+        socket.on('connect', () => {
+            status.innerHTML = '<span style="color: green;">✓ Connected successfully!</span>';
+            console.log('WebSocket connected:', socket.id);
+            
+            // Test graph request
+            socket.emit('graph:generate', {
+                address: '13RBN6UF43sxkxUrd2H4QSJccvLNGr6HY4v3mN2WtW59WaNk',
+                options: { depth: 2 }
+            });
+        });
+        
+        socket.on('graph:data', (data) => {
+            messages.innerHTML += '<p style="color: blue;">Graph data received: ' + 
+                data.graph.nodes.length + ' nodes, ' + 
+                data.graph.edges.length + ' edges</p>';
+            console.log('Graph data:', data);
+        });
+        
+        socket.on('error', (error) => {
+            messages.innerHTML += '<p style="color: red;">Error: ' + error.message + '</p>';
+            console.error('WebSocket error:', error);
+        });
+        
+        socket.on('disconnect', () => {
+            status.innerHTML = '<span style="color: red;">✗ Disconnected</span>';
+            console.log('WebSocket disconnected');
+        });
+    </script>
+</body>
+</html>

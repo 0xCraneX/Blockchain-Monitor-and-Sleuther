@@ -1,4 +1,15 @@
-import { logger } from '../utils/logger.js';
+import { 
+  logger, 
+  createLogger, 
+  logMethodEntry, 
+  logMethodExit, 
+  logWebSocketEvent, 
+  logError,
+  startPerformanceTimer,
+  endPerformanceTimer 
+} from '../utils/logger.js';
+
+const wsLogger = createLogger('GraphWebSocket');
 
 /**
  * GraphWebSocket Service - Handles real-time graph updates via WebSocket
@@ -6,6 +17,8 @@ import { logger } from '../utils/logger.js';
  */
 export class GraphWebSocket {
   constructor() {
+    const trackerId = logMethodEntry('GraphWebSocket', 'constructor');
+    
     this.io = null;
     this.subscribedClients = new Map(); // clientId -> Set of subscriptions
     this.addressSubscriptions = new Map(); // address -> Set of clientIds
@@ -20,6 +33,14 @@ export class GraphWebSocket {
     
     // Start periodic cleanup
     this.startPeriodicCleanup();
+    
+    wsLogger.info('GraphWebSocket service initialized', {
+      maxSubscriptionsPerClient: this.maxSubscriptionsPerClient,
+      maxStreamingSessions: this.maxStreamingSessions,
+      maxPatternSubscriptions: this.maxPatternSubscriptions
+    });
+    
+    logMethodExit('GraphWebSocket', 'constructor', trackerId);
   }
 
   /**
@@ -27,56 +48,84 @@ export class GraphWebSocket {
    * @param {Server} io - Socket.io server instance
    */
   initializeHandlers(io) {
+    const trackerId = logMethodEntry('GraphWebSocket', 'initializeHandlers');
     this.io = io;
     
     io.on('connection', (socket) => {
-      logger.info('GraphWebSocket: Client connected', { id: socket.id });
+      const connectionTimer = startPerformanceTimer('websocket_connection');
+      
+      logWebSocketEvent('connection', socket.id, {
+        address: socket.handshake.address,
+        headers: socket.handshake.headers,
+        query: socket.handshake.query
+      });
+      
+      wsLogger.info('Client connected', { 
+        id: socket.id,
+        transport: socket.conn.transport.name,
+        address: socket.handshake.address
+      });
       
       // Initialize client tracking
       this.subscribedClients.set(socket.id, new Set());
       
       // Handle address subscription
       socket.on('subscribe:address', (data) => {
+        logWebSocketEvent('subscribe:address', socket.id, data);
         this.handleSubscription(socket, data);
       });
       
       // Handle address unsubscription
       socket.on('unsubscribe:address', (data) => {
+        logWebSocketEvent('unsubscribe:address', socket.id, data);
         this.handleUnsubscription(socket, data);
       });
       
       // Handle pattern alert subscription
       socket.on('subscribe:patterns', () => {
+        logWebSocketEvent('subscribe:patterns', socket.id);
         this.handlePatternSubscription(socket);
       });
       
       // Handle pattern alert unsubscription
       socket.on('unsubscribe:patterns', () => {
+        logWebSocketEvent('unsubscribe:patterns', socket.id);
         this.handlePatternUnsubscription(socket);
       });
       
       // Handle progressive graph building
       socket.on('stream:graph', (data) => {
+        logWebSocketEvent('stream:graph', socket.id, data);
         this.streamGraphBuilding(socket, data);
       });
       
       // Handle stopping graph streaming
       socket.on('stream:stop', () => {
+        logWebSocketEvent('stream:stop', socket.id);
         this.stopGraphStreaming(socket);
       });
       
       // Handle heartbeat for connection health
       socket.on('ping', () => {
+        wsLogger.debug('Ping received', { socketId: socket.id });
         socket.emit('pong', { timestamp: Date.now() });
       });
       
       // Clean up on disconnect
-      socket.on('disconnect', () => {
+      socket.on('disconnect', (reason) => {
+        const duration = endPerformanceTimer(connectionTimer, 'websocket_connection');
+        logWebSocketEvent('disconnect', socket.id, { reason, duration });
         this.handleDisconnect(socket);
+      });
+      
+      // Error handling
+      socket.on('error', (error) => {
+        logError(error, { socketId: socket.id, type: 'websocket_error' });
       });
     });
     
-    logger.info('GraphWebSocket: Handlers initialized');
+    wsLogger.info('WebSocket handlers initialized successfully');
+    logMethodExit('GraphWebSocket', 'initializeHandlers', trackerId);
   }
 
   /**
@@ -85,14 +134,29 @@ export class GraphWebSocket {
    * @param {Object} data - Subscription data
    */
   handleSubscription(socket, data) {
+    const methodTimer = startPerformanceTimer('handle_subscription');
+    
     try {
       const { address, filters = {} } = data;
       
+      wsLogger.debug('Processing subscription request', {
+        socketId: socket.id,
+        address,
+        filters
+      });
+      
       if (!address || typeof address !== 'string') {
+        wsLogger.warn('Invalid subscription request', {
+          socketId: socket.id,
+          address,
+          reason: 'Invalid or missing address'
+        });
+        
         socket.emit('error', {
           type: 'subscription_error',
           message: 'Invalid address provided'
         });
+        endPerformanceTimer(methodTimer, 'handle_subscription');
         return;
       }
 

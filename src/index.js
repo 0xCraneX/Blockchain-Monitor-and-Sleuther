@@ -54,8 +54,12 @@ const io = new Server(server, {
     const origin = req.headers.origin;
     const allowedOrigins = wsConfig.origin;
     
-    if (!origin && securityConfig.environment === 'production') {
-      return callback(new Error('Origin header required'), false);
+    if (!origin) {
+      if (securityConfig.environment === 'production') {
+        return callback(new Error('Origin header required'), false);
+      }
+      // In development, allow connections without origin header (for local testing)
+      return callback(null, true);
     }
     
     if (Array.isArray(allowedOrigins) && !allowedOrigins.includes(origin)) {

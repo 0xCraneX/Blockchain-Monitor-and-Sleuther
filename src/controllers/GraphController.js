@@ -1,4 +1,14 @@
-import { logger } from '../utils/logger.js';
+import { 
+  logger, 
+  createLogger, 
+  logMethodEntry, 
+  logMethodExit, 
+  logError, 
+  startPerformanceTimer, 
+  endPerformanceTimer 
+} from '../utils/logger.js';
+
+const controllerLogger = createLogger('GraphController');
 
 /**
  * GraphController - Handles graph visualization and analysis endpoints
@@ -6,11 +16,16 @@ import { logger } from '../utils/logger.js';
  */
 export class GraphController {
   constructor(databaseService, graphQueries, relationshipScorer, pathFinder, graphMetrics) {
+    const trackerId = logMethodEntry('GraphController', 'constructor');
+    
     this.db = databaseService;
     this.graphQueries = graphQueries;
     this.relationshipScorer = relationshipScorer;
     this.pathFinder = pathFinder;
     this.graphMetrics = graphMetrics;
+    
+    controllerLogger.info('GraphController initialized with all services');
+    logMethodExit('GraphController', 'constructor', trackerId);
   }
 
   /**
@@ -18,7 +33,12 @@ export class GraphController {
    * GET /api/graph/:address
    */
   async getGraph(req, res) {
+    const methodTrackerId = logMethodEntry('GraphController', 'getGraph', {
+      address: req.params.address,
+      query: req.query
+    });
     const startTime = Date.now();
+    const perfTimer = startPerformanceTimer('graph_generation');
     
     try {
       const { address } = req.params;
@@ -38,17 +58,27 @@ export class GraphController {
         clusteringAlgorithm = 'louvain'
       } = req.query;
 
-      logger.info(`Getting graph for address ${address}`, {
+      controllerLogger.info(`Getting graph for address ${address}`, {
         depth,
         maxNodes,
         direction,
-        includeRiskScores
+        includeRiskScores,
+        filters: {
+          minVolume,
+          minBalance,
+          nodeTypes,
+          timeRange: timeStart && timeEnd ? `${timeStart}-${timeEnd}` : 'none'
+        }
       });
 
       // Validate address exists
+      const accountLookupTimer = startPerformanceTimer('account_lookup');
       const centerAccount = this.db.getAccount(address);
+      endPerformanceTimer(accountLookupTimer, 'account_lookup');
+      
       if (!centerAccount) {
-        logger.warn(`Address not found in database: ${address}`);
+        controllerLogger.warn(`Address not found in database: ${address}`);
+        logMethodExit('GraphController', 'getGraph', methodTrackerId);
         return res.status(404).json({
           error: {
             code: 'ADDRESS_NOT_FOUND',
@@ -61,6 +91,12 @@ export class GraphController {
           }
         });
       }
+      
+      controllerLogger.debug('Center account found', {
+        address,
+        balance: centerAccount.free_balance,
+        type: centerAccount.type
+      });
 
       // Parse filters
       const filters = {
@@ -74,29 +110,41 @@ export class GraphController {
 
       // Get graph data based on depth - Use relationships as fallback
       let graphData;
+      const graphQueryTimer = startPerformanceTimer('graph_query');
+      
       try {
         if (depth === 1) {
+          controllerLogger.debug('Fetching direct connections', { address, minVolume, limit: maxNodes });
           graphData = this.graphQueries.getDirectConnections(address, {
             minVolume,
             limit: maxNodes
           });
         } else {
+          controllerLogger.debug('Fetching multi-hop connections', { address, depth, minVolume, limit: maxNodes });
           graphData = this.graphQueries.getMultiHopConnections(address, depth, {
             minVolume,
             limit: maxNodes
           });
         }
         
-        logger.info(`Graph data retrieved: ${graphData.nodes.length} nodes, ${graphData.edges.length} edges`);
+        endPerformanceTimer(graphQueryTimer, 'graph_query');
+        controllerLogger.info(`Graph data retrieved: ${graphData.nodes.length} nodes, ${graphData.edges.length} edges`);
         
         // If no graph data, fallback to relationship-based graph
         if (!graphData.nodes || graphData.nodes.length === 0) {
-          logger.info('No graph data from queries, falling back to relationships');
+          controllerLogger.info('No graph data from queries, falling back to relationships');
+          const relationshipTimer = startPerformanceTimer('relationship_fallback');
           graphData = await this._buildGraphFromRelationships(address, { minVolume, limit: maxNodes });
+          endPerformanceTimer(relationshipTimer, 'relationship_fallback');
         }
       } catch (error) {
-        logger.error('Error getting graph data from queries, using relationships fallback:', error);
+        endPerformanceTimer(graphQueryTimer, 'graph_query');
+        logError(error, { context: 'graph_data_query', address, depth });
+        controllerLogger.error('Error getting graph data from queries, using relationships fallback');
+        
+        const relationshipTimer = startPerformanceTimer('relationship_fallback_error');
         graphData = await this._buildGraphFromRelationships(address, { minVolume, limit: maxNodes });
+        endPerformanceTimer(relationshipTimer, 'relationship_fallback_error');
       }
 
       // Transform to D3.js format
@@ -118,12 +166,19 @@ export class GraphController {
       }
 
       // Calculate metadata
+      let averageClusteringCoefficient = 0;
+      try {
+        averageClusteringCoefficient = await this._calculateAverageClusteringCoefficient(d3Graph.nodes);
+      } catch (error) {
+        controllerLogger.warn('Failed to calculate clustering coefficient', { error: error.message });
+      }
+      
       d3Graph.metadata = {
         ...d3Graph.metadata,
         totalNodes: d3Graph.nodes.length,
         totalEdges: d3Graph.edges.length,
         networkDensity: this._calculateNetworkDensity(d3Graph.nodes.length, d3Graph.edges.length),
-        averageClusteringCoefficient: await this._calculateAverageClusteringCoefficient(d3Graph.nodes),
+        averageClusteringCoefficient,
         centerNode: address,
         requestedDepth: parseInt(depth),
         actualDepth: d3Graph.metadata.depth || parseInt(depth),
@@ -133,10 +188,10 @@ export class GraphController {
         edgesOmitted: 0,
         renderingComplexity: this._calculateRenderingComplexity(d3Graph.nodes.length, d3Graph.edges.length),
         suggestedLayout: this._suggestLayout(d3Graph.nodes.length, d3Graph.edges.length),
-        highRiskNodeCount: d3Graph.nodes.filter(n => n.riskScore > 70).length,
+        highRiskNodeCount: d3Graph.nodes.filter(n => n.riskScore && n.riskScore > 70).length,
         suspiciousEdgeCount: d3Graph.edges.filter(e => e.suspiciousPattern).length,
-        earliestTransfer: Math.min(...d3Graph.edges.map(e => e.firstTransfer || Date.now())),
-        latestTransfer: Math.max(...d3Graph.edges.map(e => e.lastTransfer || 0))
+        earliestTransfer: d3Graph.edges.length > 0 ? Math.min(...d3Graph.edges.map(e => e.firstTransfer || Date.now())) : null,
+        latestTransfer: d3Graph.edges.length > 0 ? Math.max(...d3Graph.edges.map(e => e.lastTransfer || 0)) : null
       };
 
       const executionTime = Date.now() - startTime;
@@ -146,9 +201,17 @@ export class GraphController {
       });
 
       res.json(d3Graph);
+      logMethodExit('GraphController', 'getGraph', methodTrackerId, d3Graph);
 
     } catch (error) {
-      logger.error('Error in getGraph:', error);
+      endPerformanceTimer(perfTimer, 'graph_generation');
+      logError(error, { 
+        context: 'getGraph',
+        address: req.params.address,
+        query: req.query,
+        stage: 'graph_generation'
+      });
+      logger.error(`Error in getGraph: ${error.message}`);
       
       if (error.message.includes('Depth must be between')) {
         return res.status(400).json({
@@ -901,7 +964,20 @@ export class GraphController {
    * @private
    */
   _calculateEdgeWidth(edge) {
-    const volume = Number(BigInt(edge.volume || '0')) / 1e12; // Convert to DOT
+    // Handle edge volume safely - BigInt cannot handle decimals
+    let volumeStr = edge.volume || '0';
+    
+    // If volume is a number, convert to string
+    if (typeof volumeStr === 'number') {
+      volumeStr = Math.floor(volumeStr).toString();
+    }
+    
+    // Remove decimal part if present
+    if (volumeStr.includes('.')) {
+      volumeStr = volumeStr.split('.')[0];
+    }
+    
+    const volume = Number(BigInt(volumeStr)) / 1e12; // Convert to DOT
     return Math.min(10, Math.max(1, Math.log10(volume + 1) * 2));
   }
 
