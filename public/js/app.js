@@ -374,8 +374,15 @@ class PolkadotAnalysisApp {
             
             const graphData = await response.json();
             
+            // Map API response format to expected format (edges -> links)
+            const mappedData = {
+                nodes: graphData.nodes || [],
+                links: graphData.edges || [], // Frontend expects 'links', API returns 'edges'
+                metadata: graphData.metadata || {}
+            };
+            
             // Load the graph data into visualization
-            this.graph.loadGraphData(graphData);
+            this.graph.loadGraphData(mappedData);
             this.state.graphData = graphData;
             
             // Show visualization section

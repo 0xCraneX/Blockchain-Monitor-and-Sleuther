@@ -35,6 +35,21 @@ const validate = (schema, property = 'body') => {
 };
 
 // Routes
+
+// Get all investigations (for listing)
+router.get('/', async (req, res, next) => {
+  try {
+    // For now, return empty array since we don't have persistent storage
+    // In production, this would query the database for all investigations
+    res.json({
+      investigations: [],
+      count: 0
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.post('/', validate(investigationSchema), async (req, res, next) => {
   try {
     const sessionId = `investigation_${Date.now()}_${Math.random().toString(36).substring(7)}`;
