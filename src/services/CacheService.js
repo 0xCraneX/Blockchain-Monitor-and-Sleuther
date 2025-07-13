@@ -1,9 +1,14 @@
-import { createLogger } from '../utils/logger.js';
+/**
+ * CacheService - In-memory cache with TTL support
+ * Refactored to use BaseService for common functionality
+ */
 
-const logger = createLogger('CacheService');
+import { BaseService } from './BaseService.js';
 
-export class CacheService {
+export class CacheService extends BaseService {
   constructor(ttlSeconds = 300) {
+    super('CacheService');
+    
     this.cache = new Map();
     this.ttl = ttlSeconds * 1000; // Convert to milliseconds
     this.stats = {
@@ -15,8 +20,6 @@ export class CacheService {
 
     // Clean up expired entries every minute
     this.cleanupInterval = setInterval(() => this.cleanup(), 60000);
-
-    logger.info('CacheService initialized', { ttlSeconds });
   }
 
   /**
@@ -43,43 +46,51 @@ export class CacheService {
   }
 
   /**
-   * Set a value in cache
+   * Set a value in cache with automatic error handling
    */
-  set(key, value, ttlOverride = null) {
-    const ttl = ttlOverride !== null ? ttlOverride * 1000 : this.ttl;
-    const expiry = Date.now() + ttl;
+  async set(key, value, ttlOverride = null) {
+    return this.execute('set', async () => {
+      const ttl = ttlOverride !== null ? ttlOverride * 1000 : this.ttl;
+      const expiry = Date.now() + ttl;
 
-    this.cache.set(key, { value, expiry });
-    this.stats.sets++;
+      this.cache.set(key, {
+        value,
+        expiry,
+        createdAt: Date.now()
+      });
 
-    // Limit cache size
-    if (this.cache.size > 10000) {
-      this.cleanup();
-    }
+      this.stats.sets++;
+      return true;
+    }, key, ttlOverride);
   }
 
   /**
-   * Check if key exists and is not expired
+   * Delete a key from cache with logging
    */
-  has(key) {
-    const value = this.get(key);
-    return value !== null;
+  async delete(key) {
+    return this.execute('delete', async () => {
+      const existed = this.cache.has(key);
+      this.cache.delete(key);
+      
+      if (existed) {
+        this.stats.evictions++;
+      }
+      
+      return existed;
+    }, key);
   }
 
   /**
-   * Delete a key from cache
+   * Clear all cache entries with logging
    */
-  delete(key) {
-    return this.cache.delete(key);
-  }
-
-  /**
-   * Clear all cache entries
-   */
-  clear() {
-    const size = this.cache.size;
-    this.cache.clear();
-    logger.info('Cache cleared', { entriesRemoved: size });
+  async clear() {
+    return this.execute('clear', async () => {
+      const size = this.cache.size;
+      this.cache.clear();
+      this.stats.evictions += size;
+      
+      return { cleared: size };
+    });
   }
 
   /**
@@ -87,47 +98,114 @@ export class CacheService {
    */
   cleanup() {
     const now = Date.now();
-    let removed = 0;
+    let cleaned = 0;
 
     for (const [key, entry] of this.cache.entries()) {
       if (now > entry.expiry) {
         this.cache.delete(key);
-        removed++;
+        cleaned++;
       }
     }
 
-    if (removed > 0) {
-      this.stats.evictions += removed;
-      logger.debug('Cache cleanup completed', { removed, remaining: this.cache.size });
+    if (cleaned > 0) {
+      this.stats.evictions += cleaned;
+      this.logger.debug(`Cleaned up ${cleaned} expired cache entries`);
     }
   }
 
   /**
-   * Get cache statistics
+   * Get cache metrics
    */
-  getStats() {
-    const total = this.stats.hits + this.stats.misses;
+  getMetrics() {
+    const metrics = super.getMetrics();
+    
     return {
-      ...this.stats,
-      size: this.cache.size,
-      hitRate: total > 0 ? this.stats.hits / total : 0
+      ...metrics,
+      cacheSize: this.cache.size,
+      stats: { ...this.stats },
+      hitRate: this.stats.hits + this.stats.misses > 0 
+        ? (this.stats.hits / (this.stats.hits + this.stats.misses) * 100).toFixed(2) + '%'
+        : '0%'
     };
   }
 
   /**
-   * Destroy the cache service
+   * Warm up cache with frequently accessed data
    */
-  destroy() {
+  async warmUp(frequentKeys, dataLoader) {
+    return this.execute('warmUp', async () => {
+      const results = {
+        loaded: 0,
+        failed: 0,
+        errors: []
+      };
+
+      for (const key of frequentKeys) {
+        try {
+          const value = await dataLoader(key);
+          if (value !== null && value !== undefined) {
+            await this.set(key, value);
+            results.loaded++;
+          }
+        } catch (error) {
+          results.failed++;
+          results.errors.push({ key, error: error.message });
+        }
+      }
+
+      return results;
+    }, frequentKeys.length);
+  }
+
+  /**
+   * Get multiple values at once
+   */
+  async getMany(keys) {
+    return this.execute('getMany', async () => {
+      const results = {};
+      
+      for (const key of keys) {
+        results[key] = this.get(key);
+      }
+      
+      return results;
+    }, keys.length);
+  }
+
+  /**
+   * Set multiple values at once
+   */
+  async setMany(entries, ttlOverride = null) {
+    return this.execute('setMany', async () => {
+      const results = {
+        success: 0,
+        failed: 0,
+        errors: []
+      };
+
+      for (const [key, value] of Object.entries(entries)) {
+        try {
+          await this.set(key, value, ttlOverride);
+          results.success++;
+        } catch (error) {
+          results.failed++;
+          results.errors.push({ key, error: error.message });
+        }
+      }
+
+      return results;
+    }, Object.keys(entries).length);
+  }
+
+  /**
+   * Clean up resources
+   */
+  async cleanup() {
     if (this.cleanupInterval) {
       clearInterval(this.cleanupInterval);
       this.cleanupInterval = null;
     }
-    this.cache.clear();
-    logger.info('CacheService destroyed');
+    
+    await super.cleanup();
   }
 }
-
-// Singleton instances for different cache types
-export const accountCache = new CacheService(300); // 5 minutes
-export const transferCache = new CacheService(600); // 10 minutes
-export const graphCache = new CacheService(120); // 2 minutes
