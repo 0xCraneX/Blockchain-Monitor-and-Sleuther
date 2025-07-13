@@ -860,14 +860,55 @@ class PolkadotAnalysisApp {
         
         if (!nodeInfoContainer || !nodeDetailsPanel) return;
         
-        // Fix for identity structure - check for string first
+        // Debug logging
+        console.log('[DEBUG] Node data:', nodeData);
+        console.log('[DEBUG] Identity object:', nodeData.identity);
+        console.log('[DEBUG] Identity type:', typeof nodeData.identity);
+        console.log('[DEBUG] Identity.display:', nodeData.identity?.display);
+        console.log('[DEBUG] Identity.display type:', typeof nodeData.identity?.display);
+        
+        // Fix for identity structure - handle all cases
         let identity = 'Unknown';
-        if (typeof nodeData.identity?.display === 'string') {
+        
+        // If identity is a string, use it directly
+        if (typeof nodeData.identity === 'string' && nodeData.identity.trim() !== '') {
+            identity = nodeData.identity;
+        }
+        // If identity.display is a string, use it
+        else if (typeof nodeData.identity?.display === 'string' && nodeData.identity.display.trim() !== '') {
             identity = nodeData.identity.display;
-        } else if (nodeData.identity?.display?.display) {
-            identity = nodeData.identity.display.display;
-        } else if (nodeData.identity?.display) {
-            identity = nodeData.identity.display;
+        }
+        // Check for nested display.display structure (Subscan format)
+        else if (nodeData.identity?.display?.display !== undefined) {
+            // If it's a non-empty string
+            if (typeof nodeData.identity.display.display === 'string' && nodeData.identity.display.display.trim() !== '') {
+                identity = nodeData.identity.display.display;
+            }
+            // If it's explicitly null or empty, this address has no identity
+            else if (nodeData.identity.display.display === null || nodeData.identity.display.display === '') {
+                identity = 'Unknown';
+            }
+        }
+        // If identity is an object, try to extract a meaningful value
+        else if (nodeData.identity && typeof nodeData.identity === 'object') {
+            // Try to find any non-empty string value in the identity object
+            const findString = (obj, depth = 0) => {
+                if (depth > 3) return null; // Prevent infinite recursion
+                for (const key in obj) {
+                    if (key === 'isConfirmed' || key === 'isInvalid' || key === 'verified') continue; // Skip boolean flags
+                    if (typeof obj[key] === 'string' && obj[key].trim() !== '') {
+                        return obj[key];
+                    } else if (typeof obj[key] === 'object' && obj[key] !== null) {
+                        const result = findString(obj[key], depth + 1);
+                        if (result) return result;
+                    }
+                }
+                return null;
+            };
+            const foundString = findString(nodeData.identity);
+            if (foundString) {
+                identity = foundString;
+            }
         }
         const address = nodeData.address;
         const nodeType = nodeData.nodeType || 'regular';
@@ -888,8 +929,11 @@ class PolkadotAnalysisApp {
         const connections = nodeData.degree || 0;
         // Risk scoring not implemented yet
         
+        // Final identity display - show "No identity" if we still have Unknown
+        const displayIdentity = identity === 'Unknown' ? 'No identity' : identity;
+        
         nodeInfoContainer.innerHTML = `
-            <p><span class="label">Identity:</span> ${identity}</p>
+            <p><span class="label">Identity:</span> ${displayIdentity}</p>
             <p><span class="label">Address:</span> 
                 <span style="font-size: 11px; word-break: break-all;">${address}</span>
             </p>

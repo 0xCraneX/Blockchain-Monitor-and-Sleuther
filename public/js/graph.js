@@ -1546,12 +1546,38 @@ class PolkadotGraphVisualization {
             }
         }
         
+        // Extract identity string from various possible formats
+        let identityString = null;
+        
+        // Handle different identity formats
+        if (typeof nodeData.identity === 'string') {
+            identityString = nodeData.identity;
+        } else if (typeof nodeData.identity?.display === 'string') {
+            identityString = nodeData.identity.display;
+        } else if (typeof nodeData.identity?.display?.display === 'string') {
+            identityString = nodeData.identity.display.display;
+        } else if (nodeData.identity && typeof nodeData.identity === 'object') {
+            // Try to find any non-empty string value in the identity object
+            const findString = (obj) => {
+                for (const key in obj) {
+                    if (typeof obj[key] === 'string' && obj[key].trim() !== '') {
+                        return obj[key];
+                    } else if (typeof obj[key] === 'object' && obj[key] !== null) {
+                        const result = findString(obj[key]);
+                        if (result) return result;
+                    }
+                }
+                return null;
+            };
+            identityString = findString(nodeData.identity);
+        }
+        
         // If there's an identity, show it with balance
-        if (nodeData.identity?.display) {
+        if (identityString) {
             if (formattedBalance) {
-                return `${nodeData.identity.display}\n${formattedBalance}`;
+                return `${identityString}\n${formattedBalance}`;
             }
-            return `${nodeData.identity.display}\n${abbreviatedAddr}`;
+            return `${identityString}\n${abbreviatedAddr}`;
         }
         
         // Show address with balance (always show balance if available)
