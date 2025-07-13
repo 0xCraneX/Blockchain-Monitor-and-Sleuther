@@ -147,6 +147,37 @@ export class DatabaseService {
         logger.warn('Relationship scoring schema not found or error loading:', error.message);
       }
 
+      // Run optimization schema
+      const optimizationsPath = join(__dirname, '../database/optimizations.sql');
+      dbLogger.debug('Running optimization schema', { path: optimizationsPath });
+      try {
+        const optimizationSchema = await fs.readFile(optimizationsPath, 'utf8');
+        const statements = optimizationSchema.split(';').filter(s => s.trim());
+        for (const statement of statements) {
+          if (statement.trim()) {
+            try {
+              this.db.exec(`${statement};`);
+            } catch (error) {
+              if (!error.message.includes('already exists') &&
+                  !error.message.includes('duplicate')) {
+                logger.warn('Error executing optimization statement:', error.message);
+              }
+            }
+          }
+        }
+        logger.info('Database optimizations applied successfully');
+      } catch (error) {
+        logger.warn('Optimization schema not found or error loading:', error.message);
+      }
+
+      // Create cache data table
+      this.db.prepare(`
+        CREATE TABLE IF NOT EXISTS cache_data (
+          cache_key TEXT PRIMARY KEY,
+          data TEXT NOT NULL
+        )
+      `).run();
+
       this.isInitialized = true;
       endPerformanceTimer(initTimer, 'database_initialization');
       dbLogger.info('Database initialized successfully', {
@@ -559,12 +590,55 @@ export class DatabaseService {
           logger.debug('Database connection idle for extended period');
         }
 
+        // Update database statistics for query optimizer
+        this.updateStatistics();
+
       } catch (error) {
         logger.error('Error during cleanup monitoring:', error);
       }
     }, 30000); // Run every 30 seconds
 
     logger.debug('Database cleanup monitoring started');
+  }
+
+  // Update database statistics and node metrics
+  updateStatistics() {
+    try {
+      // Update database statistics for query optimizer
+      this.db.exec('ANALYZE');
+      
+      // Update node metrics for high-degree nodes
+      this.updateNodeMetrics();
+      
+      dbLogger.debug('Database statistics updated');
+    } catch (error) {
+      dbLogger.warn('Failed to update statistics', error);
+    }
+  }
+
+  updateNodeMetrics() {
+    // Only update nodes that haven't been calculated recently
+    const stmt = this.db.prepare(`
+      UPDATE node_metrics 
+      SET 
+        betweenness_centrality = COALESCE(
+          (
+            SELECT COUNT(DISTINCT r2.to_address) * 1.0 / 1000
+            FROM account_relationships r1 
+            JOIN account_relationships r2 ON r1.to_address = r2.from_address 
+            WHERE r1.from_address = node_metrics.address
+          ), 
+          0
+        ),
+        last_calculated = CURRENT_TIMESTAMP
+      WHERE degree > 50 
+        AND (last_calculated IS NULL OR last_calculated < datetime('now', '-1 hour'))
+    `);
+    
+    const result = stmt.run();
+    if (result.changes > 0) {
+      dbLogger.debug(`Updated metrics for ${result.changes} high-degree nodes`);
+    }
   }
 
   // Stop cleanup monitoring
