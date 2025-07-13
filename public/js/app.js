@@ -864,7 +864,7 @@ class PolkadotAnalysisApp {
         const address = nodeData.address;
         const nodeType = nodeData.nodeType || 'regular';
         const balance = nodeData.balance?.free ? 
-            (Number(BigInt(nodeData.balance.free)) / 1e12).toLocaleString() + ' DOT' : 
+            (Number(nodeData.balance.free) / 1e12).toLocaleString() + ' DOT' : 
             'Unknown';
         const connections = nodeData.degree || 0;
         // Risk scoring not implemented yet

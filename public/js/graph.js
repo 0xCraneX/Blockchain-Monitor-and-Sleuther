@@ -428,8 +428,12 @@ class PolkadotGraphVisualization {
         // Apply volume filter
         if (filters.minVolume && filters.minVolume !== '0') {
             const minVolume = BigInt(filters.minVolume);
-            filteredLinks = filteredLinks.filter(link => 
-                BigInt(link.volume || '0') >= minVolume);
+            filteredLinks = filteredLinks.filter(link => {
+                const volume = link.volume || '0';
+                // Convert decimal strings to integers for BigInt comparison
+                const volumeInt = Math.floor(Number(volume)).toString();
+                return BigInt(volumeInt) >= minVolume;
+            });
         }
         
         // Apply balance filter
