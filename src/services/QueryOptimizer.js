@@ -1,6 +1,6 @@
 /**
  * QueryOptimizer - Intelligent query optimization and execution planning
- * 
+ *
  * Features:
  * - Query plan caching and reuse
  * - Automatic index usage detection
@@ -14,10 +14,10 @@ import { BaseService } from './BaseService.js';
 export class QueryOptimizer extends BaseService {
   constructor(databaseService, dataCacheService) {
     super('QueryOptimizer', { database: databaseService, cache: dataCacheService });
-    
+
     this.queryPlans = new Map();
     this.performanceHistory = new Map();
-    
+
     // Optimization rules
     this.optimizationRules = [
       this.optimizeVolumeFilters.bind(this),
@@ -26,7 +26,7 @@ export class QueryOptimizer extends BaseService {
       this.addIndexHints.bind(this),
       this.rewriteSubqueries.bind(this)
     ];
-    
+
     // Query patterns that benefit from specific optimizations
     this.queryPatterns = {
       graphTraversal: /account_relationships.*WHERE.*depth/i,
@@ -50,27 +50,29 @@ export class QueryOptimizer extends BaseService {
 
       // Generate query fingerprint
       const queryId = this.generateQueryId(query, params);
-      
+
       // Check if we have a cached result
       if (cache) {
-        const cached = await this.cache.cacheQuery(query, params, 
+        const cached = await this.cache.cacheQuery(query, params,
           () => this.runOptimizedQuery(query, params, options),
           { ttl: cacheTTL }
         );
-        
-        if (cached !== null) return cached;
+
+        if (cached !== null) {
+          return cached;
+        }
       }
 
       // Optimize and execute query
       const startTime = Date.now();
       const optimizedQuery = this.optimizeQuery(query, params);
-      
+
       if (explain) {
         return this.explainQuery(optimizedQuery, params);
       }
 
       const result = await this.runOptimizedQuery(optimizedQuery, params, options);
-      
+
       // Track performance
       this.trackQueryPerformance(queryId, {
         originalQuery: query,
@@ -95,7 +97,7 @@ export class QueryOptimizer extends BaseService {
       for (const group of groups) {
         // Execute independent queries in parallel
         const groupResults = await Promise.all(
-          group.map(({ query, params }) => 
+          group.map(({ query, params }) =>
             this.executeQuery(query, params, options)
           )
         );
@@ -205,25 +207,25 @@ export class QueryOptimizer extends BaseService {
   /**
    * Pattern-specific optimizations
    */
-  
+
   applyPatternOptimizations(query, pattern) {
     switch (pattern) {
       case 'graphTraversal':
         // Use recursive CTEs efficiently
         return this.optimizeGraphTraversal(query);
-      
+
       case 'volumeAnalysis':
         // Use pre-calculated aggregates
         return this.optimizeVolumeAnalysis(query);
-      
+
       case 'timeSeriesQuery':
         // Partition by time ranges
         return this.optimizeTimeSeries(query);
-      
+
       case 'patternDetection':
         // Use specialized indexes
         return this.optimizePatternDetection(query);
-      
+
       default:
         return query;
     }
@@ -270,18 +272,18 @@ export class QueryOptimizer extends BaseService {
   /**
    * Query execution
    */
-  
+
   async runOptimizedQuery(query, params, options) {
     const { timeout = 30000 } = options;
-    
+
     // Create timeout promise
-    const timeoutPromise = new Promise((_, reject) => 
+    const timeoutPromise = new Promise((_, reject) =>
       setTimeout(() => reject(new Error('Query timeout')), timeout)
     );
 
     // Prepare statement
     const stmt = this.db.prepare(query);
-    
+
     // Execute with timeout
     try {
       const executePromise = new Promise((resolve) => {
@@ -299,12 +301,12 @@ export class QueryOptimizer extends BaseService {
   /**
    * Query analysis and planning
    */
-  
+
   async explainQuery(query, params) {
     const explainQuery = `EXPLAIN QUERY PLAN ${query}`;
     const stmt = this.db.prepare(explainQuery);
     const plan = params ? stmt.all(params) : stmt.all();
-    
+
     return {
       query,
       plan,
@@ -315,7 +317,7 @@ export class QueryOptimizer extends BaseService {
 
   analyzeQueryPlan(plan) {
     const optimizations = [];
-    
+
     for (const step of plan) {
       if (step.detail.includes('SCAN')) {
         optimizations.push({
@@ -324,7 +326,7 @@ export class QueryOptimizer extends BaseService {
           suggestion: 'Consider adding an index'
         });
       }
-      
+
       if (step.detail.includes('TEMP B-TREE')) {
         optimizations.push({
           type: 'info',
@@ -333,27 +335,35 @@ export class QueryOptimizer extends BaseService {
         });
       }
     }
-    
+
     return optimizations;
   }
 
   estimateQueryCost(plan) {
     let cost = 0;
-    
+
     for (const step of plan) {
-      if (step.detail.includes('SCAN')) cost += 1000;
-      if (step.detail.includes('SEARCH')) cost += 10;
-      if (step.detail.includes('SORT')) cost += 100;
-      if (step.detail.includes('TEMP')) cost += 500;
+      if (step.detail.includes('SCAN')) {
+        cost += 1000;
+      }
+      if (step.detail.includes('SEARCH')) {
+        cost += 10;
+      }
+      if (step.detail.includes('SORT')) {
+        cost += 100;
+      }
+      if (step.detail.includes('TEMP')) {
+        cost += 500;
+      }
     }
-    
+
     return cost;
   }
 
   /**
    * Performance tracking
    */
-  
+
   trackQueryPerformance(queryId, metrics) {
     // Store in memory
     this.performanceHistory.set(queryId, {
@@ -377,7 +387,7 @@ export class QueryOptimizer extends BaseService {
   /**
    * Utility methods
    */
-  
+
   generateQueryId(query, params) {
     const normalized = query.replace(/\s+/g, ' ').trim().toLowerCase();
     return this.cache.hashData(normalized + JSON.stringify(params));
@@ -394,9 +404,15 @@ export class QueryOptimizer extends BaseService {
 
   detectQueryType(query) {
     if (query.match(/^SELECT/i)) {
-      if (query.includes('account_relationships')) return 'graph';
-      if (query.includes('patterns')) return 'pattern';
-      if (query.includes('transfers')) return 'transfer';
+      if (query.includes('account_relationships')) {
+        return 'graph';
+      }
+      if (query.includes('patterns')) {
+        return 'pattern';
+      }
+      if (query.includes('transfers')) {
+        return 'transfer';
+      }
       return 'select';
     }
     return 'other';
@@ -410,7 +426,7 @@ export class QueryOptimizer extends BaseService {
     for (const query of queries) {
       const tables = this.extractTables(query.query);
       const canGroup = !tables.some(t => used.has(t));
-      
+
       if (canGroup) {
         groups.push([query]);
         tables.forEach(t => used.add(t));
@@ -429,11 +445,11 @@ export class QueryOptimizer extends BaseService {
     const tables = [];
     const tablePattern = /(?:FROM|JOIN)\s+(\w+)/gi;
     let match;
-    
+
     while ((match = tablePattern.exec(query)) !== null) {
       tables.push(match[1]);
     }
-    
+
     return tables;
   }
 
@@ -442,14 +458,14 @@ export class QueryOptimizer extends BaseService {
     const joins = [];
     const joinPattern = /JOIN\s+(\w+)\s+(?:AS\s+\w+\s+)?ON\s+([^J]+)/gi;
     let match;
-    
+
     while ((match = joinPattern.exec(query)) !== null) {
       joins.push({
         table: match[1],
         condition: match[2].trim()
       });
     }
-    
+
     return joins;
   }
 
@@ -464,9 +480,15 @@ export class QueryOptimizer extends BaseService {
 
   estimateJoinSelectivity(join) {
     // Simple heuristic - joins on primary keys are more selective
-    if (join.condition.includes('.id =')) return 1;
-    if (join.condition.includes('address =')) return 2;
-    if (join.condition.includes('volume')) return 3;
+    if (join.condition.includes('.id =')) {
+      return 1;
+    }
+    if (join.condition.includes('address =')) {
+      return 2;
+    }
+    if (join.condition.includes('volume')) {
+      return 3;
+    }
     return 4;
   }
 
@@ -474,17 +496,17 @@ export class QueryOptimizer extends BaseService {
     // Rebuild query with reordered joins
     // This is a simplified implementation
     let result = query.substring(0, query.indexOf('JOIN'));
-    
+
     for (const join of joins) {
       result += ` JOIN ${join.table} ON ${join.condition}`;
     }
-    
+
     // Add the rest of the query
     const remainderMatch = query.match(/WHERE.*/is);
     if (remainderMatch) {
-      result += ' ' + remainderMatch[0];
+      result += ` ${  remainderMatch[0]}`;
     }
-    
+
     return result;
   }
 

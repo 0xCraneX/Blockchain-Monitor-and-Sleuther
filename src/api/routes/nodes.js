@@ -31,20 +31,20 @@ router.get('/:address', validateAddress, async (req, res, next) => {
     const { address } = req.params;
     const db = req.app.locals.db;
     const blockchain = req.app.locals.blockchain;
-    
+
     logger.info(`Node details requested for ${address}`);
-    
+
     // Get account information
     const account = await db.getAccount(address);
     let balance = '0';
     let identity = null;
-    
+
     // Try to get on-chain data if available
     if (blockchain && blockchain.api && blockchain.api.isConnected) {
       try {
         const accountInfo = await blockchain.api.query.system.account(address);
         balance = accountInfo.data.free.toString();
-        
+
         // Get identity if available
         const identityInfo = await blockchain.api.query.identity.identityOf(address);
         if (identityInfo.isSome) {
@@ -60,33 +60,33 @@ router.get('/:address', validateAddress, async (req, res, next) => {
         logger.warn(`Failed to fetch on-chain data for ${address}:`, err.message);
       }
     }
-    
+
     // Get transfer statistics
     const transferStats = await db.getTransferStatistics(address);
-    
+
     // Determine node type based on various factors
     let nodeType = 'regular';
     const tags = [];
-    
+
     if (account) {
       // Check for exchange patterns
       if (transferStats.uniqueCounterparties > 1000 && transferStats.totalVolume > BigInt('1000000000000000')) {
         nodeType = 'exchange';
         tags.push('Exchange');
       }
-      
+
       // Check for validator
       if (identity && identity.display && identity.display.includes('Validator')) {
         nodeType = 'validator';
         tags.push('Validator');
       }
-      
+
       // Check for high risk patterns
       if (transferStats.rapidMovementCount > 10) {
         tags.push('High Activity');
       }
     }
-    
+
     res.json({
       address,
       identity,
@@ -106,7 +106,7 @@ router.get('/:address', validateAddress, async (req, res, next) => {
         isMultisig: false
       }
     });
-    
+
   } catch (error) {
     logger.error(`Error getting node details for ${req.params.address}:`, error);
     next(error);

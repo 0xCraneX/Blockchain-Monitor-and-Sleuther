@@ -8,7 +8,7 @@ import { BaseService } from './BaseService.js';
 export class PatternDetector extends BaseService {
   constructor(databaseService) {
     super('PatternDetector', { database: databaseService });
-    
+
     // Pattern types and their base confidence thresholds
     this.patternTypes = {
       RAPID_MOVEMENT: { baseConfidence: 0.7, severity: 'high' },
@@ -28,7 +28,7 @@ export class PatternDetector extends BaseService {
   prepareStatements() {
     // Use the actual db instance
     const db = this.db.db || this.db;
-    
+
     // Rapid sequential transfers query
     this.rapidMovementStmt = db.prepare(`
       WITH transfer_sequences AS (
@@ -228,7 +228,7 @@ export class PatternDetector extends BaseService {
   async detectRapidMovement(address, timeWindowMinutes = 300) {
     return this.execute('detectRapidMovement', async () => {
       this.ensureInitialized();
-      
+
       const results = await this.executeQuery(
         'rapidMovement',
         this.rapidMovementStmt,
@@ -236,15 +236,15 @@ export class PatternDetector extends BaseService {
       );
 
       if (!results || results.length === 0) {
-        return this._createResult('RAPID_MOVEMENT', 0, [], 'low', { 
-          address, 
-          timeWindow: timeWindowMinutes 
+        return this._createResult('RAPID_MOVEMENT', 0, [], 'low', {
+          address,
+          timeWindow: timeWindowMinutes
         });
       }
 
       // Calculate confidence based on number of hops and time elapsed
       const avgMinutes = results.reduce((sum, r) => sum + r.minutes_elapsed, 0) / results.length;
-      const confidence = Math.min(0.9, this.patternTypes.RAPID_MOVEMENT.baseConfidence * 
+      const confidence = Math.min(0.9, this.patternTypes.RAPID_MOVEMENT.baseConfidence *
         (1 + (10 / avgMinutes) * 0.3));
 
       const severity = confidence > 0.7 ? 'high' : confidence > 0.4 ? 'medium' : 'low';
@@ -264,7 +264,7 @@ export class PatternDetector extends BaseService {
   async detectCircularFlow(address, maxDepth = 5, minVolume = '0') {
     return this.execute('detectCircularFlow', async () => {
       this.ensureInitialized();
-      
+
       const results = await this.executeQuery(
         'circularFlow',
         this.circularFlowStmt,
@@ -272,15 +272,15 @@ export class PatternDetector extends BaseService {
       );
 
       if (!results || results.length === 0) {
-        return this._createResult('CIRCULAR_FLOW', 0, [], 'low', { 
-          address, 
-          maxDepth 
+        return this._createResult('CIRCULAR_FLOW', 0, [], 'low', {
+          address,
+          maxDepth
         });
       }
 
       // Higher confidence for shorter circular paths
       const avgPathLength = results.reduce((sum, r) => sum + r.path_length, 0) / results.length;
-      const confidence = Math.min(0.95, this.patternTypes.CIRCULAR_FLOW.baseConfidence * 
+      const confidence = Math.min(0.95, this.patternTypes.CIRCULAR_FLOW.baseConfidence *
         (1 + (2 / avgPathLength) * 0.2));
 
       const severity = confidence > 0.7 ? 'high' : confidence > 0.4 ? 'medium' : 'low';
@@ -300,7 +300,7 @@ export class PatternDetector extends BaseService {
   _createResult(patternType, confidence, evidence, severity, metadata = {}) {
     // Ensure confidence is between 0 and 1
     confidence = Math.max(0, Math.min(1, confidence));
-    
+
     return {
       patternType,
       confidence,
@@ -317,17 +317,21 @@ export class PatternDetector extends BaseService {
    * Calculate uniformity of values (for pattern detection)
    */
   _calculateUniformity(values) {
-    if (values.length === 0) return 0;
-    
+    if (values.length === 0) {
+      return 0;
+    }
+
     const numericValues = values.map(v => parseFloat(v));
     const mean = numericValues.reduce((sum, val) => sum + val, 0) / numericValues.length;
-    
-    if (mean === 0) return 0;
-    
+
+    if (mean === 0) {
+      return 0;
+    }
+
     const variance = numericValues.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / numericValues.length;
     const stdDev = Math.sqrt(variance);
     const coefficientOfVariation = stdDev / mean;
-    
+
     // Convert to uniformity score (0 = highly varied, 1 = very uniform)
     return Math.max(0, 1 - coefficientOfVariation);
   }
@@ -357,7 +361,7 @@ export class PatternDetector extends BaseService {
     const avgVolume = volumes.reduce((sum, v) => sum + v, 0) / volumes.length;
     const maxVolume = Math.max(...volumes);
     const spikes = volumes.filter(v => v > avgVolume * 10).length;
-    
+
     if (volumeUniformity > 0.8 || spikes > 0) {
       patterns.push({
         type: 'volume_patterns',
@@ -373,9 +377,9 @@ export class PatternDetector extends BaseService {
     const timestamps = transfers.map(t => new Date(t.timestamp).getTime()).sort();
     const intervals = [];
     for (let i = 1; i < timestamps.length; i++) {
-      intervals.push(timestamps[i] - timestamps[i-1]);
+      intervals.push(timestamps[i] - timestamps[i - 1]);
     }
-    
+
     const intervalUniformity = this._calculateUniformity(intervals);
     if (intervalUniformity > 0.7) {
       patterns.push({
@@ -390,10 +394,14 @@ export class PatternDetector extends BaseService {
     // Counterparty analysis
     const counterparties = new Set();
     transfers.forEach(t => {
-      if (t.to_address) counterparties.add(t.to_address);
-      if (t.from_address) counterparties.add(t.from_address);
+      if (t.to_address) {
+        counterparties.add(t.to_address);
+      }
+      if (t.from_address) {
+        counterparties.add(t.from_address);
+      }
     });
-    
+
     const counterpartyRatio = counterparties.size / transfers.length;
     if (counterpartyRatio < 0.2) {
       patterns.push({
@@ -442,7 +450,7 @@ export class PatternDetector extends BaseService {
   async detectLayering(address) {
     return this.execute('detectLayering', async () => {
       this.ensureInitialized();
-      
+
       const minVolume = '1000000000000'; // 1 DOT minimum
       const results = await this.executeQuery(
         'layering',
@@ -466,7 +474,7 @@ export class PatternDetector extends BaseService {
       confidence += Math.min((avgSimilarPaths - 2) * 0.05, 0.15);
 
       confidence = Math.min(confidence, 1.0);
-      
+
       const severity = confidence > 0.7 ? 'high' : confidence > 0.5 ? 'medium' : 'low';
 
       return this._createResult('LAYERING', confidence, results, severity, {
@@ -483,7 +491,7 @@ export class PatternDetector extends BaseService {
   async detectMixingPatterns(address) {
     return this.execute('detectMixingPatterns', async () => {
       this.ensureInitialized();
-      
+
       const results = await this.executeQuery(
         'mixingPatterns',
         this.mixingPatternsStmt,
@@ -506,7 +514,7 @@ export class PatternDetector extends BaseService {
       confidence += Math.min(mixerConnections * 0.15, 0.3);
 
       confidence = Math.min(confidence, 1.0);
-      
+
       const severity = confidence > 0.8 ? 'high' : confidence > 0.5 ? 'medium' : 'low';
 
       return this._createResult('MIXING_PATTERNS', confidence, results, severity, {
@@ -524,7 +532,7 @@ export class PatternDetector extends BaseService {
   async detectUnusualTiming(address) {
     return this.execute('detectUnusualTiming', async () => {
       this.ensureInitialized();
-      
+
       const results = await this.executeQuery(
         'unusualTiming',
         this.unusualTimingStmt,
@@ -532,7 +540,7 @@ export class PatternDetector extends BaseService {
       );
 
       if (!results || results.length === 0) {
-        return this._createResult('UNUSUAL_TIMING', 0, 
+        return this._createResult('UNUSUAL_TIMING', 0,
           { unusualTransfers: [], statistics: {} }, 'low', { address });
       }
 
@@ -543,20 +551,20 @@ export class PatternDetector extends BaseService {
 
       // Calculate confidence based on unusual timing patterns
       let confidence = 0;
-      
+
       if (nightTransfers / totalTransfers > 0.3) {
         confidence += 0.3;
       }
-      
+
       if (weekendTransfers / totalTransfers > 0.4) {
         confidence += 0.2;
       }
 
       confidence = Math.min(confidence, this.patternTypes.UNUSUAL_TIMING.baseConfidence);
-      
+
       const severity = confidence > 0.4 ? 'medium' : 'low';
 
-      return this._createResult('UNUSUAL_TIMING', confidence, 
+      return this._createResult('UNUSUAL_TIMING', confidence,
         {
           unusualTransfers: results,
           statistics: {
@@ -577,7 +585,7 @@ export class PatternDetector extends BaseService {
   async detectRoundNumbers(address) {
     return this.execute('detectRoundNumbers', async () => {
       this.ensureInitialized();
-      
+
       const results = await this.executeQuery(
         'roundNumbers',
         this.roundNumbersStmt,
@@ -596,17 +604,17 @@ export class PatternDetector extends BaseService {
 
       // Calculate confidence based on round number prevalence
       let confidence = this.patternTypes.ROUND_NUMBERS.baseConfidence;
-      
+
       if (perfectRounds / totalRounds > 0.5) {
         confidence += 0.2;
       }
-      
+
       if (totalRounds > 5) {
         confidence += 0.1;
       }
 
       confidence = Math.min(confidence, 0.7);
-      
+
       const severity = confidence > 0.5 ? 'medium' : 'low';
 
       return this._createResult('ROUND_NUMBERS', confidence,

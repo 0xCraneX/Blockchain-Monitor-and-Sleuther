@@ -12,7 +12,8 @@ class PolkadotAnalysisApp {
         
         // Application state
         this.state = {
-            currentAddress: TARGET_ADDRESS,
+            targetAddress: TARGET_ADDRESS, // Target address for auto-loading
+            currentAddress: null,
             graphData: null,
             selectedNodes: new Set(),
             filters: {
@@ -27,8 +28,7 @@ class PolkadotAnalysisApp {
             },
             isLoading: false,
             searchResults: [],
-            investigations: [],
-            targetAddress: TARGET_ADDRESS
+            investigations: []
         };
         
         // Initialize components
@@ -60,22 +60,37 @@ class PolkadotAnalysisApp {
                 throw new Error('Graph container #network-graph not found in DOM. Please check HTML structure.');
             }
             
-            // Check if container is visible and has dimensions
+            // Ensure the visualization section is visible
+            const visualizationSection = document.getElementById('visualization-section');
+            if (visualizationSection && visualizationSection.style.display === 'none') {
+                console.log('Making visualization section visible');
+                visualizationSection.style.display = 'block';
+            }
+            
+            // Get the parent container dimensions
+            const graphContainerParent = document.getElementById('graph-container');
+            if (graphContainerParent) {
+                const parentRect = graphContainerParent.getBoundingClientRect();
+                console.log('Graph container parent dimensions:', parentRect);
+                
+                // If parent has no dimensions, set explicit ones
+                if (parentRect.width === 0 || parentRect.height === 0) {
+                    graphContainerParent.style.width = '100%';
+                    graphContainerParent.style.height = '600px';
+                    graphContainerParent.style.minHeight = '600px';
+                }
+            }
+            
+            // Check if SVG container has dimensions
             const containerRect = graphContainer.getBoundingClientRect();
             if (containerRect.width === 0 || containerRect.height === 0) {
-                console.warn('Graph container has zero dimensions. This may cause visualization issues.');
-                console.log('Container rect:', containerRect);
-                
-                // Try to make the visualization section visible if it's hidden
-                const visualizationSection = document.getElementById('visualization-section');
-                if (visualizationSection && visualizationSection.style.display === 'none') {
-                    console.log('Visualization section is hidden, making it visible for proper initialization');
-                    visualizationSection.style.display = 'block';
-                    
-                    // Re-check dimensions after making it visible
-                    const newRect = graphContainer.getBoundingClientRect();
-                    console.log('Container rect after showing section:', newRect);
-                }
+                console.warn('Graph container has zero dimensions. Setting default dimensions.');
+                // Set explicit dimensions on the SVG
+                graphContainer.setAttribute('width', '1200');
+                graphContainer.setAttribute('height', '600');
+                graphContainer.setAttribute('viewBox', '0 0 1200 600');
+                graphContainer.style.width = '100%';
+                graphContainer.style.height = '100%';
             }
             
             console.log('Initializing graph with container:', graphContainer);
@@ -234,23 +249,36 @@ class PolkadotAnalysisApp {
      * Load initial application data
      */
     async loadInitialData() {
+        console.log('Starting loadInitialData...');
         try {
             // Load any saved investigations
+            console.log('Loading saved investigations...');
             await this.loadSavedInvestigations();
             
             // Check for URL parameters for direct address loading
             const urlParams = new URLSearchParams(window.location.search);
-            const address = urlParams.get('address') || this.state.targetAddress;
+            const addressFromUrl = urlParams.get('address');
+            const targetAddress = this.state.targetAddress;
+            console.log('URL address:', addressFromUrl, 'Target address:', targetAddress);
+            
+            const address = addressFromUrl || targetAddress;
+            console.log('Address to load:', address);
             
             if (address) {
                 // Set search input to the target address
                 const searchInput = document.getElementById('address-search');
                 if (searchInput) {
                     searchInput.value = address;
+                    console.log('Set search input value to:', address);
+                } else {
+                    console.log('Search input element not found');
                 }
                 
-                // Load the target address graph automatically
-                await this.loadAddressGraph(address);
+                // Don't load directly - let it complete initialization first
+                // The search component will trigger the load via performMainSearch
+                console.log('Address set in search box, waiting for user action or auto-trigger');
+            } else {
+                console.log('No address to load');
             }
             
         } catch (error) {
@@ -392,15 +420,20 @@ class PolkadotAnalysisApp {
         console.log('loadAddressGraph called with address:', address);
         
         if (!this.isValidSubstrateAddress(address)) {
+            console.error('Invalid Substrate address format:', address);
             this.showError('Invalid Substrate address format');
             return;
         }
+        console.log('Address validation passed');
         
+        console.log('Calling showLoading...');
         this.showLoading();
         this.state.currentAddress = address;
         
+        console.log('Building query parameters...');
         try {
             // Build query parameters
+            console.log('Current filters:', JSON.stringify(this.state.filters));
             const params = new URLSearchParams({
                 depth: this.state.filters.depth,
                 maxNodes: this.state.filters.maxNodes,
@@ -409,6 +442,7 @@ class PolkadotAnalysisApp {
                 direction: this.state.filters.direction,
                 layout: 'force'
             });
+            console.log('URLSearchParams created successfully');
             
             if (this.state.filters.nodeTypes.length > 0) {
                 this.state.filters.nodeTypes.forEach(type => {
@@ -420,9 +454,15 @@ class PolkadotAnalysisApp {
                 params.set('riskThreshold', this.state.filters.riskThreshold);
             }
             
+            console.log('Query parameters built:', params.toString());
+            
             // Fetch graph data
             const apiUrl = window.APP_CONFIG?.API_BASE_URL || '';
-            const response = await fetch(`${apiUrl}/api/graph/${address}?${params}`);
+            const fetchUrl = `${apiUrl}/api/graph/${address}?${params}`;
+            console.log('Fetching graph data from:', fetchUrl);
+            
+            const response = await fetch(fetchUrl);
+            console.log('Fetch response received:', response.status);
             
             if (!response.ok) {
                 const errorData = await response.json();
@@ -438,12 +478,12 @@ class PolkadotAnalysisApp {
                 metadata: graphData.metadata || {}
             };
             
+            // Apply current filters BEFORE loading data to ensure they're available during rendering
+            this.graph.setFilters(this.state.filters);
+            
             // Load the graph data into visualization
             this.graph.loadGraphData(mappedData);
             this.state.graphData = mappedData; // Store the mapped data, not the raw response
-            
-            // Apply current filters (including volume threshold) to the loaded graph
-            this.graph.setFilters(this.state.filters);
             
             // Show visualization section
             this.showVisualizationSection();
@@ -768,6 +808,9 @@ class PolkadotAnalysisApp {
                         ...expandedData.metadata
                     };
                 }
+                
+                // Apply current filters before reloading to ensure consistent highlighting
+                this.graph.setFilters(this.state.filters);
                 
                 // Reload the graph with updated data
                 this.graph.loadGraphData(this.state.graphData);
@@ -1164,15 +1207,30 @@ class PolkadotAnalysisApp {
      * Load saved investigations
      */
     async loadSavedInvestigations() {
+        console.log('loadSavedInvestigations called');
         try {
+            // Skip loading investigations for now since the endpoint doesn't exist
+            console.log('Skipping investigations load - endpoint not implemented yet');
+            this.state.investigations = [];
+            
+            /* TODO: Implement when investigations endpoint is ready
             const apiUrl = window.APP_CONFIG?.API_BASE_URL || '';
-            const response = await fetch(`${apiUrl}/api/investigations`);
+            const url = `${apiUrl}/api/investigations`;
+            console.log('Fetching investigations from:', url);
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            console.log('Investigations response:', response.status);
             if (response.ok) {
                 this.state.investigations = await response.json();
+                console.log('Investigations loaded:', this.state.investigations);
             }
+            */
         } catch (error) {
             console.error('Error loading investigations:', error);
         }
+        console.log('loadSavedInvestigations completed');
     }
     
     /**
@@ -1224,8 +1282,12 @@ class PolkadotAnalysisApp {
      * Validate Substrate address format
      */
     isValidSubstrateAddress(address) {
-        // Basic validation for SS58 format
-        return /^[1-9A-HJ-NP-Za-km-z]{47,48}$/.test(address);
+        // Use the proper address validator if available
+        if (typeof polkadotAddressValidator !== 'undefined') {
+            return polkadotAddressValidator.isValidFormat(address);
+        }
+        // Fallback to basic validation for SS58 format (47-50 characters)
+        return /^[1-9A-HJ-NP-Za-km-z]{47,50}$/.test(address);
     }
     
     /**

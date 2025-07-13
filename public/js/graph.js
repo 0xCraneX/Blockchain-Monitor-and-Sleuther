@@ -1880,12 +1880,16 @@ class PolkadotGraphVisualization {
      */
     setFilters(filters) {
         console.log('Setting filters:', filters);
+        
+        // Only reset debug flags if filters actually changed
+        const filtersChanged = JSON.stringify(this.state.currentFilters) !== JSON.stringify(filters);
+        if (filtersChanged) {
+            this._loggedFilters = false;
+            this._loggedThreshold = false;
+        }
+        
         this.state.currentFilters = { ...filters };
         console.log('Current filters after setting:', this.state.currentFilters);
-        
-        // Reset debug flags when filters change
-        this._loggedFilters = false;
-        this._loggedThreshold = false;
         
         this.applyFilters();
         this.updateSimulationParameters();

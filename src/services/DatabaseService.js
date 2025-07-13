@@ -377,9 +377,9 @@ export class DatabaseService {
       FROM transfers
       WHERE from_address = @address OR to_address = @address
     `;
-    
+
     const stats = this.db.prepare(statsQuery).get({ address });
-    
+
     // Count rapid movements (multiple transfers within short time window)
     const rapidMovementQuery = `
       SELECT COUNT(*) as rapidMovementCount
@@ -399,9 +399,9 @@ export class DatabaseService {
         AND t2.timestamp <= datetime(t1.timestamp, '+1 hour')
         AND t2.rowid != t1.rowid
     `;
-    
+
     const rapidStats = this.db.prepare(rapidMovementQuery).get({ address });
-    
+
     return {
       uniqueCounterparties: stats?.uniqueCounterparties || 0,
       totalIncoming: BigInt(stats?.totalIncoming || 0),
@@ -606,10 +606,10 @@ export class DatabaseService {
     try {
       // Update database statistics for query optimizer
       this.db.exec('ANALYZE');
-      
+
       // Update node metrics for high-degree nodes
       this.updateNodeMetrics();
-      
+
       dbLogger.debug('Database statistics updated');
     } catch (error) {
       dbLogger.warn('Failed to update statistics', error);
@@ -617,27 +617,43 @@ export class DatabaseService {
   }
 
   updateNodeMetrics() {
-    // Only update nodes that haven't been calculated recently
-    const stmt = this.db.prepare(`
-      UPDATE node_metrics 
-      SET 
-        betweenness_centrality = COALESCE(
-          (
-            SELECT COUNT(DISTINCT r2.to_address) * 1.0 / 1000
-            FROM account_relationships r1 
-            JOIN account_relationships r2 ON r1.to_address = r2.from_address 
-            WHERE r1.from_address = node_metrics.address
-          ), 
-          0
-        ),
-        last_calculated = CURRENT_TIMESTAMP
-      WHERE degree > 50 
-        AND (last_calculated IS NULL OR last_calculated < datetime('now', '-1 hour'))
-    `);
-    
-    const result = stmt.run();
-    if (result.changes > 0) {
-      dbLogger.debug(`Updated metrics for ${result.changes} high-degree nodes`);
+    try {
+      // Check if node_metrics table exists
+      const tableExists = this.db.prepare(`
+        SELECT name FROM sqlite_master 
+        WHERE type='table' AND name='node_metrics'
+      `).get();
+
+      if (!tableExists) {
+        // Table doesn't exist yet, skip update
+        return;
+      }
+
+      // Only update nodes that haven't been calculated recently
+      const stmt = this.db.prepare(`
+        UPDATE node_metrics 
+        SET 
+          betweenness_centrality = COALESCE(
+            (
+              SELECT COUNT(DISTINCT r2.to_address) * 1.0 / 1000
+              FROM account_relationships r1 
+              JOIN account_relationships r2 ON r1.to_address = r2.from_address 
+              WHERE r1.from_address = node_metrics.address
+            ), 
+            0
+          ),
+          last_calculated = CURRENT_TIMESTAMP
+        WHERE degree > 50 
+          AND (last_calculated IS NULL OR last_calculated < datetime('now', '-1 hour'))
+      `);
+
+      const result = stmt.run();
+      if (result.changes > 0) {
+        dbLogger.debug(`Updated metrics for ${result.changes} high-degree nodes`);
+      }
+    } catch (error) {
+      // Silently handle errors if table doesn't exist or other issues
+      // This is a non-critical optimization
     }
   }
 

@@ -8,7 +8,7 @@ import { BaseService } from './BaseService.js';
 export class CacheService extends BaseService {
   constructor(ttlSeconds = 300) {
     super('CacheService');
-    
+
     this.cache = new Map();
     this.ttl = ttlSeconds * 1000; // Convert to milliseconds
     this.stats = {
@@ -71,11 +71,11 @@ export class CacheService extends BaseService {
     return this.execute('delete', async () => {
       const existed = this.cache.has(key);
       this.cache.delete(key);
-      
+
       if (existed) {
         this.stats.evictions++;
       }
-      
+
       return existed;
     }, key);
   }
@@ -88,7 +88,7 @@ export class CacheService extends BaseService {
       const size = this.cache.size;
       this.cache.clear();
       this.stats.evictions += size;
-      
+
       return { cleared: size };
     });
   }
@@ -118,13 +118,13 @@ export class CacheService extends BaseService {
    */
   getMetrics() {
     const metrics = super.getMetrics();
-    
+
     return {
       ...metrics,
       cacheSize: this.cache.size,
       stats: { ...this.stats },
-      hitRate: this.stats.hits + this.stats.misses > 0 
-        ? (this.stats.hits / (this.stats.hits + this.stats.misses) * 100).toFixed(2) + '%'
+      hitRate: this.stats.hits + this.stats.misses > 0
+        ? `${(this.stats.hits / (this.stats.hits + this.stats.misses) * 100).toFixed(2)  }%`
         : '0%'
     };
   }
@@ -163,11 +163,11 @@ export class CacheService extends BaseService {
   async getMany(keys) {
     return this.execute('getMany', async () => {
       const results = {};
-      
+
       for (const key of keys) {
         results[key] = this.get(key);
       }
-      
+
       return results;
     }, keys.length);
   }
@@ -205,7 +205,7 @@ export class CacheService extends BaseService {
       clearInterval(this.cleanupInterval);
       this.cleanupInterval = null;
     }
-    
+
     await super.cleanup();
   }
 }

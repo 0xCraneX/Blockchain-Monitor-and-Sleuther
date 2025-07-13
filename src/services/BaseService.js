@@ -1,6 +1,6 @@
 /**
  * Base Service Class
- * 
+ *
  * Provides common functionality for all services to eliminate code duplication
  */
 
@@ -11,17 +11,17 @@ export class BaseService {
     this.name = name;
     this.logger = createLogger(name);
     this.dependencies = dependencies;
-    
+
     // Extract common dependencies
     this.db = dependencies.db || dependencies.database || dependencies.databaseService;
     this.cache = dependencies.cache || dependencies.cacheService;
     this.blockchain = dependencies.blockchain || dependencies.blockchainService;
-    
+
     // Performance tracking
     this.performanceTrackers = new Map();
-    
+
     // Initialize
-    this.logger.info(`${name} initialized`, { 
+    this.logger.info(`${name} initialized`, {
       hasDatabaseConnection: !!this.db,
       hasCacheService: !!this.cache,
       hasBlockchainConnection: !!this.blockchain
@@ -34,13 +34,13 @@ export class BaseService {
   async execute(methodName, operation, ...args) {
     const trackerId = logMethodEntry(this.name, methodName, args[0]);
     const timer = startPerformanceTimer(`${this.name}_${methodName}`);
-    
+
     try {
       const result = await operation.call(this, ...args);
-      
+
       endPerformanceTimer(timer, `${this.name}_${methodName}`);
       logMethodExit(this.name, methodName, trackerId);
-      
+
       return result;
     } catch (error) {
       logError(error, {
@@ -48,7 +48,7 @@ export class BaseService {
         method: methodName,
         args: args[0]
       });
-      
+
       // Re-throw with context
       error.service = this.name;
       error.method = methodName;
@@ -63,12 +63,12 @@ export class BaseService {
     if (!this.db) {
       throw new Error(`Database not available in ${this.name}`);
     }
-    
+
     const timer = startPerformanceTimer(`query_${queryName}`);
-    
+
     try {
       this.logger.debug(`Executing query: ${queryName}`, { params });
-      
+
       let result;
       if (typeof query === 'string') {
         // Raw SQL query
@@ -81,14 +81,14 @@ export class BaseService {
         // Prepared statement
         result = params ? query.all(params) : query.all();
       }
-      
+
       const duration = endPerformanceTimer(timer, `query_${queryName}`);
-      
+
       this.logger.debug(`Query completed: ${queryName}`, {
         duration: `${duration}ms`,
         rowCount: Array.isArray(result) ? result.length : 1
       });
-      
+
       return result;
     } catch (error) {
       this.logger.error(`Query failed: ${queryName}`, { error: error.message, params });
@@ -104,9 +104,9 @@ export class BaseService {
       // No cache available, execute operation directly
       return await operation();
     }
-    
+
     const { ttl = 300, force = false } = options;
-    
+
     // Check cache first unless forced
     if (!force) {
       try {
@@ -119,10 +119,10 @@ export class BaseService {
         this.logger.warn(`Cache get error for ${key}:`, error.message);
       }
     }
-    
+
     // Execute operation
     const result = await operation();
-    
+
     // Cache the result
     try {
       await this.cache.set(key, result, ttl);
@@ -130,7 +130,7 @@ export class BaseService {
     } catch (error) {
       this.logger.warn(`Cache set error for ${key}:`, error.message);
     }
-    
+
     return result;
   }
 
@@ -139,24 +139,24 @@ export class BaseService {
    */
   async batchOperation(items, operation, options = {}) {
     const { batchSize = 100, concurrency = 5 } = options;
-    
+
     const results = [];
     const errors = [];
-    
+
     // Process in batches
     for (let i = 0; i < items.length; i += batchSize) {
       const batch = items.slice(i, i + batchSize);
-      
+
       // Process batch with limited concurrency
-      const batchPromises = batch.map((item, index) => 
+      const batchPromises = batch.map((item, index) =>
         operation(item, i + index)
           .then(result => ({ success: true, result, index: i + index }))
           .catch(error => ({ success: false, error, index: i + index, item }))
       );
-      
+
       // Wait for batch to complete
       const batchResults = await Promise.all(batchPromises);
-      
+
       // Separate successes and failures
       batchResults.forEach(result => {
         if (result.success) {
@@ -165,15 +165,15 @@ export class BaseService {
           errors.push(result);
         }
       });
-      
+
       // Log progress
       this.logger.debug(`Batch progress: ${i + batch.length}/${items.length}`);
     }
-    
+
     if (errors.length > 0) {
       this.logger.warn(`Batch operation completed with ${errors.length} errors`);
     }
-    
+
     return { results, errors };
   }
 
@@ -184,9 +184,9 @@ export class BaseService {
     try {
       return schema.parse(data);
     } catch (error) {
-      this.logger.warn('Validation failed', { 
+      this.logger.warn('Validation failed', {
         error: error.message,
-        data: JSON.stringify(data).substring(0, 200) 
+        data: JSON.stringify(data).substring(0, 200)
       });
       throw error;
     }
@@ -199,11 +199,11 @@ export class BaseService {
     if (this.db && !this.db.isInitialized) {
       throw new Error(`${this.name}: Database not initialized`);
     }
-    
+
     if (this.blockchain && !this.blockchain.isConnected) {
       throw new Error(`${this.name}: Blockchain not connected`);
     }
-    
+
     return true;
   }
 
@@ -218,12 +218,12 @@ export class BaseService {
       hasCacheService: !!this.cache,
       hasBlockchainConnection: !!this.blockchain
     };
-    
+
     // Add cache metrics if available
     if (this.cache && typeof this.cache.getMetrics === 'function') {
       metrics.cache = this.cache.getMetrics();
     }
-    
+
     return metrics;
   }
 
@@ -232,10 +232,10 @@ export class BaseService {
    */
   async cleanup() {
     this.logger.info(`Cleaning up ${this.name}`);
-    
+
     // Clear performance trackers
     this.performanceTrackers.clear();
-    
+
     // Close database connections if owned by this service
     if (this.db && typeof this.db.close === 'function') {
       try {
@@ -244,7 +244,7 @@ export class BaseService {
         this.logger.warn('Error closing database connection', error);
       }
     }
-    
+
     // Disconnect from blockchain if owned by this service
     if (this.blockchain && typeof this.blockchain.disconnect === 'function') {
       try {

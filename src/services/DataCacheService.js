@@ -1,6 +1,6 @@
 /**
  * DataCacheService - Hybrid memory/database caching with intelligent invalidation
- * 
+ *
  * Features:
  * - Two-tier caching: in-memory (L1) and database (L2)
  * - Automatic cache warming for frequently accessed data
@@ -20,10 +20,10 @@ const gunzip = promisify(zlib.gunzip);
 export class DataCacheService extends BaseService {
   constructor(databaseService, cacheService) {
     super('DataCacheService', { database: databaseService, cache: cacheService });
-    
+
     // L1 cache (in-memory) is managed by CacheService
     this.l1Cache = cacheService;
-    
+
     // Configuration
     this.config = {
       l1TTL: 300, // 5 minutes for memory cache
@@ -33,7 +33,7 @@ export class DataCacheService extends BaseService {
       warmupBatchSize: 100,
       invalidationBatchSize: 50
     };
-    
+
     // Cache statistics
     this.stats = {
       l1Hits: 0,
@@ -42,10 +42,10 @@ export class DataCacheService extends BaseService {
       compressionSaves: 0,
       invalidations: 0
     };
-    
+
     // Dependency tracking for smart invalidation
     this.dependencies = new Map(); // cacheKey -> Set of table names
-    
+
     // Start background tasks
     this.startWarmupTask();
     this.startCleanupTask();
@@ -84,12 +84,12 @@ export class DataCacheService extends BaseService {
       // Cache miss - fetch data
       this.stats.misses++;
       const data = await fetcher();
-      
+
       if (data !== null && data !== undefined) {
         // Store in both caches
         await this.set(key, data, { ttl, compress, dependencies });
       }
-      
+
       return data;
     }, key);
   }
@@ -129,7 +129,7 @@ export class DataCacheService extends BaseService {
   async invalidateByTable(tableName) {
     return this.execute('invalidateByTable', async () => {
       const keysToInvalidate = [];
-      
+
       // Find all cache keys that depend on this table
       for (const [key, deps] of this.dependencies.entries()) {
         if (deps.has(tableName)) {
@@ -151,7 +151,7 @@ export class DataCacheService extends BaseService {
       }
 
       this.stats.invalidations += invalidated;
-      
+
       return { invalidated, tableName };
     }, tableName);
   }
@@ -169,7 +169,7 @@ export class DataCacheService extends BaseService {
    */
   async getCachedGraph(address, depth, filters, fetcher) {
     const key = `graph:${address}:${depth}:${this.hashObject(filters)}`;
-    
+
     return this.get(key, fetcher, {
       ttl: 600, // 10 minutes for graph data
       compress: true,
@@ -182,7 +182,7 @@ export class DataCacheService extends BaseService {
    */
   async getCachedPatterns(address, patternType, fetcher) {
     const key = `patterns:${address}:${patternType}`;
-    
+
     return this.get(key, fetcher, {
       ttl: 1800, // 30 minutes for pattern results
       compress: false,
@@ -195,19 +195,19 @@ export class DataCacheService extends BaseService {
    */
   async getCachedScore(fromAddress, toAddress, scoreType, fetcher) {
     const key = `score:${fromAddress}:${toAddress}:${scoreType}`;
-    
+
     // Check scoring cache table first
     const cached = await this.getFromScoringCache(fromAddress, toAddress, scoreType);
     if (cached) {
       return cached;
     }
-    
+
     // Fetch and cache
     const score = await fetcher();
     if (score) {
       await this.setScoringCache(fromAddress, toAddress, scoreType, score);
     }
-    
+
     return score;
   }
 
@@ -219,9 +219,11 @@ export class DataCacheService extends BaseService {
       FROM cache_metadata
       WHERE cache_key = ? AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)
     `);
-    
+
     const metadata = query.get(key);
-    if (!metadata) return null;
+    if (!metadata) {
+      return null;
+    }
 
     // Update hit count
     this.db.prepare('UPDATE cache_metadata SET hit_count = hit_count + 1, last_accessed = CURRENT_TIMESTAMP WHERE cache_key = ?').run(key);
@@ -230,8 +232,10 @@ export class DataCacheService extends BaseService {
     // For now, we'll use a simple cache_data table
     const dataQuery = this.db.prepare('SELECT data FROM cache_data WHERE cache_key = ?');
     const result = dataQuery.get(key);
-    
-    if (!result) return null;
+
+    if (!result) {
+      return null;
+    }
 
     // Decompress if needed
     if (metadata.size_bytes > this.config.compressionThreshold) {
@@ -246,10 +250,10 @@ export class DataCacheService extends BaseService {
   async setInL2(key, value, options) {
     const { ttl, compress } = options;
     const expiresAt = new Date(Date.now() + ttl * 1000).toISOString();
-    
+
     let dataToStore = JSON.stringify(value);
-    let sizeBytes = dataToStore.length;
-    
+    const sizeBytes = dataToStore.length;
+
     // Compress if needed
     if (compress) {
       const compressed = await gzip(dataToStore);
@@ -257,15 +261,15 @@ export class DataCacheService extends BaseService {
       const savedBytes = sizeBytes - dataToStore.length;
       this.stats.compressionSaves += savedBytes;
     }
-    
+
     const dataHash = this.hashData(dataToStore);
-    
+
     // Store metadata
     this.db.prepare(`
       INSERT OR REPLACE INTO cache_metadata (cache_key, data_hash, size_bytes, expires_at)
       VALUES (?, ?, ?, ?)
     `).run(key, dataHash, sizeBytes, expiresAt);
-    
+
     // Store data (would use blob storage in production)
     this.db.prepare(`
       INSERT OR REPLACE INTO cache_data (cache_key, data)
@@ -287,10 +291,12 @@ export class DataCacheService extends BaseService {
       WHERE from_address = ? AND to_address = ? AND score_type = ?
         AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)
     `);
-    
+
     const result = query.get(fromAddress, toAddress, scoreType);
-    if (!result) return null;
-    
+    if (!result) {
+      return null;
+    }
+
     return {
       score: result.score,
       details: result.details ? JSON.parse(result.details) : {}
@@ -299,7 +305,7 @@ export class DataCacheService extends BaseService {
 
   async setScoringCache(fromAddress, toAddress, scoreType, scoreData) {
     const expiresAt = new Date(Date.now() + this.config.l2TTL * 1000).toISOString();
-    
+
     this.db.prepare(`
       INSERT OR REPLACE INTO scoring_cache 
       (from_address, to_address, score_type, score, details, expires_at)
@@ -392,7 +398,7 @@ export class DataCacheService extends BaseService {
 
   getMetrics() {
     const baseMetrics = super.getMetrics();
-    
+
     return {
       ...baseMetrics,
       cacheStats: {
@@ -407,7 +413,9 @@ export class DataCacheService extends BaseService {
 
   calculateHitRate() {
     const total = this.stats.l1Hits + this.stats.l2Hits + this.stats.misses;
-    if (total === 0) return 0;
+    if (total === 0) {
+      return 0;
+    }
     return ((this.stats.l1Hits + this.stats.l2Hits) / total * 100).toFixed(2);
   }
 

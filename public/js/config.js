@@ -1,13 +1,13 @@
 // Configuration for the frontend application
 window.APP_CONFIG = {
-  // API base URL - in development, the API runs on port 3002
+  // API base URL - in development, the API runs on port 3001
   API_BASE_URL: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-    ? 'http://localhost:3002' 
+    ? 'http://localhost:3001' 
     : '',  // In production, use relative URLs
     
   // WebSocket URL
   WS_URL: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    ? 'ws://localhost:3002'
+    ? 'ws://localhost:3001'
     : `ws://${window.location.host}`,
     
   // Other configuration

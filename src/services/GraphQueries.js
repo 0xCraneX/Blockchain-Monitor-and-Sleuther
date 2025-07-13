@@ -30,6 +30,10 @@ export class GraphQueries {
           WHEN ar.from_address = ad.address THEN a2.identity_display
           ELSE a1.identity_display
         END as connected_identity,
+        CASE 
+          WHEN ar.from_address = ad.address THEN a2.balance
+          ELSE a1.balance
+        END as connected_balance,
         ar.total_volume,
         ar.transfer_count,
         ar.last_transfer_time,
@@ -112,6 +116,7 @@ export class GraphQueries {
             id: connectedAddr,
             address: connectedAddr,
             identity: conn.connected_identity,
+            balance: conn.connected_balance,
             nodeType: conn.connected_node_type,
             riskScore: conn.connected_risk_score,
             metrics: {
@@ -224,6 +229,7 @@ export class GraphQueries {
         SELECT 
           ap.*,
           a.identity_display,
+          a.balance,
           COALESCE(nm.risk_score, 0) as risk_score,
           COALESCE(nm.node_type, 'regular') as node_type
         FROM aggregated_paths ap
@@ -248,6 +254,7 @@ export class GraphQueries {
         id: address,
         address: address,
         identity: centerAccount?.identity_display,
+        balance: centerAccount?.balance,
         nodeType: 'center',
         hopLevel: 0
       });
@@ -260,6 +267,7 @@ export class GraphQueries {
             id: result.to_address,
             address: result.to_address,
             identity: result.identity_display,
+            balance: result.balance,
             nodeType: result.node_type,
             riskScore: result.risk_score,
             hopLevel: result.min_hops,

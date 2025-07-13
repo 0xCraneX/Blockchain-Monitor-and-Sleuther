@@ -47,7 +47,7 @@ export class RelationshipScorer extends BaseService {
 
       // Get volume percentiles from database
       const percentiles = await this.getVolumePercentiles();
-      
+
       // Calculate component scores
       const totalVolumeScore = this.calculatePercentileScore(totalVolume, percentiles.total) * 0.4;
       const avgSizeScore = this.calculatePercentileScore(avgTransferSize, percentiles.average) * 0.3;
@@ -69,7 +69,7 @@ export class RelationshipScorer extends BaseService {
           transferCount,
           volumePercentile: this.findPercentile(totalVolume, percentiles.total),
           avgSizePercentile: this.findPercentile(avgTransferSize, percentiles.average),
-          balanceRatio: relationship.from_balance ? 
+          balanceRatio: relationship.from_balance ?
             (totalVolume / parseFloat(relationship.from_balance)).toFixed(2) : null
         }
       };
@@ -82,7 +82,7 @@ export class RelationshipScorer extends BaseService {
   async calculateFrequencyScore(relationship) {
     return this.execute('calculateFrequencyScore', async () => {
       const transferCount = relationship.transfer_count || 0;
-      
+
       if (transferCount === 0) {
         return { score: 0, details: {} };
       }
@@ -274,10 +274,12 @@ export class RelationshipScorer extends BaseService {
       // Check cache first
       const cacheKey = `${relationship.from_address}-${relationship.to_address}`;
       const cached = this.getCachedScore(cacheKey);
-      if (cached) return cached;
+      if (cached) {
+        return cached;
+      }
 
       // Calculate all component scores in parallel
-      const [volumeResult, frequencyResult, temporalResult, networkResult, riskResult] = 
+      const [volumeResult, frequencyResult, temporalResult, networkResult, riskResult] =
         await Promise.all([
           this.calculateVolumeScore(relationship),
           this.calculateFrequencyScore(relationship),
@@ -287,7 +289,7 @@ export class RelationshipScorer extends BaseService {
         ]);
 
       // Calculate weighted base score
-      const baseScore = 
+      const baseScore =
         volumeResult.score * this.weights.volume +
         frequencyResult.score * this.weights.frequency +
         temporalResult.score * this.weights.temporal +
@@ -341,22 +343,46 @@ export class RelationshipScorer extends BaseService {
   }
 
   calculatePercentileScore(value, percentiles) {
-    if (value <= percentiles.p25) return 10;
-    if (value <= percentiles.p50) return 30;
-    if (value <= percentiles.p75) return 50;
-    if (value <= percentiles.p90) return 70;
-    if (value <= percentiles.p95) return 85;
-    if (value <= percentiles.p99) return 95;
+    if (value <= percentiles.p25) {
+      return 10;
+    }
+    if (value <= percentiles.p50) {
+      return 30;
+    }
+    if (value <= percentiles.p75) {
+      return 50;
+    }
+    if (value <= percentiles.p90) {
+      return 70;
+    }
+    if (value <= percentiles.p95) {
+      return 85;
+    }
+    if (value <= percentiles.p99) {
+      return 95;
+    }
     return 100;
   }
 
   findPercentile(value, percentiles) {
-    if (value <= percentiles.p25) return 25;
-    if (value <= percentiles.p50) return 50;
-    if (value <= percentiles.p75) return 75;
-    if (value <= percentiles.p90) return 90;
-    if (value <= percentiles.p95) return 95;
-    if (value <= percentiles.p99) return 99;
+    if (value <= percentiles.p25) {
+      return 25;
+    }
+    if (value <= percentiles.p50) {
+      return 50;
+    }
+    if (value <= percentiles.p75) {
+      return 75;
+    }
+    if (value <= percentiles.p90) {
+      return 90;
+    }
+    if (value <= percentiles.p95) {
+      return 95;
+    }
+    if (value <= percentiles.p99) {
+      return 99;
+    }
     return 100;
   }
 

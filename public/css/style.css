@@ -55,6 +55,7 @@ main {
     display: grid;
     grid-template-columns: 300px 1fr;
     grid-gap: 0;
+    position: relative;
 }
 
 /* Search section - now in sidebar */
@@ -570,6 +571,7 @@ mark {
     flex: 1;
     display: block;
     background-color: transparent;
+    position: relative;
 }
 
 /* Ensure SVG takes full container space */
@@ -584,6 +586,9 @@ mark {
     margin-top: 0;
     position: relative;
     height: 100%;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
     min-height: calc(100vh - 140px);
 }
 
