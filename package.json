@@ -41,7 +41,9 @@
     "logs:ws": "node scripts/monitor-logs.js -g websocket",
     "dev:debug": "LOG_LEVEL=debug ENABLE_FILE_LOGGING=true nodemon src/index.js",
     "precheck": "node scripts/pre-deployment-check.js",
-    "test:predeploy": "npm run lint && npm run test:all && npm run precheck"
+    "test:predeploy": "npm run lint && npm run test:all && npm run precheck",
+    "checkpoint": "node scripts/checkpoint.js",
+    "checkpoint:rollback": "node scripts/checkpoint.js rollback"
   },
   "keywords": [
     "polkadot",
