@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Volume Threshold Test</title>
+</head>
+<body>
+    <h1>Volume Threshold Test</h1>
+    <input type="number" id="volume-threshold-filter" placeholder="Enter threshold in DOT" value="50000">
+    <button onclick="testVolumeThreshold()">Test Volume Threshold</button>
+    <div id="results"></div>
+    
+    <script>
+        // Test data similar to what the API returns
+        const testEdges = [
+            { volume: "100000000000000000", source: "A", target: "B" }, // 100,000 DOT
+            { volume: "98000000000000000", source: "B", target: "C" },   // 98,000 DOT
+            { volume: "50000000000000000", source: "C", target: "D" },   // 50,000 DOT
+            { volume: "10000000000000000", source: "D", target: "E" }    // 10,000 DOT
+        ];
+        
+        function testVolumeThreshold() {
+            const threshold = parseFloat(document.getElementById('volume-threshold-filter').value);
+            const thresholdPlancks = BigInt(threshold * 1e12);
+            
+            console.log(`Testing threshold: ${threshold} DOT (${thresholdPlancks} plancks)`);
+            
+            const results = [];
+            testEdges.forEach(edge => {
+                const volumePlancks = BigInt(edge.volume);
+                const volumeDOT = Number(volumePlancks) / 1e12;
+                const isAboveThreshold = volumePlancks >= thresholdPlancks;
+                
+                results.push({
+                    edge: `${edge.source} -> ${edge.target}`,
+                    volumeDOT: volumeDOT,
+                    volumePlancks: edge.volume,
+                    isAboveThreshold: isAboveThreshold,
+                    color: isAboveThreshold ? '#FF0000' : '#default'
+                });
+                
+                console.log(`Edge ${edge.source}->${edge.target}: ${volumeDOT} DOT, above threshold: ${isAboveThreshold}`);
+            });
+            
+            document.getElementById('results').innerHTML = 
+                '<h3>Results:</h3>' +
+                results.map(r => 
+                    `<div style="color: ${r.color};">
+                        ${r.edge}: ${r.volumeDOT.toFixed(0)} DOT - 
+                        ${r.isAboveThreshold ? 'ABOVE THRESHOLD (RED)' : 'below threshold'}
+                    </div>`
+                ).join('');
+        }
+        
+        // Auto-test on load
+        window.onload = () => testVolumeThreshold();
+    </script>
+</body>
+</html>

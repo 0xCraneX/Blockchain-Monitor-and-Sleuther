@@ -19,15 +19,15 @@ class PolkadotGraphVisualization {
             width: options.width || 1200,
             height: options.height || 600,
             
-            // Force simulation settings - improved spacing and slower convergence
+            // Force simulation settings - much stronger spacing and very slow convergence
             forces: {
-                charge: options.chargeStrength || -800,           // Stronger repulsion between nodes
-                linkDistance: options.linkDistance || 150,        // Shorter default links for tighter network
-                linkStrength: options.linkStrength || 0.3,        // Slightly stronger link force
-                collideRadius: options.collideRadius || 45,       // Larger collision radius to prevent overlap
-                alpha: options.alpha || 0.3,                      // Lower starting energy for smoother animation
-                alphaDecay: options.alphaDecay || 0.008,          // Much slower decay to prevent rapid clustering
-                velocityDecay: options.velocityDecay || 0.4       // Lower velocity decay for smoother movement
+                charge: options.chargeStrength || -2000,          // Much stronger repulsion for better spacing
+                linkDistance: options.linkDistance || 200,        // Longer links to spread nodes out more
+                linkStrength: options.linkStrength || 0.1,        // Weaker link force so repulsion dominates
+                collideRadius: options.collideRadius || 80,       // Much larger collision radius
+                alpha: options.alpha || 0.2,                      // Lower starting energy
+                alphaDecay: options.alphaDecay || 0.002,          // Extremely slow decay to prevent clustering
+                velocityDecay: options.velocityDecay || 0.3       // Lower velocity decay for even smoother movement
             },
             
             // Visual styling
@@ -232,8 +232,8 @@ class PolkadotGraphVisualization {
         this.labelGroup = this.mainGroup.append('g').attr('class', 'labels');
         this.overlayGroup = this.mainGroup.append('g').attr('class', 'overlays');
         
-        // Create arrow markers for directed edges
-        this.createArrowMarkers();
+        // Arrows removed - cleaner visualization without endpoint markers
+        // this.createArrowMarkers();
         
         // Initialize force simulation
         this.simulation = d3.forceSimulation()
@@ -485,35 +485,36 @@ class PolkadotGraphVisualization {
         const nodeCount = this.state.filteredData.nodes.length;
         const linkCount = this.state.filteredData.links.length;
         
-        // Stronger repulsion for better spacing - scales with node count
-        const chargeStrength = -Math.max(200, Math.min(1200, 400 + nodeCount * 10));
+        // Much stronger repulsion for maximum spacing - aggressive scaling
+        const chargeStrength = -Math.max(1000, Math.min(5000, 1500 + nodeCount * 50));
         this.simulation.force('charge').strength(chargeStrength);
         
-        // Dynamic link distance based on graph density
+        // Much longer link distances to force nodes apart
         const density = linkCount / (nodeCount * (nodeCount - 1) / 2 || 1);
         const baseLinkDistance = this.config.forces.linkDistance;
-        const linkDistance = Math.max(80, Math.min(300, baseLinkDistance + (density > 0.3 ? 50 : 0)));
+        const linkDistance = Math.max(200, Math.min(500, baseLinkDistance * 1.5 + (density > 0.2 ? 100 : 0)));
         this.simulation.force('link').distance(linkDistance);
         
-        // Better collision detection with generous spacing
+        // Very aggressive collision detection with massive spacing
         const avgNodeSize = this.state.filteredData.nodes.reduce((sum, n) => 
             sum + this.getNodeRadius(n), 0) / nodeCount || 15;
         this.simulation.force('collision')
-            .radius(d => this.getNodeRadius(d) + avgNodeSize * 0.8 + 20)  // More generous spacing
-            .strength(0.9)  // Strong collision prevention
-            .iterations(3); // More collision iterations for better results
+            .radius(d => this.getNodeRadius(d) + avgNodeSize * 2 + 60)  // Massive spacing buffer
+            .strength(1.0)  // Maximum collision strength
+            .iterations(5); // More iterations for better separation
         
-        // Restart simulation with slower parameters to prevent rapid clustering
+        // Restart simulation with very slow parameters
         this.simulation
-            .alpha(0.2)  // Lower restart energy
-            .alphaDecay(0.005)  // Even slower decay
+            .alpha(0.1)  // Very low restart energy
+            .alphaDecay(0.001)  // Extremely slow decay
             .restart();
         
-        console.log('Simulation parameters updated for better spacing:', {
+        console.log('Simulation parameters updated for maximum spacing:', {
             chargeStrength,
             linkDistance,
             avgNodeSize,
-            density: density.toFixed(3)
+            density: density.toFixed(3),
+            collisionRadius: avgNodeSize * 2 + 60
         });
     }
     
@@ -635,7 +636,7 @@ class PolkadotGraphVisualization {
             .attr('stroke', d => this.getEdgeColor(d))
             .attr('stroke-width', d => this.getEdgeWidth(d))
             .attr('stroke-opacity', d => this.getEdgeOpacity(d))
-            .attr('marker-end', d => this.getEdgeMarker(d));
+            // .attr('marker-end', d => this.getEdgeMarker(d)); // Arrows removed
         
         // Add stroke dasharray for special edge types
         linkEnter
@@ -1348,6 +1349,13 @@ class PolkadotGraphVisualization {
     }
     
     getEdgeColor(edgeData) {
+        // Debug: Check if filters are available
+        if (!this._loggedFilters) {
+            console.log('Current filters in getEdgeColor:', this.state.currentFilters);
+            console.log('Sample edge data structure:', edgeData);
+            this._loggedFilters = true;
+        }
+        
         if (edgeData.suggestedColor) {
             return edgeData.suggestedColor;
         }
@@ -1359,21 +1367,66 @@ class PolkadotGraphVisualization {
         // Check volume threshold filter for red highlighting
         if (this.state.currentFilters?.volumeThreshold) {
             const threshold = this.state.currentFilters.volumeThreshold;
-            if (edgeData.volume && BigInt(edgeData.volume) >= BigInt(threshold)) {
-                return '#FF0000'; // Bright red for connections above threshold
+            // Log only once to avoid spam
+            if (!this._loggedThreshold) {
+                console.log('Volume threshold active:', threshold, 'Sample edge:', {
+                    volume: edgeData.volume,
+                    source: typeof edgeData.source,
+                    target: typeof edgeData.target,
+                    hasVolume: edgeData.hasOwnProperty('volume')
+                });
+                this._loggedThreshold = true;
+            }
+            if (edgeData.volume) {
+                try {
+                    // Handle decimal values by converting to string and removing decimal part
+                    const edgeVolumeStr = edgeData.volume.toString();
+                    const thresholdStr = threshold.toString();
+                    
+                    // Remove decimal part if present
+                    const edgeVolumeBigInt = BigInt(edgeVolumeStr.includes('.') ? edgeVolumeStr.split('.')[0] : edgeVolumeStr);
+                    const thresholdBigInt = BigInt(thresholdStr.includes('.') ? thresholdStr.split('.')[0] : thresholdStr);
+                    
+                    const isAboveThreshold = edgeVolumeBigInt >= thresholdBigInt;
+                    
+                    // Always log to see what's happening
+                    console.log(`Volume threshold check: edge=${Number(edgeVolumeBigInt)/1e12} DOT, threshold=${Number(thresholdBigInt)/1e12} DOT, above=${isAboveThreshold}`);
+                    
+                    if (isAboveThreshold) {
+                        console.log(`🔴 HIGHLIGHTING EDGE RED: ${Number(edgeVolumeBigInt)/1e12} DOT >= ${Number(thresholdBigInt)/1e12} DOT`);
+                        return '#FF0000'; // Bright red for connections above threshold
+                    }
+                } catch (error) {
+                    console.error('Error in volume threshold comparison:', error, {
+                        edgeVolume: edgeData.volume,
+                        threshold: threshold
+                    });
+                }
             }
         }
         
         // Color based on volume - higher volume = more alert color
         if (edgeData.volume && edgeData.volume !== '0') {
             const allVolumes = this.state.filteredData.links
-                .map(l => l.volume ? BigInt(l.volume) : BigInt(0))
+                .map(l => {
+                    if (!l.volume) return BigInt(0);
+                    // Handle decimal values by removing decimal part
+                    const volumeStr = l.volume.toString();
+                    const integerPart = volumeStr.includes('.') ? volumeStr.split('.')[0] : volumeStr;
+                    return BigInt(integerPart);
+                })
                 .filter(v => v > BigInt(0));
             
             if (allVolumes.length > 0) {
                 const minVolume = allVolumes.reduce((a, b) => a < b ? a : b);
                 const maxVolume = allVolumes.reduce((a, b) => a > b ? a : b);
-                const scale = FormatUtils.getVisualScale(edgeData.volume, minVolume, maxVolume);
+                
+                // Convert current edge volume to BigInt safely
+                const currentVolumeStr = edgeData.volume.toString();
+                const currentVolumeInt = currentVolumeStr.includes('.') ? currentVolumeStr.split('.')[0] : currentVolumeStr;
+                const currentVolume = BigInt(currentVolumeInt);
+                
+                const scale = FormatUtils.getVisualScale(currentVolume, minVolume, maxVolume);
                 
                 // Smooth gradient from gray to yellow to orange to red based on volume
                 if (scale < 0.25) {
@@ -1463,19 +1516,32 @@ class PolkadotGraphVisualization {
         const addr = nodeData.address;
         const abbreviatedAddr = `${addr.substring(0, 6)}...${addr.substring(addr.length - 4)}`;
         
-        // If there's an identity, show it above the address
-        if (nodeData.identity?.display) {
-            // Show identity and balance if available
-            if (nodeData.balance?.free) {
-                const formattedBalance = FormatUtils.formatBalance(nodeData.balance.free);
-                return `${nodeData.identity.display}\n${formattedBalance}`;
-            }
-            return nodeData.identity.display;
+        // Get balance from various possible formats
+        let balance = null;
+        if (nodeData.balance?.free) {
+            balance = nodeData.balance.free;
+        } else if (nodeData.balance && typeof nodeData.balance === 'string') {
+            balance = nodeData.balance;
+        } else if (nodeData.free_balance) {
+            balance = nodeData.free_balance;
         }
         
-        // Show address and balance
-        if (nodeData.balance?.free) {
-            const formattedBalance = FormatUtils.formatBalance(nodeData.balance.free);
+        // Format balance if available
+        let formattedBalance = '';
+        if (balance && balance !== '0') {
+            formattedBalance = FormatUtils.formatBalance(balance);
+        }
+        
+        // If there's an identity, show it with balance
+        if (nodeData.identity?.display) {
+            if (formattedBalance) {
+                return `${nodeData.identity.display}\n${formattedBalance}`;
+            }
+            return `${nodeData.identity.display}\n${abbreviatedAddr}`;
+        }
+        
+        // Show address with balance (always show balance if available)
+        if (formattedBalance) {
             return `${abbreviatedAddr}\n${formattedBalance}`;
         }
         
@@ -1813,7 +1879,14 @@ class PolkadotGraphVisualization {
      * @param {Object} filters - Filter configuration
      */
     setFilters(filters) {
+        console.log('Setting filters:', filters);
         this.state.currentFilters = { ...filters };
+        console.log('Current filters after setting:', this.state.currentFilters);
+        
+        // Reset debug flags when filters change
+        this._loggedFilters = false;
+        this._loggedThreshold = false;
+        
         this.applyFilters();
         this.updateSimulationParameters();
         this.render();

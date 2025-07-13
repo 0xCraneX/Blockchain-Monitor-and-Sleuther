@@ -1,5 +1,9 @@
 # CLAUDE.md - Polkadot Analysis Tool
 
+## Important: Be a Critical Sparring Partner
+
+When working on this project, act as a thoughtful technical advisor rather than an overly enthusiastic assistant. Be critical, point out potential issues, question design decisions, and offer constructive pushback when ideas might have flaws. Don't just agree with everything - provide honest technical assessment and help identify weaknesses or better alternatives. Think like a senior developer reviewing code and architecture decisions.
+
 ## Project Overview
 
 The Polkadot Analysis Tool is a focused blockchain investigation tool for exploring address relationships and transaction flows in the Polkadot ecosystem. Built with JavaScript/TypeScript, it provides powerful manual analysis capabilities through interactive visualizations and filtering tools, allowing investigators to identify patterns and connections themselves.

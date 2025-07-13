@@ -442,6 +442,9 @@ class PolkadotAnalysisApp {
             this.graph.loadGraphData(mappedData);
             this.state.graphData = mappedData; // Store the mapped data, not the raw response
             
+            // Apply current filters (including volume threshold) to the loaded graph
+            this.graph.setFilters(this.state.filters);
+            
             // Show visualization section
             this.showVisualizationSection();
             
@@ -471,9 +474,17 @@ class PolkadotAnalysisApp {
      */
     applyFilters() {
         this.updateFiltersFromUI();
+        console.log('Applying filters:', this.state.filters);
         
         if (this.state.currentAddress) {
-            this.loadAddressGraph(this.state.currentAddress);
+            // Don't reload the entire graph, just update filters on existing graph
+            if (this.state.graphData) {
+                console.log('Updating filters on existing graph data');
+                this.graph.setFilters(this.state.filters);
+                this.updateStatistics();
+            } else {
+                this.loadAddressGraph(this.state.currentAddress);
+            }
         } else if (this.state.graphData) {
             this.graph.setFilters(this.state.filters);
             this.updateStatistics();
@@ -531,8 +542,15 @@ class PolkadotAnalysisApp {
         // Volume threshold for red highlighting
         if (volumeThresholdFilter) {
             const threshold = parseFloat(volumeThresholdFilter.value);
-            this.state.filters.volumeThreshold = threshold > 0 ? 
-                (BigInt(Math.floor(threshold * 1e12)).toString()) : null;
+            console.log('Volume threshold input value:', volumeThresholdFilter.value, 'parsed as:', threshold);
+            
+            if (threshold > 0) {
+                this.state.filters.volumeThreshold = (BigInt(Math.floor(threshold * 1e12)).toString());
+                console.log(`Volume threshold set to ${threshold} DOT (${this.state.filters.volumeThreshold} plancks)`);
+            } else {
+                this.state.filters.volumeThreshold = null;
+                console.log('Volume threshold cleared');
+            }
         }
     }
     
@@ -890,6 +908,9 @@ class PolkadotAnalysisApp {
             const totalVolume = this.calculateTotalVolume();
             totalVolumeEl.textContent = totalVolume.toFixed(2);
         }
+        
+        // Update volume range information to help users understand actual data ranges
+        this.updateVolumeRangeInfo();
     }
     
     /**
@@ -916,6 +937,70 @@ class PolkadotAnalysisApp {
             }
             return total;
         }, 0);
+    }
+    
+    /**
+     * Update volume range information to help users understand actual data ranges
+     */
+    updateVolumeRangeInfo() {
+        // Check for both links and edges format
+        const edges = this.state.graphData?.links || this.state.graphData?.edges || [];
+        if (!edges || edges.length === 0) {
+            return;
+        }
+        
+        let minVolume = Infinity;
+        let maxVolume = 0;
+        let validVolumeCount = 0;
+        
+        edges.forEach(edge => {
+            try {
+                if (edge.volume) {
+                    // Handle decimal values
+                    let volumeStr = edge.volume.toString();
+                    if (volumeStr.includes('.')) {
+                        volumeStr = volumeStr.split('.')[0];
+                    }
+                    const volume = Number(BigInt(volumeStr)) / 1e12; // Convert to DOT
+                    
+                    if (volume > 0) {
+                        minVolume = Math.min(minVolume, volume);
+                        maxVolume = Math.max(maxVolume, volume);
+                        validVolumeCount++;
+                    }
+                }
+            } catch (e) {
+                console.warn('Error processing volume:', e);
+            }
+        });
+        
+        // Add or update volume range display in the stats panel
+        let volumeRangeEl = document.getElementById('volume-range-info');
+        if (!volumeRangeEl) {
+            const statsPanel = document.querySelector('#graph-stats');
+            if (statsPanel) {
+                volumeRangeEl = document.createElement('div');
+                volumeRangeEl.id = 'volume-range-info';
+                volumeRangeEl.className = 'stat-item';
+                volumeRangeEl.innerHTML = `
+                    <span class="stat-label">Volume Range:</span>
+                    <span class="stat-value" id="volume-range-value">-</span>
+                `;
+                statsPanel.appendChild(volumeRangeEl);
+            }
+        }
+        
+        if (volumeRangeEl && validVolumeCount > 0) {
+            const valueEl = document.getElementById('volume-range-value');
+            if (valueEl) {
+                if (minVolume === Infinity) minVolume = 0;
+                const rangeText = minVolume === maxVolume 
+                    ? `${maxVolume.toFixed(2)} DOT`
+                    : `${minVolume.toFixed(2)} - ${maxVolume.toFixed(2)} DOT`;
+                valueEl.textContent = rangeText;
+                valueEl.title = `Min: ${minVolume.toFixed(2)} DOT, Max: ${maxVolume.toFixed(2)} DOT (${validVolumeCount} connections)`;
+            }
+        }
     }
     
     /**

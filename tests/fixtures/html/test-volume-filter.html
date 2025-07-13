@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Volume Filter Debug Test</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+    <h1>Volume Filter Debug Test</h1>
+    <button onclick="testVolumeFilter()">Test Volume Filter</button>
+    <div id="results"></div>
+    
+    <script>
+        // Simulate the graph data structure
+        const testData = {
+            nodes: [
+                { address: 'A', id: 'A' },
+                { address: 'B', id: 'B' },
+                { address: 'C', id: 'C' }
+            ],
+            links: [
+                { source: 'A', target: 'B', volume: '10000000000000000000' }, // 10M DOT
+                { source: 'B', target: 'C', volume: '100000000000000000' },   // 100K DOT
+                { source: 'A', target: 'C', volume: '5000000000000000' }      // 5K DOT
+            ]
+        };
+        
+        function testVolumeFilter() {
+            const threshold = '50000000000000000'; // 50K DOT in plancks
+            
+            console.log('Testing volume filter with threshold:', threshold);
+            
+            testData.links.forEach((link, i) => {
+                console.log(`\nLink ${i}:`, link);
+                
+                // Test the exact logic from graph.js
+                if (link.volume) {
+                    try {
+                        const edgeVolumeStr = link.volume.toString();
+                        const thresholdStr = threshold.toString();
+                        
+                        const edgeVolumeBigInt = BigInt(edgeVolumeStr.includes('.') ? edgeVolumeStr.split('.')[0] : edgeVolumeStr);
+                        const thresholdBigInt = BigInt(thresholdStr.includes('.') ? thresholdStr.split('.')[0] : thresholdStr);
+                        
+                        const isAboveThreshold = edgeVolumeBigInt >= thresholdBigInt;
+                        
+                        console.log(`Volume: ${Number(edgeVolumeBigInt)/1e12} DOT`);
+                        console.log(`Threshold: ${Number(thresholdBigInt)/1e12} DOT`);
+                        console.log(`Above threshold: ${isAboveThreshold}`);
+                        console.log(`Should be RED: ${isAboveThreshold}`);
+                    } catch (error) {
+                        console.error('Error:', error);
+                    }
+                }
+            });
+            
+            // Test D3 force simulation modification
+            const simulation = d3.forceSimulation(testData.nodes)
+                .force('link', d3.forceLink(testData.links).id(d => d.id));
+            
+            console.log('\nAfter D3 simulation:');
+            testData.links.forEach((link, i) => {
+                console.log(`Link ${i} volume still exists:`, link.volume !== undefined);
+                console.log(`Link ${i} source type:`, typeof link.source);
+            });
+        }
+    </script>
+</body>
+</html>
