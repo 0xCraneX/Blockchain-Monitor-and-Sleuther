@@ -31,18 +31,29 @@ export default defineConfig({
       }
     },
     coverage: {
-      reporter: ['text', 'json', 'html'],
+      provider: 'v8',
+      reporter: ['text', 'json', 'html', 'lcov'],
       exclude: [
-        'node_modules/',
-        'tests/',
+        'node_modules/**',
+        'tests/**',
+        '**/*.test.js',
+        '**/*.spec.js',
         '**/*.config.js',
-        'public/',
-        'migrations/',
-        'Hydration-sdk-master/',
-        'followthedot-main/'
-      ]
+        'scripts/**',
+        'config/**',
+        'external/**',
+        'public/**',
+        'migrations/**',
+        'benchmarks/**'
+      ],
+      thresholds: {
+        lines: 80,
+        functions: 80,
+        branches: 75,
+        statements: 80
+      }
     },
-    setupFiles: ['./tests/setup.js'],
+    setupFiles: ['./tests/setup/global.js'],
     testTimeout: 10000,
     hookTimeout: 10000,
     // Ensure tests run in sequence to avoid database conflicts

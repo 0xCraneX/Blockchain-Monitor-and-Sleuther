@@ -1,35 +1,31 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { PatternDetector } from '../../../src/services/PatternDetector.js';
-import { DatabaseService } from '../../../src/services/DatabaseService.js';
-import { createTestDatabase, cleanupTestDatabase } from '../../utils/database-test-helper.js';
+import { createTestDatabase, seedTestData, cleanupTestDatabase } from '../../setup/database.js';
 
 describe('PatternDetector', () => {
   let patternDetector;
   let databaseService;
-  let db;
 
   beforeEach(async () => {
-    // Create test database
-    db = await createTestDatabase();
-    databaseService = new DatabaseService();
-    databaseService.db = db;
+    // Create test database with proper REGEXP support
+    databaseService = await createTestDatabase();
     
     // Initialize PatternDetector
     patternDetector = new PatternDetector(databaseService);
 
     // Insert test data
-    await insertTestData(db);
+    await insertTestData(databaseService.db);
   });
 
   afterEach(async () => {
-    if (db) {
-      await cleanupTestDatabase(db);
+    if (databaseService) {
+      await cleanupTestDatabase(databaseService);
     }
   });
 
   describe('constructor', () => {
     it('should initialize with database service', () => {
-      expect(patternDetector.db).toBe(db);
+      expect(patternDetector.db).toBe(databaseService.db);
       expect(patternDetector.databaseService).toBe(databaseService);
       expect(patternDetector.patternTypes).toBeDefined();
     });
@@ -46,13 +42,13 @@ describe('PatternDetector', () => {
       const testAddress = '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY';
       
       // Insert rapid movement test data
-      insertRapidMovementData(db, testAddress);
+      insertRapidMovementData(databaseService.db, testAddress);
       
       const result = await patternDetector.detectRapidMovement(testAddress, 300);
       
       expect(result.patternType).toBe('RAPID_MOVEMENT');
       expect(result.confidence).toBeGreaterThan(0.5);
-      expect(result.evidence).toHaveLength.greaterThan(0);
+      expect(result.evidence.length).toBeGreaterThan(0);
       expect(result.severity).toMatch(/^(low|medium|high)$/);
       expect(result.metadata.address).toBe(testAddress);
       expect(result.metadata.timeWindow).toBe(300);
@@ -65,13 +61,13 @@ describe('PatternDetector', () => {
       
       expect(result.patternType).toBe('RAPID_MOVEMENT');
       expect(result.confidence).toBe(0);
-      expect(result.evidence).toHaveLength(0);
+      expect(result.evidence.length).toBe(0);
       expect(result.severity).toBe('low');
     });
 
     it('should handle different time windows', async () => {
       const testAddress = '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY';
-      insertRapidMovementData(db, testAddress);
+      insertRapidMovementData(databaseService.db, testAddress);
       
       const result60 = await patternDetector.detectRapidMovement(testAddress, 60);
       const result600 = await patternDetector.detectRapidMovement(testAddress, 600);
@@ -91,13 +87,13 @@ describe('PatternDetector', () => {
       const testAddress = '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY';
       
       // Insert circular flow test data
-      insertCircularFlowData(db, testAddress);
+      insertCircularFlowData(databaseService.db, testAddress);
       
       const result = await patternDetector.detectCircularFlow(testAddress, 5);
       
       expect(result.patternType).toBe('CIRCULAR_FLOW');
       expect(result.confidence).toBeGreaterThan(0.5);
-      expect(result.evidence).toHaveLength.greaterThan(0);
+      expect(result.evidence.length).toBeGreaterThan(0);
       expect(result.severity).toMatch(/^(low|medium|high)$/);
       expect(result.metadata.address).toBe(testAddress);
       expect(result.metadata.maxDepth).toBe(5);
@@ -110,13 +106,13 @@ describe('PatternDetector', () => {
       
       expect(result.patternType).toBe('CIRCULAR_FLOW');
       expect(result.confidence).toBe(0);
-      expect(result.evidence).toHaveLength(0);
+      expect(result.evidence.length).toBe(0);
       expect(result.severity).toBe('low');
     });
 
     it('should boost confidence for shorter circular paths', async () => {
       const testAddress = '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY';
-      insertCircularFlowData(db, testAddress, 2); // Short path
+      insertCircularFlowData(databaseService.db, testAddress, 2); // Short path
       
       const result = await patternDetector.detectCircularFlow(testAddress, 5);
       
@@ -129,13 +125,13 @@ describe('PatternDetector', () => {
       const testAddress = '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY';
       
       // Insert layering test data
-      insertLayeringData(db, testAddress);
+      insertLayeringData(databaseService.db, testAddress);
       
       const result = await patternDetector.detectLayering(testAddress);
       
       expect(result.patternType).toBe('LAYERING');
       expect(result.confidence).toBeGreaterThan(0.4);
-      expect(result.evidence).toHaveLength.greaterThan(0);
+      expect(result.evidence.length).toBeGreaterThan(0);
       expect(result.severity).toMatch(/^(low|medium|high)$/);
       expect(result.metadata.address).toBe(testAddress);
     });
@@ -147,7 +143,7 @@ describe('PatternDetector', () => {
       
       expect(result.patternType).toBe('LAYERING');
       expect(result.confidence).toBe(0);
-      expect(result.evidence).toHaveLength(0);
+      expect(result.evidence.length).toBe(0);
       expect(result.severity).toBe('low');
     });
   });
@@ -157,13 +153,13 @@ describe('PatternDetector', () => {
       const testAddress = '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY';
       
       // Insert mixing patterns test data
-      insertMixingPatternsData(db, testAddress);
+      insertMixingPatternsData(databaseService.db, testAddress);
       
       const result = await patternDetector.detectMixingPatterns(testAddress);
       
       expect(result.patternType).toBe('MIXING_PATTERNS');
       expect(result.confidence).toBeGreaterThan(0.5);
-      expect(result.evidence).toHaveLength.greaterThan(0);
+      expect(result.evidence.length).toBeGreaterThan(0);
       expect(result.severity).toMatch(/^(low|medium|high)$/);
       expect(result.metadata.address).toBe(testAddress);
     });
@@ -175,13 +171,13 @@ describe('PatternDetector', () => {
       
       expect(result.patternType).toBe('MIXING_PATTERNS');
       expect(result.confidence).toBe(0);
-      expect(result.evidence).toHaveLength(0);
+      expect(result.evidence.length).toBe(0);
       expect(result.severity).toBe('low');
     });
 
     it('should boost confidence for connections to risky nodes', async () => {
       const testAddress = '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY';
-      insertMixingPatternsData(db, testAddress, true); // High risk nodes
+      insertMixingPatternsData(databaseService.db, testAddress, true); // High risk nodes
       
       const result = await patternDetector.detectMixingPatterns(testAddress);
       
@@ -194,13 +190,13 @@ describe('PatternDetector', () => {
       const testAddress = '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY';
       
       // Insert unusual timing test data
-      insertUnusualTimingData(db, testAddress);
+      insertUnusualTimingData(databaseService.db, testAddress);
       
       const result = await patternDetector.detectUnusualTiming(testAddress);
       
       expect(result.patternType).toBe('UNUSUAL_TIMING');
       expect(result.confidence).toBeGreaterThan(0.3);
-      expect(result.evidence.unusualTransfers).toHaveLength.greaterThan(0);
+      expect(result.evidence.unusualTransfers.length).toBeGreaterThan(0);
       expect(result.evidence.statistics).toBeDefined();
       expect(result.severity).toMatch(/^(low|medium)$/); // Unusual timing max is medium
       expect(result.metadata.address).toBe(testAddress);
@@ -208,13 +204,13 @@ describe('PatternDetector', () => {
 
     it('should return low confidence for normal timing', async () => {
       const testAddress = '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY';
-      insertNormalTimingData(db, testAddress);
+      insertNormalTimingData(databaseService.db, testAddress);
       
       const result = await patternDetector.detectUnusualTiming(testAddress);
       
       expect(result.patternType).toBe('UNUSUAL_TIMING');
       expect(result.confidence).toBe(0);
-      expect(result.evidence.unusualTransfers).toHaveLength(0);
+      expect(result.evidence.unusualTransfers.length).toBe(0);
       expect(result.severity).toBe('low');
     });
   });
@@ -224,13 +220,13 @@ describe('PatternDetector', () => {
       const testAddress = '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY';
       
       // Insert round numbers test data
-      insertRoundNumbersData(db, testAddress);
+      insertRoundNumbersData(databaseService.db, testAddress);
       
       const result = await patternDetector.detectRoundNumbers(testAddress);
       
       expect(result.patternType).toBe('ROUND_NUMBERS');
       expect(result.confidence).toBeGreaterThan(0.2);
-      expect(result.evidence.roundTransfers).toHaveLength.greaterThan(0);
+      expect(result.evidence.roundTransfers.length).toBeGreaterThan(0);
       expect(result.evidence.statistics).toBeDefined();
       expect(result.severity).toMatch(/^(low|medium)$/); // Round numbers max is medium
       expect(result.metadata.address).toBe(testAddress);
@@ -238,19 +234,19 @@ describe('PatternDetector', () => {
 
     it('should return low confidence for no round numbers', async () => {
       const testAddress = '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY';
-      insertNonRoundData(db, testAddress);
+      insertNonRoundData(databaseService.db, testAddress);
       
       const result = await patternDetector.detectRoundNumbers(testAddress);
       
       expect(result.patternType).toBe('ROUND_NUMBERS');
       expect(result.confidence).toBe(0);
-      expect(result.evidence.roundTransfers).toHaveLength(0);
+      expect(result.evidence.roundTransfers.length).toBe(0);
       expect(result.severity).toBe('low');
     });
 
     it('should classify round number types correctly', async () => {
       const testAddress = '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY';
-      insertRoundNumbersData(db, testAddress);
+      insertRoundNumbersData(databaseService.db, testAddress);
       
       const result = await patternDetector.detectRoundNumbers(testAddress);
       
@@ -278,7 +274,7 @@ describe('PatternDetector', () => {
     it('should handle empty transfer array', () => {
       const result = patternDetector.analyzeTransferPatterns([]);
       
-      expect(result.patterns).toHaveLength(0);
+      expect(result.patterns.length).toBe(0);
       expect(result.confidence).toBe(0);
       expect(result.severity).toBe('low');
       expect(result.analysis.totalTransfers).toBe(0);
@@ -287,7 +283,7 @@ describe('PatternDetector', () => {
     it('should handle non-array input', () => {
       const result = patternDetector.analyzeTransferPatterns(null);
       
-      expect(result.patterns).toHaveLength(0);
+      expect(result.patterns.length).toBe(0);
       expect(result.confidence).toBe(0);
       expect(result.severity).toBe('low');
       expect(result.analysis.totalTransfers).toBe(0);
