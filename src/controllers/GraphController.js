@@ -25,6 +25,27 @@ export class GraphController {
     this.graphMetrics = graphMetrics;
     this.realDataService = realDataService;
 
+    // DEBUG: Log constructor initialization
+    controllerLogger.debug('=== GraphController Constructor Debug ===');
+    controllerLogger.info('Services received in GraphController constructor:', {
+      hasDatabaseService: !!databaseService,
+      hasGraphQueries: !!graphQueries,
+      hasRelationshipScorer: !!relationshipScorer,
+      hasPathFinder: !!pathFinder,
+      hasGraphMetrics: !!graphMetrics,
+      hasRealDataService: !!realDataService,
+      realDataServiceType: realDataService ? typeof realDataService : 'not provided',
+      realDataServiceConstructor: realDataService?.constructor?.name || 'N/A'
+    });
+    
+    
+    if (realDataService) {
+      controllerLogger.debug('RealDataService details:', {
+        methods: Object.getOwnPropertyNames(Object.getPrototypeOf(realDataService)).filter(m => typeof realDataService[m] === 'function'),
+        properties: Object.keys(realDataService)
+      });
+    }
+
     controllerLogger.info('GraphController initialized with all services');
     logMethodExit('GraphController', 'constructor', trackerId);
   }
@@ -40,6 +61,16 @@ export class GraphController {
     });
     const startTime = Date.now();
     const perfTimer = startPerformanceTimer('graph_generation');
+    
+    // DEBUG: Log method entry with all parameters
+    controllerLogger.debug('=== getGraph DEBUG START ===');
+    controllerLogger.debug('Method parameters:', {
+      address: req.params.address,
+      queryParams: req.query,
+      headers: req.headers,
+      method: req.method,
+      url: req.url
+    });
 
     try {
       const { address } = req.params;
@@ -72,33 +103,6 @@ export class GraphController {
         }
       });
 
-      // Validate address exists
-      const accountLookupTimer = startPerformanceTimer('account_lookup');
-      const centerAccount = this.db.getAccount(address);
-      endPerformanceTimer(accountLookupTimer, 'account_lookup');
-
-      if (!centerAccount) {
-        controllerLogger.warn(`Address not found in database: ${address}`);
-        logMethodExit('GraphController', 'getGraph', methodTrackerId);
-        return res.status(404).json({
-          error: {
-            code: 'ADDRESS_NOT_FOUND',
-            message: 'Address not found in database',
-            status: 404,
-            details: {
-              address,
-              expected: 'Valid Substrate address in database'
-            }
-          }
-        });
-      }
-
-      controllerLogger.debug('Center account found', {
-        address,
-        balance: centerAccount.free_balance,
-        type: centerAccount.type
-      });
-
       // Parse filters
       const filters = {
         minVolume,
@@ -114,20 +118,107 @@ export class GraphController {
       const graphQueryTimer = startPerformanceTimer('graph_query');
 
       try {
-        // Check if we have real data service
-        if (this.realDataService && !process.env.SKIP_BLOCKCHAIN) {
-          controllerLogger.info('Using real blockchain data');
-          const realDataTimer = startPerformanceTimer('real_data_fetch');
-
-          const realGraphData = await this.realDataService.buildGraphData(address, depth, {
-            maxNodes,
-            minVolume,
-            direction
+        // DEBUG: Comprehensive RealDataService availability check
+        controllerLogger.debug('=== RealDataService Availability Check ===');
+        controllerLogger.info('Service existence:', {
+          hasRealDataService: !!this.realDataService,
+          realDataServiceIsNull: this.realDataService === null,
+          realDataServiceIsUndefined: this.realDataService === undefined,
+          realDataServiceType: typeof this.realDataService,
+          realDataServiceConstructor: this.realDataService?.constructor?.name,
+          realDataServiceKeys: this.realDataService ? Object.keys(this.realDataService) : 'N/A'
+        });
+        
+        
+        // DEBUG: Check if buildGraphData method exists
+        if (this.realDataService) {
+          controllerLogger.debug('RealDataService methods check:', {
+            hasBuildGraphData: typeof this.realDataService.buildGraphData === 'function',
+            buildGraphDataType: typeof this.realDataService.buildGraphData,
+            allMethods: Object.getOwnPropertyNames(Object.getPrototypeOf(this.realDataService || {})).filter(m => typeof this.realDataService[m] === 'function')
           });
+        }
+        
+        // DEBUG: Environment variables check
+        controllerLogger.debug('Environment check:', {
+          SKIP_BLOCKCHAIN: process.env.SKIP_BLOCKCHAIN,
+          SKIP_BLOCKCHAIN_TYPE: typeof process.env.SKIP_BLOCKCHAIN,
+          NODE_ENV: process.env.NODE_ENV,
+          allEnvKeys: Object.keys(process.env).filter(k => k.includes('BLOCKCHAIN') || k.includes('REAL') || k.includes('SKIP'))
+        });
+        
+        // DEBUG: Condition evaluation
+        const conditionMet = this.realDataService && process.env.SKIP_BLOCKCHAIN !== 'true';
+        controllerLogger.debug('=== Condition Evaluation ===');
+        controllerLogger.debug('Condition check:', {
+          condition: 'this.realDataService && process.env.SKIP_BLOCKCHAIN !== \'true\'',
+          realDataServiceTruthy: !!this.realDataService,
+          skipBlockchainValue: process.env.SKIP_BLOCKCHAIN,
+          skipBlockchainNotTrue: process.env.SKIP_BLOCKCHAIN !== 'true',
+          conditionResult: conditionMet,
+          willUseRealData: conditionMet
+        });
+        
+        
+        if (this.realDataService && process.env.SKIP_BLOCKCHAIN !== 'true') {
+          controllerLogger.info('=== ENTERING REAL DATA BRANCH ===');
+          controllerLogger.info('Using real blockchain data from Subscan API');
+          const realDataTimer = startPerformanceTimer('real_data_fetch');
+          
+          // DEBUG: Log before calling buildGraphData
+          controllerLogger.debug('About to call buildGraphData with:', {
+            address: address,
+            depth: depth,
+            options: { maxNodes, minVolume, direction }
+          });
+
+          let realGraphData;
+          try {
+            controllerLogger.debug('Calling realDataService.buildGraphData...');
+            
+            // Extra safety check before calling
+            if (!this.realDataService) {
+              throw new Error('RealDataService is not available (became null after initial check)');
+            }
+            
+            if (typeof this.realDataService.buildGraphData !== 'function') {
+              controllerLogger.error('buildGraphData is not a function', {
+                actualType: typeof this.realDataService.buildGraphData,
+                availableMethods: Object.getOwnPropertyNames(Object.getPrototypeOf(this.realDataService))
+              });
+              throw new Error(`buildGraphData is not a function: ${typeof this.realDataService.buildGraphData}`);
+            }
+            
+            realGraphData = await this.realDataService.buildGraphData(address, depth, {
+              maxNodes,
+              minVolume,
+              direction
+            });
+            controllerLogger.debug('buildGraphData returned:', {
+              hasData: !!realGraphData,
+              nodeCount: realGraphData?.nodes?.length || 0,
+              edgeCount: realGraphData?.edges?.length || 0,
+              dataStructure: realGraphData ? Object.keys(realGraphData) : 'null/undefined'
+            });
+          } catch (error) {
+            controllerLogger.error('Error calling buildGraphData:', {
+              errorMessage: error.message,
+              errorStack: error.stack,
+              errorName: error.name,
+              realDataServiceState: {
+                exists: !!this.realDataService,
+                type: typeof this.realDataService,
+                hasBuildGraphData: this.realDataService ? typeof this.realDataService.buildGraphData : 'service is null'
+              },
+              errorType: error.constructor.name
+            });
+            throw error;
+          }
 
           endPerformanceTimer(realDataTimer, 'real_data_fetch');
 
           // Convert to expected format
+          controllerLogger.debug('Converting real data to expected format...');
           graphData = {
             nodes: realGraphData.nodes.map(n => ({
               id: n.address,
@@ -136,20 +227,74 @@ export class GraphController {
             edges: realGraphData.edges
           };
 
-          controllerLogger.info(`Real data retrieved: ${graphData.nodes.length} nodes, ${graphData.edges.length} edges`);
+          controllerLogger.info(`Real data retrieved and converted: ${graphData.nodes.length} nodes, ${graphData.edges.length} edges`);
+          controllerLogger.debug('Sample converted data:', {
+            firstNode: graphData.nodes[0],
+            firstEdge: graphData.edges[0],
+            totalNodes: graphData.nodes.length,
+            totalEdges: graphData.edges.length
+          });
         } else {
+          // Fall back to database queries only if real data service is not available
+          controllerLogger.info('=== ENTERING DATABASE BRANCH ===');
+          controllerLogger.info('Real data service not available, checking database');
+          controllerLogger.debug('Reason for database fallback:', {
+            hasRealDataService: !!this.realDataService,
+            skipBlockchain: process.env.SKIP_BLOCKCHAIN,
+            reasonSummary: !this.realDataService ? 'No RealDataService' : 'SKIP_BLOCKCHAIN is set to true'
+          });
+          
+          // Validate address exists in database
+          const accountLookupTimer = startPerformanceTimer('account_lookup');
+          const centerAccount = this.db.getAccount(address);
+          endPerformanceTimer(accountLookupTimer, 'account_lookup');
+
+          if (!centerAccount) {
+            controllerLogger.warn(`Address not found in database: ${address}`);
+            logMethodExit('GraphController', 'getGraph', methodTrackerId);
+            return res.status(404).json({
+              error: {
+                code: 'ADDRESS_NOT_FOUND',
+                message: 'Address not found in database and real data service is not available',
+                status: 404,
+                details: {
+                  address,
+                  expected: 'Valid Substrate address in database or working real data service'
+                }
+              }
+            });
+          }
+
+          controllerLogger.debug('Center account found in database', {
+            address,
+            balance: centerAccount.free_balance,
+            type: centerAccount.type
+          });
+
           // Use database queries
           if (depth === 1) {
-            controllerLogger.debug('Fetching direct connections', { address, minVolume, limit: maxNodes });
+            controllerLogger.debug('=== DATABASE QUERY: DIRECT CONNECTIONS ===');
+            controllerLogger.debug('Fetching direct connections from database', { address, minVolume, limit: maxNodes });
             graphData = this.graphQueries.getDirectConnections(address, {
               minVolume,
               limit: maxNodes
             });
+            controllerLogger.debug('Direct connections result:', {
+              hasData: !!graphData,
+              nodeCount: graphData?.nodes?.length || 0,
+              edgeCount: graphData?.edges?.length || 0
+            });
           } else {
-            controllerLogger.debug('Fetching multi-hop connections', { address, depth, minVolume, limit: maxNodes });
+            controllerLogger.debug('=== DATABASE QUERY: MULTI-HOP CONNECTIONS ===');
+            controllerLogger.debug('Fetching multi-hop connections from database', { address, depth, minVolume, limit: maxNodes });
             graphData = this.graphQueries.getMultiHopConnections(address, depth, {
               minVolume,
               limit: maxNodes
+            });
+            controllerLogger.debug('Multi-hop connections result:', {
+              hasData: !!graphData,
+              nodeCount: graphData?.nodes?.length || 0,
+              edgeCount: graphData?.edges?.length || 0
             });
           }
 
@@ -157,6 +302,14 @@ export class GraphController {
 
           // If no graph data, fallback to relationship-based graph
           if (!graphData.nodes || graphData.nodes.length === 0) {
+            controllerLogger.info('=== DATABASE QUERY RETURNED NO DATA ===');
+            controllerLogger.debug('Database query result:', {
+              hasGraphData: !!graphData,
+              hasNodes: !!graphData?.nodes,
+              nodeCount: graphData?.nodes?.length || 0,
+              hasEdges: !!graphData?.edges,
+              edgeCount: graphData?.edges?.length || 0
+            });
             controllerLogger.info('No graph data from queries, falling back to relationships');
             const relationshipTimer = startPerformanceTimer('relationship_fallback');
             graphData = await this._buildGraphFromRelationships(address, { minVolume, limit: maxNodes });
@@ -168,14 +321,37 @@ export class GraphController {
       } catch (error) {
         endPerformanceTimer(graphQueryTimer, 'graph_query');
         logError(error, { context: 'graph_data_query', address, depth });
+        controllerLogger.error('=== ERROR IN GRAPH DATA QUERY ===');
+        controllerLogger.error('Error details:', {
+          errorMessage: error.message,
+          errorType: error.constructor.name,
+          errorStack: error.stack,
+          context: 'graph_data_query',
+          address: address,
+          depth: depth
+        });
         controllerLogger.error('Error getting graph data, using relationships fallback');
 
+        controllerLogger.debug('=== FALLING BACK DUE TO ERROR ===');
         const relationshipTimer = startPerformanceTimer('relationship_fallback_error');
         graphData = await this._buildGraphFromRelationships(address, { minVolume, limit: maxNodes });
         endPerformanceTimer(relationshipTimer, 'relationship_fallback_error');
+        controllerLogger.debug('Fallback graph data:', {
+          nodeCount: graphData?.nodes?.length || 0,
+          edgeCount: graphData?.edges?.length || 0,
+          source: graphData?.metadata?.source || 'unknown'
+        });
       }
 
       // Transform to D3.js format
+      controllerLogger.debug('=== Transforming to D3.js format ===');
+      controllerLogger.debug('Graph data before transformation:', {
+        nodeCount: graphData?.nodes?.length || 0,
+        edgeCount: graphData?.edges?.length || 0,
+        hasMetadata: !!graphData?.metadata,
+        dataSource: graphData?.metadata?.source || 'unknown'
+      });
+      
       const d3Graph = await this._transformToD3Format(graphData, {
         centerAddress: address,
         includeRiskScores,
@@ -183,6 +359,13 @@ export class GraphController {
         layout,
         enableClustering,
         clusteringAlgorithm
+      });
+      
+      controllerLogger.debug('D3 graph after transformation:', {
+        nodeCount: d3Graph?.nodes?.length || 0,
+        edgeCount: d3Graph?.edges?.length || 0,
+        hasLayout: !!d3Graph?.layout,
+        hasClusters: !!d3Graph?.clusters
       });
 
       // Add layout parameters
@@ -202,17 +385,17 @@ export class GraphController {
       }
 
       d3Graph.metadata = {
-        ...d3Graph.metadata,
+        ...(d3Graph.metadata || {}),
         totalNodes: d3Graph.nodes.length,
         totalEdges: d3Graph.edges.length,
         networkDensity: this._calculateNetworkDensity(d3Graph.nodes.length, d3Graph.edges.length),
         averageClusteringCoefficient,
         centerNode: address,
         requestedDepth: parseInt(depth),
-        actualDepth: d3Graph.metadata.depth || parseInt(depth),
+        actualDepth: (d3Graph.metadata && d3Graph.metadata.depth) || parseInt(depth),
         hasMore: d3Graph.nodes.length >= maxNodes,
         nextCursor: d3Graph.nodes.length >= maxNodes ? this._generateCursor(d3Graph.nodes, address, parseInt(depth)) : null,
-        nodesOmitted: Math.max(0, (d3Graph.metadata.totalPaths || 0) - d3Graph.nodes.length),
+        nodesOmitted: Math.max(0, ((d3Graph.metadata && d3Graph.metadata.totalPaths) || 0) - d3Graph.nodes.length),
         edgesOmitted: 0,
         renderingComplexity: this._calculateRenderingComplexity(d3Graph.nodes.length, d3Graph.edges.length),
         suggestedLayout: this._suggestLayout(d3Graph.nodes.length, d3Graph.edges.length),
@@ -228,6 +411,16 @@ export class GraphController {
         edges: d3Graph.edges.length
       });
 
+      // DEBUG: Final response
+      controllerLogger.debug('=== FINAL RESPONSE ===');
+      controllerLogger.debug('Sending response:', {
+        nodeCount: d3Graph.nodes.length,
+        edgeCount: d3Graph.edges.length,
+        metadata: d3Graph.metadata,
+        executionTimeMs: Date.now() - startTime
+      });
+      controllerLogger.debug('=== getGraph DEBUG END ===');
+      
       res.json(d3Graph);
       logMethodExit('GraphController', 'getGraph', methodTrackerId, d3Graph);
 
@@ -799,9 +992,11 @@ export class GraphController {
 
         // Balance information
         balance: node.balance ? {
-          free: node.balance,
-          reserved: '0',
-          frozen: '0'
+          free: (typeof node.balance === 'object' && node.balance.free) ? 
+                (typeof node.balance.free === 'object' ? node.balance.free.free : node.balance.free) : 
+                node.balance,
+          reserved: (typeof node.balance === 'object' && node.balance.reserved) ? node.balance.reserved : '0',
+          frozen: (typeof node.balance === 'object' && node.balance.frozen) ? node.balance.frozen : '0'
         } : null,
 
         // Enhanced properties
@@ -817,9 +1012,13 @@ export class GraphController {
         suggestedSize: this._calculateNodeSize(node),
         suggestedColor: this._getNodeColor(node),
 
-        // Temporal data
-        firstSeen: Math.floor(Date.now() / 1000), // Placeholder
-        lastActive: Math.floor(Date.now() / 1000) // Placeholder
+        // Temporal data (only if available from real data)
+        firstSeen: node.firstSeen || null,
+        lastActive: node.lastActive || null,
+
+        // D3.js positioning (initialize for force simulation)
+        x: Math.random() * 800 + 100, // Random initial positions
+        y: Math.random() * 600 + 100
       };
 
       // Add risk data if requested
@@ -843,9 +1042,9 @@ export class GraphController {
       // Edge type
       edgeType: 'transfer',
 
-      // Temporal data
-      firstTransfer: edge.firstTransferTime || Math.floor(Date.now() / 1000),
-      lastTransfer: edge.lastTransferTime || Math.floor(Date.now() / 1000),
+      // Temporal data (only if available from real data)
+      firstTransfer: edge.firstTransferTime || null,
+      lastTransfer: edge.lastTransferTime || null,
 
       // Risk indicators
       suspiciousPattern: false,
@@ -1247,77 +1446,144 @@ export class GraphController {
   }
 
   /**
-   * Build graph data from relationships API as fallback
+   * Build graph data from Subscan API as fallback (NO MOCK DATA)
    * @private
    */
   async _buildGraphFromRelationships(address, options = {}) {
     const { minVolume = '0', limit = 100 } = options;
 
     try {
-      logger.info(`Building graph from relationships for ${address}`);
-
-      // Get relationships using the same method as the relationships API
-      const relationships = this.db.getRelationships(address, {
-        depth: 1,
-        minVolume,
-        limit
+      // DEBUG: Log entry to fallback method
+      controllerLogger.debug('=== _buildGraphFromRelationships DEBUG ===');
+      controllerLogger.debug('Called with:', {
+        address: address,
+        options: options,
+        minVolume: minVolume,
+        limit: limit
       });
+      
+      logger.info(`Building graph from Subscan API for ${address}`);
+
+      const { subscanService, SubscanError } = await import('../services/SubscanService.js');
+
+      // Get account info from Subscan
+      const centerAccount = await subscanService.getAccountInfo(address);
+      if (!centerAccount) {
+        throw new SubscanError(
+          `Account ${address} not found on Polkadot network`,
+          'NO_DATA'
+        );
+      }
+
+      // Get relationships from Subscan
+      const relationships = await subscanService.getAccountRelationships(address, { limit });
+      if (relationships.length === 0) {
+        throw new SubscanError(
+          `No transaction relationships found for address ${address}`,
+          'NO_DATA'
+        );
+      }
+
+      // Filter by volume if specified
+      const filteredRelationships = relationships.filter(rel => 
+        BigInt(rel.total_volume) >= BigInt(minVolume)
+      );
 
       const nodes = new Map();
       const edges = [];
 
-      // Add center node
-      const centerAccount = this.db.getAccount(address);
+      // Add center node with real Subscan data
       nodes.set(address, {
         id: address,
         address: address,
-        identity: centerAccount?.identity_display,
-        balance: centerAccount?.balance,
+        identity: centerAccount.identity?.display,
+        balance: centerAccount.balance?.free,
         nodeType: 'center',
         hopLevel: 0,
+        verified: centerAccount.identity?.verified || false,
         metrics: {
-          degree: relationships.length,
-          totalVolume: relationships.reduce((sum, rel) =>
+          degree: filteredRelationships.length,
+          totalVolume: filteredRelationships.reduce((sum, rel) =>
             BigInt(sum) + BigInt(rel.total_volume || '0'), BigInt(0)).toString()
         }
       });
 
-      // Add connected nodes and edges
-      relationships.forEach((rel, _index) => {
+      // Add connected nodes and edges with real data
+      const connectedAccountPromises = filteredRelationships.map(async (rel) => {
         const connectedAddr = rel.connected_address;
 
-        // Add connected node
-        if (!nodes.has(connectedAddr)) {
-          const connectedAccount = this.db.getAccount(connectedAddr);
-          nodes.set(connectedAddr, {
-            id: connectedAddr,
-            address: connectedAddr,
-            identity: connectedAccount?.identity_display,
-            balance: connectedAccount?.balance,
-            nodeType: 'regular',
-            hopLevel: 1,
-            riskScore: rel.risk_score || 0,
-            metrics: {
-              relationshipScore: 50 // Default score
-            }
+        try {
+          // Get account info for connected address
+          const connectedAccount = await subscanService.getAccountInfo(connectedAddr);
+          
+          // Add connected node with real data
+          if (!nodes.has(connectedAddr)) {
+            nodes.set(connectedAddr, {
+              id: connectedAddr,
+              address: connectedAddr,
+              identity: connectedAccount?.identity?.display,
+              balance: connectedAccount?.balance?.free,
+              nodeType: 'regular',
+              hopLevel: 1,
+              verified: connectedAccount?.identity?.verified || false,
+              metrics: {
+                relationshipScore: this._calculateRelationshipScore(rel)
+              }
+            });
+          }
+
+          // Add edge with real transaction data
+          edges.push({
+            id: `${address}->${connectedAddr}`,
+            source: address,
+            target: connectedAddr,
+            volume: rel.total_volume,
+            transferCount: rel.total_transactions,
+            firstTransferTime: rel.first_interaction,
+            lastTransferTime: rel.last_interaction,
+            relationshipScore: this._calculateRelationshipScore(rel),
+            direction: rel.relationship_type
+          });
+
+        } catch (error) {
+          // Log error but don't fail the entire graph
+          logger.warn(`Failed to get account info for ${connectedAddr}:`, error.message);
+          
+          // Add minimal node without account details
+          if (!nodes.has(connectedAddr)) {
+            nodes.set(connectedAddr, {
+              id: connectedAddr,
+              address: connectedAddr,
+              identity: null,
+              balance: null,
+              nodeType: 'regular',
+              hopLevel: 1,
+              verified: false,
+              error: 'Account data unavailable',
+              metrics: {
+                relationshipScore: this._calculateRelationshipScore(rel)
+              }
+            });
+          }
+
+          edges.push({
+            id: `${address}->${connectedAddr}`,
+            source: address,
+            target: connectedAddr,
+            volume: rel.total_volume,
+            transferCount: rel.total_transactions,
+            firstTransferTime: rel.first_interaction,
+            lastTransferTime: rel.last_interaction,
+            relationshipScore: this._calculateRelationshipScore(rel),
+            direction: rel.relationship_type
           });
         }
-
-        // Add edge
-        edges.push({
-          id: `${address}->${connectedAddr}`,
-          source: address,
-          target: connectedAddr,
-          volume: rel.total_volume,
-          transferCount: rel.outgoing_count + rel.incoming_count,
-          firstTransferTime: rel.first_interaction,
-          lastTransferTime: rel.last_interaction,
-          relationshipScore: 50, // Default score
-          direction: rel.outgoing_count > rel.incoming_count ? 'outgoing' : 'incoming'
-        });
       });
 
-      logger.info(`Built graph from relationships: ${nodes.size} nodes, ${edges.length} edges`);
+      // Wait for all connected account requests (with error handling)
+      await Promise.allSettled(connectedAccountPromises);
+
+      logger.info(`Built graph from Subscan: ${nodes.size} nodes, ${edges.length} edges`);
 
       return {
         nodes: Array.from(nodes.values()),
@@ -1325,19 +1591,33 @@ export class GraphController {
         metadata: {
           centerAddress: address,
           depth: 1,
-          source: 'relationships'
+          source: 'subscan-api',
+          rateLimitStatus: subscanService.getStatus().rateLimiter
         }
       };
 
     } catch (error) {
-      logger.error('Error building graph from relationships:', error);
-      return {
-        nodes: [],
-        edges: [],
-        metadata: {
-          error: error.message
-        }
-      };
+      logger.error('Error building graph from Subscan:', error);
+      
+      // Instead of returning mock data, throw clear error
+      const errorMessage = error instanceof SubscanError 
+        ? error.toUserMessage()
+        : 'Failed to load blockchain data from Subscan API';
+        
+      throw new Error(errorMessage);
     }
+  }
+
+  /**
+   * Calculate relationship score based on transaction data
+   * @private
+   */
+  _calculateRelationshipScore(relationship) {
+    // Score based on volume, frequency, and recency
+    const volumeScore = Math.min(50, Math.log10(BigInt(relationship.total_volume) / BigInt('1000000000000')) * 10);
+    const frequencyScore = Math.min(30, relationship.total_transactions * 2);
+    const recencyScore = Math.max(0, 20 - ((Date.now() / 1000 - relationship.last_interaction) / (24 * 3600)));
+    
+    return Math.max(1, Math.round(volumeScore + frequencyScore + recencyScore));
   }
 }

@@ -13,6 +13,11 @@ const logger = createLogger('API');
 
 const router = Router();
 
+// Log when API module is loaded
+logger.info('API module loaded', {
+  timestamp: new Date().toISOString()
+});
+
 // Add request logging middleware
 router.use((req, res, next) => {
   const startTime = performance.now();
@@ -68,7 +73,15 @@ router.use('/addresses', (req, res, next) => {
 }, searchRateLimiter, addressRoutes);
 
 router.use('/graph', (req, res, next) => {
-  logger.debug('Routing to graph endpoint', { path: req.path, query: req.query });
+  logger.debug('Routing to graph endpoint', { 
+    path: req.path, 
+    query: req.query,
+    fullUrl: req.originalUrl,
+    method: req.method,
+    appLocalsKeys: Object.keys(req.app.locals || {}),
+    hasBlockchain: !!req.app.locals.blockchain,
+    hasDb: !!req.app.locals.db
+  });
   next();
 }, graphRoutes);
 

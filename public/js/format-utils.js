@@ -16,10 +16,22 @@ class FormatUtils {
         // Convert to BigInt if not already
         // Handle decimal numbers by truncating to integer
         let processedValue = value;
-        if (typeof value === 'number' && !Number.isInteger(value)) {
-            processedValue = Math.floor(value);
-        } else if (typeof value === 'string' && value.includes('.')) {
-            processedValue = value.split('.')[0];
+        
+        // Handle object inputs (nested balance structures)
+        if (typeof value === 'object' && value !== null) {
+            if (typeof value.free === 'string' || typeof value.free === 'number') {
+                processedValue = value.free;
+            } else if (typeof value.free === 'object' && value.free !== null && value.free.free !== undefined) {
+                processedValue = value.free.free;
+            } else {
+                processedValue = '0';
+            }
+        }
+        
+        if (typeof processedValue === 'number' && !Number.isInteger(processedValue)) {
+            processedValue = Math.floor(processedValue);
+        } else if (typeof processedValue === 'string' && processedValue.includes('.')) {
+            processedValue = processedValue.split('.')[0];
         }
         const bigValue = typeof processedValue === 'bigint' ? processedValue : BigInt(processedValue || 0);
         

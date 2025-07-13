@@ -5,28 +5,67 @@ const logger = createLogger('RealDataService');
 
 export class RealDataService {
   constructor(blockchainService, databaseService) {
+    logger.info('[CONSTRUCTOR] RealDataService constructor called', {
+      hasBlockchainService: !!blockchainService,
+      hasDatabaseService: !!databaseService,
+      blockchainServiceType: blockchainService?.constructor?.name,
+      databaseServiceType: databaseService?.constructor?.name,
+      blockchainApiConnected: !!blockchainService?.api,
+      databaseConnected: !!databaseService?.db,
+      stackTrace: new Error().stack.split('\n').slice(1, 5).join('\n') // Log where it's being created from
+    });
+    
     this.blockchain = blockchainService;
     this.database = databaseService;
     this.cache = new Map();
     this.cacheTimeout = 5 * 60 * 1000; // 5 minutes
+    this.serviceId = Math.random().toString(36).substring(7); // Unique ID for tracking this instance
+    
+    // Log all methods that will be available
+    const methods = Object.getOwnPropertyNames(Object.getPrototypeOf(this));
+    logger.debug('[CONSTRUCTOR] RealDataService initialized', {
+      cacheTimeout: this.cacheTimeout,
+      serviceId: this.serviceId,
+      availableMethods: methods.filter(m => typeof this[m] === 'function' && m !== 'constructor'),
+      hasBuildGraphData: methods.includes('buildGraphData'),
+      buildGraphDataType: typeof this.buildGraphData
+    });
   }
 
   /**
    * Get or fetch account data with caching
    */
   async getAccountData(address) {
+    logger.debug('getAccountData called', {
+      address,
+      method: 'getAccountData',
+      hasBlockchainApi: !!this.blockchain?.api,
+      hasDatabaseService: !!this.database
+    });
+    
     const cacheKey = `account:${address}`;
     const cached = this.getFromCache(cacheKey);
     if (cached) {
+      logger.debug('Account data found in cache', { address, cacheKey });
       return cached;
     }
 
+    logger.debug('Account data not in cache, fetching...', { address });
+
     try {
       // Try Subscan first for richer data
+      logger.debug('Attempting to fetch from Subscan', { address });
       let accountInfo = await subscanService.getAccountInfo(address);
+      
+      logger.debug('Subscan response', {
+        address,
+        hasAccountInfo: !!accountInfo,
+        accountInfoKeys: accountInfo ? Object.keys(accountInfo) : null
+      });
 
       // Fallback to blockchain RPC if Subscan fails
       if (!accountInfo && this.blockchain?.api) {
+        logger.debug('Subscan failed, trying blockchain RPC', { address });
         try {
           const account = await this.blockchain.api.query.system.account(address);
           let identity = null;
@@ -62,24 +101,57 @@ export class RealDataService {
             nonce: account.nonce.toNumber(),
             role: 'regular'
           };
+          
+          logger.debug('Successfully fetched from blockchain RPC', {
+            address,
+            hasIdentity: !!identity,
+            balance: accountInfo.balance.free,
+            nonce: accountInfo.nonce
+          });
         } catch (blockchainError) {
-          logger.warn('Failed to get account data from blockchain', { address, error: blockchainError.message });
+          logger.warn('Failed to get account data from blockchain', {
+            address,
+            error: blockchainError.message,
+            stack: blockchainError.stack
+          });
         }
       }
 
       if (accountInfo) {
+        logger.debug('Account info obtained, updating cache and database', { address });
         this.setCache(cacheKey, accountInfo);
 
         // Update database
         await this.updateAccountInDatabase(accountInfo);
+      } else {
+        logger.warn('No account info obtained from any source', { address });
       }
 
+      logger.debug('getAccountData completed', {
+        address,
+        hasResult: !!accountInfo,
+        source: accountInfo ? 'subscan/blockchain' : 'none'
+      });
+      
       return accountInfo;
     } catch (error) {
-      logger.error('Failed to get account data', { address, error: error.message });
+      logger.error('Failed to get account data', {
+        address,
+        error: error.message,
+        stack: error.stack
+      });
 
       // Try database as last resort
-      return await this.database?.getAccount(address);
+      logger.debug('Attempting database fallback', { address });
+      const dbResult = await this.database?.getAccount(address);
+      
+      logger.debug('Database fallback result', {
+        address,
+        hasResult: !!dbResult,
+        resultKeys: dbResult ? Object.keys(dbResult) : null
+      });
+      
+      return dbResult;
     }
   }
 
@@ -88,22 +160,56 @@ export class RealDataService {
    */
   async getAddressRelationships(address, options = {}) {
     const { limit = 50, minVolume = '0' } = options;
+    
+    logger.debug('getAddressRelationships called', {
+      address,
+      limit,
+      minVolume,
+      method: 'getAddressRelationships'
+    });
+    
     const cacheKey = `relationships:${address}:${limit}:${minVolume}`;
     const cached = this.getFromCache(cacheKey);
     if (cached) {
+      logger.debug('Relationships found in cache', {
+        address,
+        cacheKey,
+        relationshipCount: cached.length
+      });
       return cached;
     }
 
+    logger.debug('Relationships not in cache, fetching...', { address });
+
     try {
       // Get relationships from Subscan
+      logger.debug('Fetching relationships from Subscan', { address, limit });
       const relationships = await subscanService.getAccountRelationships(address, { limit });
+      
+      logger.debug('Subscan relationships response', {
+        address,
+        relationshipCount: relationships.length,
+        hasRelationships: relationships.length > 0
+      });
 
       // Filter by minimum volume
       const filtered = relationships.filter(rel =>
         BigInt(rel.total_volume) >= BigInt(minVolume)
       );
+      
+      logger.debug('Filtered relationships by volume', {
+        address,
+        originalCount: relationships.length,
+        filteredCount: filtered.length,
+        minVolume
+      });
 
       // Enrich with account info
+      logger.debug('Enriching relationships with account data', {
+        address,
+        relationshipsToEnrich: filtered.length
+      });
+      
       const enriched = await Promise.all(filtered.map(async rel => {
         const accountData = await this.getAccountData(rel.connected_address);
         return {
@@ -113,11 +219,22 @@ export class RealDataService {
           tags: []
         };
       }));
+      
+      logger.debug('Relationships enriched', {
+        address,
+        enrichedCount: enriched.length,
+        hasIdentities: enriched.filter(r => r.identity).length
+      });
 
       this.setCache(cacheKey, enriched);
 
       // Update database with relationships
       await this.updateRelationshipsInDatabase(address, enriched);
+
+      logger.debug('getAddressRelationships completed', {
+        address,
+        resultCount: enriched.length
+      });
 
       return enriched;
     } catch (error) {
@@ -136,6 +253,20 @@ export class RealDataService {
       maxNodes = 100,
       minVolume = '0'
     } = options;
+    
+    logger.info('[METHOD] buildGraphData called', {
+      centerAddress,
+      depth,
+      maxNodes,
+      minVolume,
+      method: 'buildGraphData',
+      hasBlockchainService: !!this.blockchain,
+      hasDatabaseService: !!this.database,
+      thisType: typeof this,
+      thisConstructor: this?.constructor?.name,
+      isRealDataService: this instanceof RealDataService,
+      stackTrace: new Error().stack.split('\n').slice(1, 5).join('\n')
+    });
 
     const nodes = new Map();
     const edges = new Map();
@@ -143,7 +274,13 @@ export class RealDataService {
     const queue = [{ address: centerAddress, currentDepth: 0 }];
 
     // Add center node
+    logger.debug('Fetching center node data', { centerAddress });
     const centerAccount = await this.getAccountData(centerAddress);
+    
+    if (!centerAccount) {
+      logger.warn('Center account data not found', { centerAddress });
+    }
+    
     nodes.set(centerAddress, {
       address: centerAddress,
       identity: centerAccount?.identity || {},
@@ -152,19 +289,58 @@ export class RealDataService {
       degree: 0,
       totalVolume: '0'
     });
+    
+    logger.debug('Center node added', {
+      centerAddress,
+      hasIdentity: !!centerAccount?.identity?.display,
+      balance: centerAccount?.balance?.free
+    });
 
+    let iteration = 0;
     while (queue.length > 0 && nodes.size < maxNodes) {
+      iteration++;
+      logger.debug('Graph building iteration', {
+        iteration,
+        queueLength: queue.length,
+        nodesCount: nodes.size,
+        visitedCount: visited.size
+      });
       const { address, currentDepth } = queue.shift();
+      
+      logger.debug('Processing node', {
+        address,
+        currentDepth,
+        alreadyVisited: visited.has(address),
+        depthReached: currentDepth >= depth
+      });
 
       if (visited.has(address) || currentDepth >= depth) {
+        logger.debug('Skipping node', {
+          address,
+          reason: visited.has(address) ? 'already_visited' : 'depth_reached'
+        });
         continue;
       }
       visited.add(address);
 
       // Get relationships
-      const relationships = await this.getAddressRelationships(address, {
-        limit: Math.min(20, maxNodes - nodes.size),
+      const relationshipLimit = Math.min(20, maxNodes - nodes.size);
+      logger.debug('Fetching relationships for node', {
+        address,
+        currentDepth,
+        relationshipLimit,
         minVolume
+      });
+      
+      const relationships = await this.getAddressRelationships(address, {
+        limit: relationshipLimit,
+        minVolume
+      });
+      
+      logger.debug('Relationships fetched', {
+        address,
+        relationshipCount: relationships.length,
+        currentNodesCount: nodes.size
       });
 
       for (const rel of relationships) {
@@ -230,6 +406,12 @@ export class RealDataService {
       }
     }
 
+    logger.debug('Graph building complete', {
+      nodesCount: nodes.size,
+      edgesCount: edges.size,
+      visitedCount: visited.size
+    });
+
     // Convert to arrays and add visual properties
     const nodeArray = Array.from(nodes.values()).map(node => ({
       ...node,
@@ -241,12 +423,12 @@ export class RealDataService {
 
     const edgeArray = Array.from(edges.values()).map(edge => ({
       ...edge,
-      suggestedWidth: Math.min(1 + Math.log10(BigInt(edge.volume) / BigInt('1000000000000') + 1n) * 2, 10),
+      suggestedWidth: Math.min(1 + Math.log10(Number(BigInt(edge.volume) / BigInt('1000000000000') + 1n)) * 2, 10),
       suggestedColor: '#2196F3',
       suggestedOpacity: 0.6 + Math.min(edge.count / 50, 0.4)
     }));
 
-    return {
+    const result = {
       nodes: nodeArray,
       edges: edgeArray,
       metadata: {
@@ -258,13 +440,34 @@ export class RealDataService {
         timestamp: Date.now()
       }
     };
+    
+    logger.info('buildGraphData completed', {
+      centerAddress,
+      depth,
+      totalNodes: nodeArray.length,
+      totalEdges: edgeArray.length,
+      nodesWithIdentity: nodeArray.filter(n => n.identity?.display).length,
+      centerNodeDegree: nodes.get(centerAddress)?.degree,
+      averageDegree: nodeArray.reduce((sum, n) => sum + n.degree, 0) / nodeArray.length
+    });
+    
+    return result;
   }
 
   /**
    * Update account in database
    */
   async updateAccountInDatabase(accountInfo) {
+    logger.debug('updateAccountInDatabase called', {
+      address: accountInfo.address,
+      hasDatabaseDb: !!this.database?.db,
+      hasIdentity: !!accountInfo.identity?.display
+    });
+    
     if (!this.database?.db) {
+      logger.debug('No database connection, skipping update', {
+        address: accountInfo.address
+      });
       return;
     }
 
@@ -289,8 +492,17 @@ export class RealDataService {
         accountInfo.identity?.verified ? 1 : 0,
         accountInfo.balance?.free || '0'
       );
+      
+      logger.debug('Account updated in database', {
+        address: accountInfo.address,
+        identityDisplay: accountInfo.identity?.display
+      });
     } catch (error) {
-      logger.warn('Failed to update account in database', { error: error.message });
+      logger.warn('Failed to update account in database', {
+        address: accountInfo.address,
+        error: error.message,
+        stack: error.stack
+      });
     }
   }
 
@@ -298,7 +510,16 @@ export class RealDataService {
    * Update relationships in database
    */
   async updateRelationshipsInDatabase(address, relationships) {
+    logger.debug('updateRelationshipsInDatabase called', {
+      address,
+      relationshipCount: relationships.length,
+      hasDatabaseDb: !!this.database?.db
+    });
+    
     if (!this.database?.db) {
+      logger.debug('No database connection, skipping relationships update', {
+        address
+      });
       return;
     }
 
@@ -338,8 +559,18 @@ export class RealDataService {
       });
 
       transaction(relationships);
+      
+      logger.debug('Relationships updated in database', {
+        address,
+        relationshipCount: relationships.length
+      });
     } catch (error) {
-      logger.warn('Failed to update relationships in database', { error: error.message });
+      logger.warn('Failed to update relationships in database', {
+        address,
+        error: error.message,
+        stack: error.stack,
+        relationshipCount: relationships.length
+      });
     }
   }
 
@@ -349,18 +580,45 @@ export class RealDataService {
   getFromCache(key) {
     const cached = this.cache.get(key);
     if (cached && Date.now() - cached.timestamp < this.cacheTimeout) {
+      logger.debug('Cache hit', {
+        key,
+        age: Date.now() - cached.timestamp,
+        cacheTimeout: this.cacheTimeout
+      });
       return cached.data;
     }
-    this.cache.delete(key);
+    
+    if (cached) {
+      logger.debug('Cache expired', {
+        key,
+        age: Date.now() - cached.timestamp,
+        cacheTimeout: this.cacheTimeout
+      });
+      this.cache.delete(key);
+    } else {
+      logger.debug('Cache miss', { key });
+    }
+    
     return null;
   }
 
   setCache(key, data) {
     this.cache.set(key, { data, timestamp: Date.now() });
+    logger.debug('Cache set', {
+      key,
+      cacheSize: this.cache.size,
+      dataType: Array.isArray(data) ? 'array' : typeof data,
+      dataLength: Array.isArray(data) ? data.length : undefined
+    });
   }
 
   clearCache() {
+    const previousSize = this.cache.size;
     this.cache.clear();
+    logger.debug('Cache cleared', {
+      previousSize,
+      newSize: this.cache.size
+    });
   }
 }
 

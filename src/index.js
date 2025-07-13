@@ -177,31 +177,59 @@ app.use(errorHandler);
 // Initialize services
 async function initialize() {
   try {
+    logger.info('[INIT] Starting application initialization');
+    
     // Initialize database
+    logger.info('[INIT] Initializing database service');
     const db = new DatabaseService();
     await db.initialize();
-    logger.info('Database initialized');
+    logger.info('[INIT] Database initialized successfully');
 
     // Initialize blockchain connection
+    logger.info('[INIT] Initializing blockchain service');
     const blockchain = new BlockchainService();
+    logger.info('[INIT] BlockchainService instance created', {
+      hasBlockchain: !!blockchain,
+      blockchainType: typeof blockchain,
+      blockchainConstructor: blockchain ? blockchain.constructor.name : 'N/A'
+    });
+    
     await blockchain.connect();
-    logger.info('Blockchain connection established');
+    logger.info('[INIT] Blockchain connection established', {
+      isConnected: blockchain.isConnected ? blockchain.isConnected() : 'unknown',
+      blockchainMethods: Object.getOwnPropertyNames(Object.getPrototypeOf(blockchain))
+    });
 
     // Make services available globally
+    logger.info('[INIT] Setting services in app.locals');
     app.locals.db = db;
     app.locals.blockchain = blockchain;
     app.locals.io = io;
     app.locals.graphWebSocket = graphWebSocket;
+    
+    logger.info('[INIT] Services set in app.locals', {
+      hasDb: !!app.locals.db,
+      hasBlockchain: !!app.locals.blockchain,
+      hasIo: !!app.locals.io,
+      hasGraphWebSocket: !!app.locals.graphWebSocket,
+      appLocalsKeys: Object.keys(app.locals)
+    });
 
     // Start server
     const port = process.env.PORT || 3000;
     const host = process.env.HOST || 'localhost';
 
     server.listen(port, host, () => {
-      logger.info(`Server running at http://${host}:${port}`);
+      logger.info(`[INIT] Server running at http://${host}:${port}`, {
+        appLocalsKeys: Object.keys(app.locals),
+        hasBlockchain: !!app.locals.blockchain
+      });
     });
   } catch (error) {
-    logger.error('Failed to initialize application', error);
+    logger.error('[INIT] Failed to initialize application', {
+      error: error.message,
+      stack: error.stack
+    });
     process.exit(1);
   }
 }
