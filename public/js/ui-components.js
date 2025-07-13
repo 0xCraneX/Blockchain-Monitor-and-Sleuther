@@ -644,10 +644,15 @@ class AddressDetailsComponent extends BaseComponent {
 
     try {
       // Load basic address information
+      console.log('[DEBUG] Fetching address data for:', address);
       const response = await fetch(`/api/addresses/${address}`);
+      console.log('[DEBUG] Response status:', response.status);
       if (response.ok) {
         const addressData = await response.json();
+        console.log('[DEBUG] Raw API response:', addressData);
         this.displayAddressInfo(addressData);
+      } else {
+        console.error('[DEBUG] Failed to fetch address data:', response.status, response.statusText);
       }
 
       // Load the current active tab data
@@ -661,6 +666,10 @@ class AddressDetailsComponent extends BaseComponent {
   }
 
   displayAddressInfo(data) {
+    console.log('[DEBUG] displayAddressInfo received data:', data);
+    console.log('[DEBUG] data.balance:', data.balance);
+    console.log('[DEBUG] typeof data.balance:', typeof data.balance);
+    
     const addressDisplay = this.container.querySelector('#address-display');
     const identityDisplay = this.container.querySelector('#identity-display');
     const balanceDisplay = this.container.querySelector('#balance-display');
@@ -673,11 +682,14 @@ class AddressDetailsComponent extends BaseComponent {
     }
 
     if (identityDisplay) {
-      identityDisplay.textContent = data.identity?.display || 'No identity';
+      const identity = data.identity?.display?.display || data.identity?.display || 'No identity';
+      identityDisplay.textContent = identity;
     }
 
     if (balanceDisplay) {
-      balanceDisplay.textContent = this.formatBalance(data.balance);
+      const formattedBalance = this.formatBalance(data.balance);
+      console.log('[DEBUG] formatted balance:', formattedBalance);
+      balanceDisplay.textContent = formattedBalance;
     }
 
     if (transferCountDisplay) {
@@ -904,7 +916,23 @@ class AddressDetailsComponent extends BaseComponent {
 
   formatBalance(balance) {
     if (!balance) return '0 DOT';
-    const dot = parseFloat(balance) / 1e12;
+    
+    const numBalance = parseFloat(balance);
+    console.log('[DEBUG] formatBalance input:', balance, 'parsed:', numBalance);
+    
+    // If the balance is a very large number (>1e10), it's likely in planck units
+    // If it's a smaller decimal number, it's likely already in DOT format
+    let dot;
+    if (numBalance > 1e10) {
+      // Looks like planck units, convert to DOT
+      dot = numBalance / 1e12;
+      console.log('[DEBUG] formatBalance: Converting from planck to DOT:', numBalance, '->', dot);
+    } else {
+      // Looks like it's already in DOT format
+      dot = numBalance;
+      console.log('[DEBUG] formatBalance: Already in DOT format:', dot);
+    }
+    
     return `${dot.toFixed(4)} DOT`;
   }
 

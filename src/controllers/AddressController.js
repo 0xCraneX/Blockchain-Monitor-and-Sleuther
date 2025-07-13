@@ -33,10 +33,12 @@ export class AddressController {
     try {
       // Try to get from database first
       let account = db.getAccount(address);
+      logger.debug('[DEBUG] AddressController.getAccount - Database account:', { address, account });
 
       // If not in database or data is stale, fetch from blockchain
       if (!account || this.isDataStale(account.updated_at)) {
         const chainData = await blockchain.getAccount(address);
+        logger.debug('[DEBUG] AddressController.getAccount - Blockchain data:', { address, chainData });
 
         // Check if this is an empty/unused account (common pattern for invalid addresses)
         const isEmpty = chainData.balance === '0' &&
@@ -45,6 +47,7 @@ export class AddressController {
                        !account; // And not in our database
 
         if (isEmpty) {
+          logger.debug('[DEBUG] AddressController.getAccount - Empty account, returning null');
           return null; // Address not found
         }
 
@@ -56,6 +59,7 @@ export class AddressController {
           balance: chainData.balance,
           firstSeenBlock: account?.first_seen_block || null
         });
+        logger.debug('[DEBUG] AddressController.getAccount - Created/updated account:', { account });
 
         // Update identity if available
         if (chainData.identity) {
@@ -63,9 +67,11 @@ export class AddressController {
             ...chainData.identity,
             verified: false // Would need to check judgements
           });
+          logger.debug('[DEBUG] AddressController.getAccount - Updated identity');
         }
       }
 
+      logger.debug('[DEBUG] AddressController.getAccount - Final account returning:', { account });
       return account;
     } catch (error) {
       logger.error('Failed to get account', { address, error });
