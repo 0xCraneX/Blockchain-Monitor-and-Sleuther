@@ -860,12 +860,31 @@ class PolkadotAnalysisApp {
         
         if (!nodeInfoContainer || !nodeDetailsPanel) return;
         
-        const identity = nodeData.identity?.display || 'Unknown';
+        // Fix for identity structure - check for string first
+        let identity = 'Unknown';
+        if (typeof nodeData.identity?.display === 'string') {
+            identity = nodeData.identity.display;
+        } else if (nodeData.identity?.display?.display) {
+            identity = nodeData.identity.display.display;
+        } else if (nodeData.identity?.display) {
+            identity = nodeData.identity.display;
+        }
         const address = nodeData.address;
         const nodeType = nodeData.nodeType || 'regular';
-        const balance = nodeData.balance?.free ? 
-            (Number(nodeData.balance.free) / 1e12).toLocaleString() + ' DOT' : 
-            'Unknown';
+        
+        // Fix for balance format detection (might be in DOT or planck)
+        let balance = 'Unknown';
+        if (nodeData.balance?.free) {
+            const balanceNum = Number(nodeData.balance.free);
+            // If balance is greater than 1e10, it's likely in planck units
+            if (balanceNum > 1e10) {
+                balance = (balanceNum / 1e12).toLocaleString() + ' DOT';
+            } else {
+                // Already in DOT format
+                balance = balanceNum.toLocaleString() + ' DOT';
+            }
+        }
+        
         const connections = nodeData.degree || 0;
         // Risk scoring not implemented yet
         

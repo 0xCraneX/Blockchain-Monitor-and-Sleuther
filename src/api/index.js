@@ -53,7 +53,7 @@ router.use((req, res, next) => {
 router.get('/', (req, res) => {
   logger.debug('API root endpoint accessed');
   res.json({
-    name: 'Polkadot Analysis Tool API',
+    name: 'Onchain Sleuther 4000 API',
     version: '1.0.0',
     endpoints: {
       addresses: '/api/addresses',

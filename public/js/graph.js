@@ -1533,7 +1533,17 @@ class PolkadotGraphVisualization {
         // Format balance if available
         let formattedBalance = '';
         if (balance && balance !== '0') {
-            formattedBalance = FormatUtils.formatBalance(balance);
+            // Check if balance is already in DOT format (has decimal point and is < 1e10)
+            const numBalance = parseFloat(balance);
+            if (!isNaN(numBalance)) {
+                if (numBalance < 1e10 && balance.includes('.')) {
+                    // Already in DOT format
+                    formattedBalance = `${numBalance.toFixed(2)} DOT`;
+                } else {
+                    // Use FormatUtils for planck conversion
+                    formattedBalance = FormatUtils.formatBalance(balance);
+                }
+            }
         }
         
         // If there's an identity, show it with balance
