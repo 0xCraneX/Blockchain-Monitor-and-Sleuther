@@ -222,6 +222,8 @@ export class RealDataService {
           enrichedTop.push({
             ...rel,
             identity: accountData?.identity?.display || null,
+            merkle: accountData?.merkle || null,
+            balance: accountData?.balance || null,
             risk_score: 0, // TODO: Calculate risk score
             tags: []
           });
@@ -312,6 +314,7 @@ export class RealDataService {
       address: centerAddress,
       identity: centerAccount?.identity || {},
       balance: centerAccount?.balance || {},
+      merkle: centerAccount?.merkle || null,
       nodeType: 'center',
       degree: 0,
       totalVolume: '0'
@@ -380,11 +383,12 @@ export class RealDataService {
 
         // Add connected node if not exists
         if (!nodes.has(connectedAddress)) {
-          // Use cached identity from relationship if available
+          // Use cached identity and merkle from relationship if available
           nodes.set(connectedAddress, {
             address: connectedAddress,
             identity: rel.identity ? { display: rel.identity } : {}, 
-            balance: {}, // Balance will be fetched on-demand
+            balance: rel.balance || {}, // Use balance from enriched relationship data
+            merkle: rel.merkle || null,
             nodeType: 'regular',
             degree: 0,
             totalVolume: '0',

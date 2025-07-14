@@ -1018,7 +1018,10 @@ export class GraphController {
 
         // D3.js positioning (initialize for force simulation)
         x: Math.random() * 800 + 100, // Random initial positions
-        y: Math.random() * 600 + 100
+        y: Math.random() * 600 + 100,
+        
+        // Merkle Science exchange data (if available)
+        merkle: node.merkle || null
       };
 
       // Add risk data if requested
@@ -1267,6 +1270,11 @@ export class GraphController {
    * @private
    */
   _getNodeColor(node) {
+    // Check for exchange identification from Merkle Science
+    if (node.merkle?.tag_type === 'Exchange') {
+      return '#E91E63'; // Bright pink/magenta for exchanges (more prominent)
+    }
+    
     switch (node.nodeType) {
       case 'exchange': return '#FF5722';
       case 'validator': return '#4CAF50';

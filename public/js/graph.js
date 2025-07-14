@@ -1318,6 +1318,11 @@ class PolkadotGraphVisualization {
     }
     
     getNodeColor(nodeData) {
+        // Check if this is an exchange node based on Merkle data
+        if (nodeData.merkle?.tag_type === 'Exchange') {
+            return '#E91E63'; // Bright pink/magenta for exchanges (more prominent)
+        }
+        
         if (nodeData.suggestedColor) {
             return nodeData.suggestedColor;
         }
@@ -1644,12 +1649,24 @@ class PolkadotGraphVisualization {
             identityString = findString(nodeData.identity);
         }
         
-        // If there's an identity, show it with balance
-        if (identityString) {
-            if (formattedBalance) {
-                return `${identityString}\n${formattedBalance}`;
+        // Check for Merkle Science tags (exchange identification)
+        let exchangeTag = null;
+        if (nodeData.merkle?.tag_name) {
+            exchangeTag = nodeData.merkle.tag_name;
+            // Add tag type for context
+            if (nodeData.merkle.tag_type === 'Exchange') {
+                exchangeTag = `🏦 ${exchangeTag}`;
             }
-            return `${identityString}\n${abbreviatedAddr}`;
+        }
+        
+        // If there's an identity or exchange tag, show it with balance
+        if (identityString || exchangeTag) {
+            // Prefer exchange tag over identity if both exist
+            const displayName = exchangeTag || identityString;
+            if (formattedBalance) {
+                return `${displayName}\n${formattedBalance}`;
+            }
+            return `${displayName}\n${abbreviatedAddr}`;
         }
         
         // Show address with balance (always show balance if available)
@@ -1695,6 +1712,23 @@ class PolkadotGraphVisualization {
         
         if (nodeData.identity?.display) {
             parts.push(`<strong>Identity:</strong> ${nodeData.identity.display}`);
+        }
+        
+        // Add Merkle Science exchange identification
+        if (nodeData.merkle) {
+            parts.push('<strong>--- Exchange Identification ---</strong>');
+            if (nodeData.merkle.tag_name) {
+                parts.push(`<strong>Exchange:</strong> ${nodeData.merkle.tag_name}`);
+            }
+            if (nodeData.merkle.tag_type) {
+                parts.push(`<strong>Tag Type:</strong> ${nodeData.merkle.tag_type}`);
+            }
+            if (nodeData.merkle.tag_subtype) {
+                parts.push(`<strong>Compliance:</strong> ${nodeData.merkle.tag_subtype}`);
+            }
+            if (nodeData.merkle.address_type) {
+                parts.push(`<strong>Address Type:</strong> ${nodeData.merkle.address_type}`);
+            }
         }
         
         if (nodeData.nodeType) {
