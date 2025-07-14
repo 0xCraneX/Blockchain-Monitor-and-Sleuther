@@ -163,6 +163,31 @@ class PolkadotAnalysisApp {
             resetFiltersBtn.addEventListener('click', () => this.resetFilters());
         }
         
+        // Add real-time formatting for filter inputs
+        const volumeFilterInput = document.getElementById('volume-filter');
+        const volumeFilterDisplay = document.getElementById('volume-filter-display');
+        
+        if (volumeFilterInput && volumeFilterDisplay) {
+            volumeFilterInput.addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value) || 0;
+                volumeFilterDisplay.textContent = `${FormatUtils.addCommas(Math.round(value))} DOT`;
+            });
+        }
+        
+        const volumeThresholdInput = document.getElementById('volume-threshold-filter');
+        const volumeThresholdDisplay = document.getElementById('volume-threshold-display');
+        
+        if (volumeThresholdInput && volumeThresholdDisplay) {
+            volumeThresholdInput.addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value) || 0;
+                if (value > 0) {
+                    volumeThresholdDisplay.textContent = `${FormatUtils.addCommas(Math.round(value))} DOT`;
+                } else {
+                    volumeThresholdDisplay.textContent = '';
+                }
+            });
+        }
+        
         // Export functionality
         const exportCsvBtn = document.getElementById('export-csv');
         const exportJsonBtn = document.getElementById('export-json');
@@ -622,6 +647,12 @@ class PolkadotAnalysisApp {
             const volume = this.state.filters.minVolume !== '0' ? 
                 Number(BigInt(this.state.filters.minVolume)) / 1e10 : 0;
             volumeFilter.value = volume;
+            
+            // Update the display label
+            const volumeFilterDisplay = document.getElementById('volume-filter-display');
+            if (volumeFilterDisplay) {
+                volumeFilterDisplay.textContent = `${FormatUtils.addCommas(Math.round(volume))} DOT`;
+            }
         }
         
         if (timeFilter) {
@@ -636,6 +667,16 @@ class PolkadotAnalysisApp {
             const threshold = this.state.filters.volumeThreshold ? 
                 Number(BigInt(this.state.filters.volumeThreshold)) / 1e10 : '';
             volumeThresholdFilter.value = threshold;
+            
+            // Update the display label
+            const volumeThresholdDisplay = document.getElementById('volume-threshold-display');
+            if (volumeThresholdDisplay) {
+                if (threshold) {
+                    volumeThresholdDisplay.textContent = `${FormatUtils.addCommas(Math.round(threshold))} DOT`;
+                } else {
+                    volumeThresholdDisplay.textContent = '';
+                }
+            }
         }
         
         // Update direction filter radio buttons
@@ -936,10 +977,10 @@ class PolkadotAnalysisApp {
             const balanceNum = Number(nodeData.balance.free);
             // If balance is greater than 1e10, it's likely in planck units
             if (balanceNum > 1e10) {
-                balance = (balanceNum / 1e10).toLocaleString() + ' DOT';
+                balance = FormatUtils.addCommas(Math.round(balanceNum / 1e10)) + ' DOT';
             } else {
                 // Already in DOT format
-                balance = balanceNum.toLocaleString() + ' DOT';
+                balance = FormatUtils.addCommas(Math.round(balanceNum)) + ' DOT';
             }
         }
         
@@ -992,7 +1033,7 @@ class PolkadotAnalysisApp {
      */
     displayEdgeDetails(edgeData) {
         const volume = edgeData.volume ? 
-            (Number(BigInt(edgeData.volume)) / 1e10).toLocaleString() + ' DOT' : 
+            FormatUtils.addCommas(Number(BigInt(edgeData.volume)) / 1e10) + ' DOT' : 
             'Unknown';
         const count = edgeData.count || 1;
         
@@ -1018,18 +1059,18 @@ class PolkadotAnalysisApp {
         if (nodeCountEl) {
             // Use graph data if available
             const nodeCount = this.state.graphData?.nodes?.length || stats.visibleNodes || 0;
-            nodeCountEl.textContent = nodeCount;
+            nodeCountEl.textContent = FormatUtils.addCommas(nodeCount);
         }
         
         if (edgeCountEl) {
             // Use graph data if available (edges or links)
             const edgeCount = this.state.graphData?.edges?.length || this.state.graphData?.links?.length || stats.visibleEdges || 0;
-            edgeCountEl.textContent = edgeCount;
+            edgeCountEl.textContent = FormatUtils.addCommas(edgeCount);
         }
         
         if (totalVolumeEl && this.state.graphData) {
             const totalVolume = this.calculateTotalVolume();
-            totalVolumeEl.textContent = totalVolume.toFixed(2);
+            totalVolumeEl.textContent = Math.round(totalVolume).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
         }
         
         // Update volume range information to help users understand actual data ranges
@@ -1118,10 +1159,10 @@ class PolkadotAnalysisApp {
             if (valueEl) {
                 if (minVolume === Infinity) minVolume = 0;
                 const rangeText = minVolume === maxVolume 
-                    ? `${maxVolume.toFixed(2)} DOT`
-                    : `${minVolume.toFixed(2)} - ${maxVolume.toFixed(2)} DOT`;
+                    ? `${FormatUtils.addCommas(Math.round(maxVolume))} DOT`
+                    : `${FormatUtils.addCommas(Math.round(minVolume))} - ${FormatUtils.addCommas(Math.round(maxVolume))} DOT`;
                 valueEl.textContent = rangeText;
-                valueEl.title = `Min: ${minVolume.toFixed(2)} DOT, Max: ${maxVolume.toFixed(2)} DOT (${validVolumeCount} connections)`;
+                valueEl.title = `Min: ${FormatUtils.addCommas(Math.round(minVolume))} DOT, Max: ${FormatUtils.addCommas(Math.round(maxVolume))} DOT (${FormatUtils.addCommas(validVolumeCount)} connections)`;
             }
         }
     }

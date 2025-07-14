@@ -214,13 +214,11 @@ class OverlayHelpers {
             try {
                 const volume = Number(BigInt(edgeData.volume) / BigInt('1000000000000'));
                 if (volume >= 1000000) {
-                    return `${(volume / 1000000).toFixed(1)}M DOT`;
+                    return `${FormatUtils.addCommas(Math.round(volume / 1000000))}M DOT`;
                 } else if (volume >= 1000) {
-                    return `${(volume / 1000).toFixed(1)}K DOT`;
-                } else if (volume >= 1) {
-                    return `${volume.toFixed(1)} DOT`;
+                    return `${FormatUtils.addCommas(Math.round(volume / 1000))}K DOT`;
                 } else {
-                    return `${volume.toFixed(3)} DOT`;
+                    return `${FormatUtils.addCommas(Math.round(volume))} DOT`;
                 }
             } catch (e) {
                 console.warn('Error formatting volume:', e);

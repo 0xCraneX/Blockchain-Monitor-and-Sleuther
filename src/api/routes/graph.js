@@ -21,7 +21,7 @@ logger.info('Graph routes module loaded', {
 // Helper to get or create services from app locals
 function getServices(req) {
   const trackerId = logMethodEntry('GraphRoutes', 'getServices');
-  
+
   // Log the state of app.locals when getServices is called
   logger.debug('getServices called - app.locals state', {
     hasDb: !!req.app.locals.db,
@@ -31,7 +31,7 @@ function getServices(req) {
     blockchainType: req.app.locals.blockchain ? typeof req.app.locals.blockchain : 'undefined',
     blockchainConstructor: req.app.locals.blockchain ? req.app.locals.blockchain.constructor.name : 'N/A'
   });
-  
+
   const databaseService = req.app.locals.db;
 
   if (!req.app.locals.graphServices) {
@@ -70,7 +70,7 @@ function getServices(req) {
 
       // Create RealDataService if blockchain is available
       const blockchainService = req.app.locals.blockchain;
-      logger.info('Blockchain service availability check', { 
+      logger.info('Blockchain service availability check', {
         hasBlockchainService: !!blockchainService,
         blockchainServiceType: typeof blockchainService,
         blockchainServiceConstructor: blockchainService ? blockchainService.constructor.name : 'N/A',
@@ -78,13 +78,13 @@ function getServices(req) {
         appLocalsKeys: Object.keys(req.app.locals || {}),
         appLocalsBlockchainDefined: 'blockchain' in req.app.locals
       });
-      
+
       if (blockchainService) {
         logger.debug('Attempting to create RealDataService', {
           blockchainService: !!blockchainService,
           databaseService: !!databaseService
         });
-        
+
         try {
           req.app.locals.graphServices.realDataService = new RealDataService(
             blockchainService,
@@ -133,7 +133,7 @@ function getServices(req) {
         hasRealDataService: !!req.app.locals.graphServices.realDataService,
         controllerMethods: Object.getOwnPropertyNames(Object.getPrototypeOf(req.app.locals.graphServices.graphController))
       });
-      
+
       endPerformanceTimer(serviceInitTimer, 'graph_services_init');
       logger.info('Graph services initialized successfully', {
         services: {
@@ -146,7 +146,7 @@ function getServices(req) {
         }
       });
     } catch (error) {
-      logError(error, { 
+      logError(error, {
         context: 'graph_services_initialization',
         stage: 'service_creation',
         hasBlockchain: !!req.app.locals.blockchain,
@@ -253,7 +253,7 @@ const validate = (schema, property = 'query') => {
 
 // Middleware to validate address parameter
 const validateAddress = (req, res, next) => {
-  logger.debug('[MIDDLEWARE] ValidateAddress middleware executing', { 
+  logger.debug('[MIDDLEWARE] ValidateAddress middleware executing', {
     address: req.params.address,
     path: req.path,
     method: req.method,
@@ -393,13 +393,13 @@ router.get(
     try {
       logger.debug('[ROUTE HANDLER] Calling getServices');
       const { graphController } = getServices(req);
-      
+
       logger.info('[ROUTE HANDLER] Got graphController from getServices', {
         hasGraphController: !!graphController,
         graphControllerType: graphController ? typeof graphController : 'undefined',
         graphControllerConstructor: graphController ? graphController.constructor.name : 'N/A'
       });
-      
+
       logger.info('Processing graph generation request', {
         address: req.params.address,
         depth: req.query.depth,

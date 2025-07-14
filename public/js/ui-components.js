@@ -779,7 +779,7 @@ class AddressDetailsComponent extends BaseComponent {
       <div class="pattern-item severity-${pattern.severity}">
         <div class="pattern-header">
           <span class="pattern-type">${this.formatPatternType(pattern.pattern_type)}</span>
-          <span class="pattern-confidence">${(pattern.confidence * 100).toFixed(1)}%</span>
+          <span class="pattern-confidence">${FormatUtils.addCommas(Math.round(pattern.confidence * 100))}%</span>
           <span class="pattern-severity severity-${pattern.severity}">${pattern.severity.toUpperCase()}</span>
         </div>
         <div class="pattern-description">${pattern.description}</div>
@@ -933,7 +933,7 @@ class AddressDetailsComponent extends BaseComponent {
       console.log('[DEBUG] formatBalance: Already in DOT format:', dot);
     }
     
-    return `${dot.toFixed(4)} DOT`;
+    return `${Math.round(dot).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')} DOT`;
   }
 
   formatTime(timestamp) {
@@ -1092,7 +1092,7 @@ class PatternAlertsComponent extends BaseComponent {
         <div class="alert-content">
           <div class="pattern-info">
             <span class="pattern-type">${this.formatPatternType(alert.pattern.patternType)}</span>
-            <span class="pattern-confidence">${(alert.pattern.confidence * 100).toFixed(1)}% confidence</span>
+            <span class="pattern-confidence">${FormatUtils.addCommas(Math.round(alert.pattern.confidence * 100))}% confidence</span>
           </div>
           <div class="pattern-address">Address: ${this.formatAddress(alert.pattern.address)}</div>
           <div class="alert-actions">
@@ -1686,8 +1686,8 @@ class StatsDashboardComponent extends BaseComponent {
     const edgeCount = document.getElementById('edge-count');
     const totalVolume = document.getElementById('total-volume');
 
-    if (nodeCount) nodeCount.textContent = this.stats.nodes;
-    if (edgeCount) edgeCount.textContent = this.stats.edges;
+    if (nodeCount) nodeCount.textContent = FormatUtils.addCommas(this.stats.nodes);
+    if (edgeCount) edgeCount.textContent = FormatUtils.addCommas(this.stats.edges);
     if (totalVolume) totalVolume.textContent = this.formatVolume(this.stats.totalVolume);
 
     // Update enhanced stats
@@ -1735,13 +1735,13 @@ class StatsDashboardComponent extends BaseComponent {
   formatStatValue(value, format) {
     switch (format) {
       case 'number':
-        return value.toLocaleString();
+        return FormatUtils.addCommas(value);
       case 'volume':
         return this.formatVolume(value);
       case 'decimal':
-        return value.toFixed(1);
+        return FormatUtils.addCommas(Math.round(value * 10) / 10);
       case 'percentage':
-        return `${value.toFixed(1)}%`;
+        return `${Math.round(value * 10) / 10}%`;
       default:
         return value.toString();
     }
@@ -1750,11 +1750,11 @@ class StatsDashboardComponent extends BaseComponent {
   formatVolume(volume) {
     const dot = parseFloat(volume) / 1e10;
     if (dot >= 1000000) {
-      return `${(dot / 1000000).toFixed(1)}M DOT`;
+      return `${FormatUtils.addCommas(Math.round(dot / 1000000))}M DOT`;
     } else if (dot >= 1000) {
-      return `${(dot / 1000).toFixed(1)}K DOT`;
+      return `${FormatUtils.addCommas(Math.round(dot / 1000))}K DOT`;
     } else {
-      return `${dot.toFixed(2)} DOT`;
+      return `${FormatUtils.addCommas(Math.round(dot))} DOT`;
     }
   }
 

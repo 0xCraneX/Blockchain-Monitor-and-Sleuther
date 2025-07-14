@@ -37,8 +37,8 @@ export class GraphController {
       realDataServiceType: realDataService ? typeof realDataService : 'not provided',
       realDataServiceConstructor: realDataService?.constructor?.name || 'N/A'
     });
-    
-    
+
+
     if (realDataService) {
       controllerLogger.debug('RealDataService details:', {
         methods: Object.getOwnPropertyNames(Object.getPrototypeOf(realDataService)).filter(m => typeof realDataService[m] === 'function'),
@@ -61,7 +61,7 @@ export class GraphController {
     });
     const startTime = Date.now();
     const perfTimer = startPerformanceTimer('graph_generation');
-    
+
     // DEBUG: Log method entry with all parameters
     controllerLogger.debug('=== getGraph DEBUG START ===');
     controllerLogger.debug('Method parameters:', {
@@ -128,8 +128,8 @@ export class GraphController {
           realDataServiceConstructor: this.realDataService?.constructor?.name,
           realDataServiceKeys: this.realDataService ? Object.keys(this.realDataService) : 'N/A'
         });
-        
-        
+
+
         // DEBUG: Check if buildGraphData method exists
         if (this.realDataService) {
           controllerLogger.debug('RealDataService methods check:', {
@@ -138,7 +138,7 @@ export class GraphController {
             allMethods: Object.getOwnPropertyNames(Object.getPrototypeOf(this.realDataService || {})).filter(m => typeof this.realDataService[m] === 'function')
           });
         }
-        
+
         // DEBUG: Environment variables check
         controllerLogger.debug('Environment check:', {
           SKIP_BLOCKCHAIN: process.env.SKIP_BLOCKCHAIN,
@@ -146,7 +146,7 @@ export class GraphController {
           NODE_ENV: process.env.NODE_ENV,
           allEnvKeys: Object.keys(process.env).filter(k => k.includes('BLOCKCHAIN') || k.includes('REAL') || k.includes('SKIP'))
         });
-        
+
         // DEBUG: Condition evaluation
         const conditionMet = this.realDataService && process.env.SKIP_BLOCKCHAIN !== 'true';
         controllerLogger.debug('=== Condition Evaluation ===');
@@ -158,13 +158,13 @@ export class GraphController {
           conditionResult: conditionMet,
           willUseRealData: conditionMet
         });
-        
-        
+
+
         if (this.realDataService && process.env.SKIP_BLOCKCHAIN !== 'true') {
           controllerLogger.info('=== ENTERING REAL DATA BRANCH ===');
           controllerLogger.info('Using real blockchain data from Subscan API');
           const realDataTimer = startPerformanceTimer('real_data_fetch');
-          
+
           // DEBUG: Log before calling buildGraphData
           controllerLogger.debug('About to call buildGraphData with:', {
             address: address,
@@ -175,12 +175,12 @@ export class GraphController {
           let realGraphData;
           try {
             controllerLogger.debug('Calling realDataService.buildGraphData...');
-            
+
             // Extra safety check before calling
             if (!this.realDataService) {
               throw new Error('RealDataService is not available (became null after initial check)');
             }
-            
+
             if (typeof this.realDataService.buildGraphData !== 'function') {
               controllerLogger.error('buildGraphData is not a function', {
                 actualType: typeof this.realDataService.buildGraphData,
@@ -188,7 +188,7 @@ export class GraphController {
               });
               throw new Error(`buildGraphData is not a function: ${typeof this.realDataService.buildGraphData}`);
             }
-            
+
             realGraphData = await this.realDataService.buildGraphData(address, depth, {
               maxNodes,
               minVolume,
@@ -243,7 +243,7 @@ export class GraphController {
             skipBlockchain: process.env.SKIP_BLOCKCHAIN,
             reasonSummary: !this.realDataService ? 'No RealDataService' : 'SKIP_BLOCKCHAIN is set to true'
           });
-          
+
           // Validate address exists in database
           const accountLookupTimer = startPerformanceTimer('account_lookup');
           const centerAccount = this.db.getAccount(address);
@@ -351,7 +351,7 @@ export class GraphController {
         hasMetadata: !!graphData?.metadata,
         dataSource: graphData?.metadata?.source || 'unknown'
       });
-      
+
       const d3Graph = await this._transformToD3Format(graphData, {
         centerAddress: address,
         includeRiskScores,
@@ -360,7 +360,7 @@ export class GraphController {
         enableClustering,
         clusteringAlgorithm
       });
-      
+
       controllerLogger.debug('D3 graph after transformation:', {
         nodeCount: d3Graph?.nodes?.length || 0,
         edgeCount: d3Graph?.edges?.length || 0,
@@ -420,7 +420,7 @@ export class GraphController {
         executionTimeMs: Date.now() - startTime
       });
       controllerLogger.debug('=== getGraph DEBUG END ===');
-      
+
       res.json(d3Graph);
       logMethodExit('GraphController', 'getGraph', methodTrackerId, d3Graph);
 
@@ -992,9 +992,9 @@ export class GraphController {
 
         // Balance information
         balance: node.balance ? {
-          free: (typeof node.balance === 'object' && node.balance.free) ? 
-                (typeof node.balance.free === 'object' ? node.balance.free.free : node.balance.free) : 
-                node.balance,
+          free: (typeof node.balance === 'object' && node.balance.free) ?
+            (typeof node.balance.free === 'object' ? node.balance.free.free : node.balance.free) :
+            node.balance,
           reserved: (typeof node.balance === 'object' && node.balance.reserved) ? node.balance.reserved : '0',
           frozen: (typeof node.balance === 'object' && node.balance.frozen) ? node.balance.frozen : '0'
         } : null,
@@ -1019,7 +1019,7 @@ export class GraphController {
         // D3.js positioning (initialize for force simulation)
         x: Math.random() * 800 + 100, // Random initial positions
         y: Math.random() * 600 + 100,
-        
+
         // Merkle Science exchange data (if available)
         merkle: node.merkle || null
       };
@@ -1277,7 +1277,7 @@ export class GraphController {
     if (node.merkle?.tag_type === 'Exchange') {
       return '#E91E63'; // Bright pink/magenta for exchanges (more prominent)
     }
-    
+
     switch (node.nodeType) {
       case 'exchange': return '#FF5722';
       case 'validator': return '#4CAF50';
@@ -1486,7 +1486,7 @@ export class GraphController {
         minVolume: minVolume,
         limit: limit
       });
-      
+
       logger.info(`Building graph from Subscan API for ${address}`);
 
       const { subscanService, SubscanError } = await import('../services/SubscanService.js');
@@ -1510,7 +1510,7 @@ export class GraphController {
       }
 
       // Filter by volume if specified
-      const filteredRelationships = relationships.filter(rel => 
+      const filteredRelationships = relationships.filter(rel =>
         BigInt(rel.total_volume) >= BigInt(minVolume)
       );
 
@@ -1540,7 +1540,7 @@ export class GraphController {
         try {
           // Get account info for connected address
           const connectedAccount = await subscanService.getAccountInfo(connectedAddr);
-          
+
           // Add connected node with real data
           if (!nodes.has(connectedAddr)) {
             nodes.set(connectedAddr, {
@@ -1573,7 +1573,7 @@ export class GraphController {
         } catch (error) {
           // Log error but don't fail the entire graph
           logger.warn(`Failed to get account info for ${connectedAddr}:`, error.message);
-          
+
           // Add minimal node without account details
           if (!nodes.has(connectedAddr)) {
             nodes.set(connectedAddr, {
@@ -1623,12 +1623,12 @@ export class GraphController {
 
     } catch (error) {
       logger.error('Error building graph from Subscan:', error);
-      
+
       // Instead of returning mock data, throw clear error
-      const errorMessage = error instanceof SubscanError 
+      const errorMessage = error instanceof SubscanError
         ? error.toUserMessage()
         : 'Failed to load blockchain data from Subscan API';
-        
+
       throw new Error(errorMessage);
     }
   }
@@ -1642,7 +1642,7 @@ export class GraphController {
     const volumeScore = Math.min(50, Math.log10(BigInt(relationship.total_volume) / BigInt('1000000000000')) * 10);
     const frequencyScore = Math.min(30, relationship.total_transactions * 2);
     const recencyScore = Math.max(0, 20 - ((Date.now() / 1000 - relationship.last_interaction) / (24 * 3600)));
-    
+
     return Math.max(1, Math.round(volumeScore + frequencyScore + recencyScore));
   }
 }

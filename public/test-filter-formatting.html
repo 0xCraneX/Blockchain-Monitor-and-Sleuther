@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Filter Formatting</title>
+    <script src="js/format-utils.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .filter-group { margin: 20px 0; padding: 10px; border: 1px solid #ccc; }
+        input[type="number"] { margin-right: 10px; }
+        .filter-value-display { color: #666; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <h1>Filter Number Formatting Test</h1>
+    
+    <div class="filter-group">
+        <label>Volume Filter (DOT):</label>
+        <input type="number" id="test-volume" value="0" step="1000">
+        <span id="test-volume-display" class="filter-value-display">0 DOT</span>
+    </div>
+    
+    <div class="filter-group">
+        <label>Volume Threshold (DOT):</label>
+        <input type="number" id="test-threshold" value="" step="1000" placeholder="e.g. 10,000">
+        <span id="test-threshold-display" class="filter-value-display"></span>
+    </div>
+    
+    <script>
+        // Test real-time formatting
+        const volumeInput = document.getElementById('test-volume');
+        const volumeDisplay = document.getElementById('test-volume-display');
+        
+        volumeInput.addEventListener('input', (e) => {
+            const value = parseFloat(e.target.value) || 0;
+            volumeDisplay.textContent = FormatUtils.addCommas(Math.round(value)) + ' DOT';
+        });
+        
+        const thresholdInput = document.getElementById('test-threshold');
+        const thresholdDisplay = document.getElementById('test-threshold-display');
+        
+        thresholdInput.addEventListener('input', (e) => {
+            const value = parseFloat(e.target.value) || 0;
+            if (value > 0) {
+                thresholdDisplay.textContent = FormatUtils.addCommas(Math.round(value)) + ' DOT';
+            } else {
+                thresholdDisplay.textContent = '';
+            }
+        });
+        
+        // Set some test values
+        setTimeout(() => {
+            volumeInput.value = 1234567;
+            volumeInput.dispatchEvent(new Event('input'));
+            
+            thresholdInput.value = 1000000;
+            thresholdInput.dispatchEvent(new Event('input'));
+        }, 100);
+    </script>
+</body>
+</html>

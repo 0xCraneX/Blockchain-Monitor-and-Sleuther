@@ -178,7 +178,7 @@ app.use(errorHandler);
 async function initialize() {
   try {
     logger.info('[INIT] Starting application initialization');
-    
+
     // Initialize database
     logger.info('[INIT] Initializing database service');
     const db = new DatabaseService();
@@ -193,7 +193,7 @@ async function initialize() {
       blockchainType: typeof blockchain,
       blockchainConstructor: blockchain ? blockchain.constructor.name : 'N/A'
     });
-    
+
     await blockchain.connect();
     logger.info('[INIT] Blockchain connection established', {
       isConnected: blockchain.isConnected ? blockchain.isConnected() : 'unknown',
@@ -206,7 +206,7 @@ async function initialize() {
     app.locals.blockchain = blockchain;
     app.locals.io = io;
     app.locals.graphWebSocket = graphWebSocket;
-    
+
     logger.info('[INIT] Services set in app.locals', {
       hasDb: !!app.locals.db,
       hasBlockchain: !!app.locals.blockchain,

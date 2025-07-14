@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Comma Formatting</title>
+    <script src="js/format-utils.js"></script>
+</head>
+<body>
+    <h1>Number Formatting Test</h1>
+    <div id="test-results"></div>
+    
+    <script>
+        // Test function
+        function runTests() {
+            const resultsDiv = document.getElementById('test-results');
+            const testCases = [
+                1234567,
+                1000000,
+                123456789,
+                1000,
+                100,
+                12345
+            ];
+            
+            resultsDiv.innerHTML = '<h2>FormatUtils.addCommas() Test Results:</h2>';
+            
+            testCases.forEach(num => {
+                const result = FormatUtils.addCommas(num);
+                resultsDiv.innerHTML += `<p><strong>${num}</strong> → <strong style="color: blue">${result}</strong></p>`;
+            });
+            
+            // Test formatNumber function for DOT values
+            resultsDiv.innerHTML += '<h2>FormatUtils.formatNumber() Test Results (DOT values):</h2>';
+            const dotTestCases = ['12345678901234567890', '1000000000000000000', '123456789012345'];
+            
+            dotTestCases.forEach(num => {
+                const result = FormatUtils.formatNumber(num);
+                resultsDiv.innerHTML += `<p><strong>${num}</strong> → <strong style="color: green">${result}</strong></p>`;
+            });
+        }
+        
+        // Run tests when page loads
+        window.onload = runTests;
+    </script>
+</body>
+</html>

@@ -26,7 +26,7 @@ class SubscanError extends Error {
       'API_KEY_INVALID': 'API authentication failed. Please check your configuration.',
       'CIRCUIT_BREAKER_OPEN': 'API temporarily unavailable due to repeated failures. Retrying automatically.'
     };
-    
+
     return messages[this.code] || 'An unexpected error occurred while fetching blockchain data.';
   }
 }
@@ -49,7 +49,9 @@ class PriorityQueue {
   }
 
   async process() {
-    if (this.processing) return;
+    if (this.processing) {
+      return;
+    }
     this.processing = true;
 
     while (this.hasRequests()) {
@@ -58,13 +60,15 @@ class PriorityQueue {
         await this.executeRequest(request);
       }
     }
-    
+
     this.processing = false;
   }
 
   hasRequests() {
     for (const queue of this.queues.values()) {
-      if (queue.length > 0) return true;
+      if (queue.length > 0) {
+        return true;
+      }
     }
     return false;
   }
@@ -72,14 +76,14 @@ class PriorityQueue {
   getNextRequest() {
     // Process requests in priority order (1 = highest priority)
     const priorities = Array.from(this.queues.keys()).sort((a, b) => a - b);
-    
+
     for (const priority of priorities) {
       const queue = this.queues.get(priority);
       if (queue.length > 0) {
         return queue.shift();
       }
     }
-    
+
     return null;
   }
 
@@ -179,7 +183,7 @@ export class SubscanService {
     this.rateLimiter = new TokenBucket(5, 5, 1000);
     this.requestQueue = new PriorityQueue();
     this.circuitBreaker = new CircuitBreaker(this.makeRequest.bind(this));
-    
+
     // Configuration
     this.maxRetries = 3;
     this.baseDelay = 1000; // 1 second base delay for exponential backoff
@@ -191,10 +195,10 @@ export class SubscanService {
   async makeRequest({ path, data, retryCount = 0 }) {
     const url = `${this.endpoint}${path}`;
 
-    logger.info('Subscan API request', { 
-      path, 
+    logger.info('Subscan API request', {
+      path,
       url,
-      hasApiKey: !!this.apiKey, 
+      hasApiKey: !!this.apiKey,
       retryCount,
       headers: this.headers,
       data: data || {},
@@ -230,9 +234,9 @@ export class SubscanService {
       const result = await response.json();
 
       if (result.code !== 0) {
-        logger.error('Subscan API returned error', { 
-          path, 
-          code: result.code, 
+        logger.error('Subscan API returned error', {
+          path,
+          code: result.code,
           message: result.message,
           data: result.data,
           fullResponse: result
@@ -260,8 +264,8 @@ export class SubscanService {
         throw error;
       }
 
-      logger.error('Subscan API request failed', { 
-        path, 
+      logger.error('Subscan API request failed', {
+        path,
         error: error.message,
         errorType: error.constructor.name,
         errorCode: error.code,
@@ -285,7 +289,7 @@ export class SubscanService {
         execute: async () => {
           // Wait for rate limiter token
           await this.rateLimiter.waitAndConsume(1);
-          
+
           // Execute through circuit breaker with retry logic
           return this.executeWithRetry(requestData);
         },
@@ -309,15 +313,15 @@ export class SubscanService {
     } catch (error) {
       if (retryCount < this.maxRetries && this.shouldRetry(error)) {
         const delay = this.calculateBackoffDelay(retryCount);
-        logger.info(`Retrying request after ${delay}ms`, { 
-          path: requestData.path, 
-          retryCount: retryCount + 1 
+        logger.info(`Retrying request after ${delay}ms`, {
+          path: requestData.path,
+          retryCount: retryCount + 1
         });
-        
+
         await new Promise(resolve => setTimeout(resolve, delay));
         return this.executeWithRetry(requestData, retryCount + 1);
       }
-      
+
       throw error;
     }
   }
@@ -386,10 +390,10 @@ export class SubscanService {
   async getAccountInfo(address) {
     try {
       logger.debug('Getting account info from Subscan', { address });
-      
+
       // Use v2 search endpoint - it requires 'key' instead of 'address'
-      const data = await this.request('/api/v2/scan/search', 
-        { key: address }, 
+      const data = await this.request('/api/v2/scan/search',
+        { key: address },
         SubscanService.PRIORITY.CRITICAL
       );
 
@@ -402,10 +406,10 @@ export class SubscanService {
 
       // For v2 search endpoint, account data is nested under 'account'
       const account = data.account || data;
-      
+
       // Extract identity from the correct nested structure
       let identityDisplay = null;
-      
+
       // Check for account.display first (direct display name)
       if (account.display && typeof account.display === 'string' && account.display.trim() !== '') {
         identityDisplay = account.display;
@@ -427,9 +431,8 @@ export class SubscanService {
         const subSymbol = account.account_display.parent.sub_symbol || '';
         identityDisplay = subSymbol ? `${parentDisplay}:${subSymbol}` : parentDisplay;
         logger.debug('Found identity in parent account', { address, display: identityDisplay });
-      }
-      else {
-        logger.debug('No identity found for address', { 
+      } else {
+        logger.debug('No identity found for address', {
           address,
           accountStructure: {
             hasDisplay: !!account.display,
@@ -473,17 +476,17 @@ export class SubscanService {
       };
     } catch (error) {
       if (error instanceof SubscanError) {
-        logger.warn('Subscan API error', { 
-          address, 
-          code: error.code, 
-          message: error.toUserMessage() 
+        logger.warn('Subscan API error', {
+          address,
+          code: error.code,
+          message: error.toUserMessage()
         });
         throw error;
       }
-      
-      logger.error('Failed to get account info from Subscan', { 
-        address, 
-        error: error.message 
+
+      logger.error('Failed to get account info from Subscan', {
+        address,
+        error: error.message
       });
       throw new SubscanError(
         'Failed to retrieve account information',
@@ -524,7 +527,7 @@ export class SubscanService {
 
       // First page gets HIGH priority, subsequent pages get MEDIUM priority
       const priority = page === 0 ? SubscanService.PRIORITY.HIGH : SubscanService.PRIORITY.MEDIUM;
-      
+
       // Use v2 endpoint
       const data = await this.request('/api/v2/scan/transfers', params, priority);
 
@@ -546,19 +549,19 @@ export class SubscanService {
       };
     } catch (error) {
       if (error instanceof SubscanError) {
-        logger.warn('Subscan API error getting transfers', { 
-          address, 
+        logger.warn('Subscan API error getting transfers', {
+          address,
           page,
-          code: error.code, 
-          message: error.toUserMessage() 
+          code: error.code,
+          message: error.toUserMessage()
         });
         throw error;
       }
-      
-      logger.error('Failed to get transfers from Subscan', { 
-        address, 
+
+      logger.error('Failed to get transfers from Subscan', {
+        address,
         page,
-        error: error.message 
+        error: error.message
       });
       throw new SubscanError(
         'Failed to retrieve transfer data',
@@ -576,32 +579,32 @@ export class SubscanService {
     const { limit = 30 } = options;
 
     try {
-      logger.debug('Getting account relationships via Subscan API', { 
-        address, 
+      logger.debug('Getting account relationships via Subscan API', {
+        address,
         limit,
         endpoint: this.endpoint,
-        hasApiKey: !!this.apiKey 
+        hasApiKey: !!this.apiKey
       });
 
       // Get both sent and received transfers - limit to prevent rate limiting
       const transactionLimit = Math.min(limit * 2, 50); // Fetch 2x limit but max 50 to avoid overwhelming API
-      
+
       // Make requests sequential to respect 5 req/s rate limit
       let sent = { transfers: [], count: 0 };
       let received = { transfers: [], count: 0 };
-      
+
       try {
         sent = await this.getTransfers(address, { row: transactionLimit, direction: 'sent' });
       } catch (error) {
         logger.warn('Failed to get sent transfers, continuing with received', { address, error: error.message });
       }
-      
+
       try {
         received = await this.getTransfers(address, { row: transactionLimit, direction: 'received' });
       } catch (error) {
         logger.warn('Failed to get received transfers, continuing with sent only', { address, error: error.message });
       }
-      
+
       // If both requests failed, return empty array
       if (sent.transfers.length === 0 && received.transfers.length === 0) {
         logger.warn('No transfers found for address', { address });
@@ -677,8 +680,8 @@ export class SubscanService {
 
       return relationshipArray.slice(0, limit);
     } catch (error) {
-      logger.error('Failed to get account relationships', { 
-        address, 
+      logger.error('Failed to get account relationships', {
+        address,
         error: error.message,
         errorStack: error.stack,
         errorCode: error.code,
@@ -694,7 +697,7 @@ export class SubscanService {
   async searchAccounts(query, _limit = 10) {
     try {
       logger.debug('Searching accounts with query', { query });
-      
+
       // Try direct address lookup using the search endpoint
       try {
         const accountInfo = await this.getAccountInfo(query);
@@ -733,13 +736,13 @@ export class SubscanService {
       };
     } catch (error) {
       if (error instanceof SubscanError) {
-        logger.warn('Subscan API error getting price info', { 
-          code: error.code, 
-          message: error.toUserMessage() 
+        logger.warn('Subscan API error getting price info', {
+          code: error.code,
+          message: error.toUserMessage()
         });
         throw error;
       }
-      
+
       logger.error('Failed to get price info', { error: error.message });
       throw new SubscanError(
         'Failed to retrieve price information',
@@ -754,12 +757,12 @@ export class SubscanService {
    */
   async healthCheck() {
     const start = Date.now();
-    
+
     try {
       // Simple API test with minimal data
       await this.rateLimiter.waitAndConsume(1);
       const response = await fetch(`${this.endpoint}/api/scan/metadata`);
-      
+
       return {
         status: 'healthy',
         latency: Date.now() - start,
@@ -806,19 +809,19 @@ export class SubscanService {
    */
   async loadTransferHistory(address, maxPages = 10) {
     const results = [];
-    
+
     try {
       // Load first page with HIGH priority
       const firstPage = await this.getTransfers(address, { page: 0, row: 100 });
       results.push(...firstPage.transfers);
-      
+
       if (firstPage.count === 0) {
         return results;
       }
-      
+
       // Calculate total pages needed
       const totalPages = Math.min(Math.ceil(firstPage.count / 100), maxPages);
-      
+
       // Load additional pages with MEDIUM priority
       const remainingPages = [];
       for (let page = 1; page < totalPages; page++) {
@@ -826,10 +829,10 @@ export class SubscanService {
           this.getTransfers(address, { page, row: 100 })
         );
       }
-      
+
       // Execute remaining pages in parallel
       const additionalResults = await Promise.allSettled(remainingPages);
-      
+
       additionalResults.forEach((result, index) => {
         if (result.status === 'fulfilled') {
           results.push(...result.value.transfers);
@@ -839,12 +842,12 @@ export class SubscanService {
           });
         }
       });
-      
+
       return results;
     } catch (error) {
-      logger.error('Failed to load transfer history', { 
-        address, 
-        error: error.message 
+      logger.error('Failed to load transfer history', {
+        address,
+        error: error.message
       });
       throw error;
     }

@@ -73,8 +73,8 @@ router.use('/addresses', (req, res, next) => {
 }, searchRateLimiter, addressRoutes);
 
 router.use('/graph', (req, res, next) => {
-  logger.debug('Routing to graph endpoint', { 
-    path: req.path, 
+  logger.debug('Routing to graph endpoint', {
+    path: req.path,
     query: req.query,
     fullUrl: req.originalUrl,
     method: req.method,

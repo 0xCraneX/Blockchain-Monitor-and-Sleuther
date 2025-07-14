@@ -14,13 +14,13 @@ export class RealDataService {
       databaseConnected: !!databaseService?.db,
       stackTrace: new Error().stack.split('\n').slice(1, 5).join('\n') // Log where it's being created from
     });
-    
+
     this.blockchain = blockchainService;
     this.database = databaseService;
     this.cache = new Map();
     this.cacheTimeout = 5 * 60 * 1000; // 5 minutes
     this.serviceId = Math.random().toString(36).substring(7); // Unique ID for tracking this instance
-    
+
     // Log all methods that will be available
     const methods = Object.getOwnPropertyNames(Object.getPrototypeOf(this));
     logger.debug('[CONSTRUCTOR] RealDataService initialized', {
@@ -42,7 +42,7 @@ export class RealDataService {
       hasBlockchainApi: !!this.blockchain?.api,
       hasDatabaseService: !!this.database
     });
-    
+
     const cacheKey = `account:${address}`;
     const cached = this.getFromCache(cacheKey);
     if (cached) {
@@ -56,7 +56,7 @@ export class RealDataService {
       // Try Subscan first for richer data
       logger.debug('Attempting to fetch from Subscan', { address });
       let accountInfo = await subscanService.getAccountInfo(address);
-      
+
       logger.debug('Subscan response', {
         address,
         hasAccountInfo: !!accountInfo,
@@ -101,7 +101,7 @@ export class RealDataService {
             nonce: account.nonce.toNumber(),
             role: 'regular'
           };
-          
+
           logger.debug('Successfully fetched from blockchain RPC', {
             address,
             hasIdentity: !!identity,
@@ -132,7 +132,7 @@ export class RealDataService {
         hasResult: !!accountInfo,
         source: accountInfo ? 'subscan/blockchain' : 'none'
       });
-      
+
       return accountInfo;
     } catch (error) {
       logger.error('Failed to get account data', {
@@ -144,13 +144,13 @@ export class RealDataService {
       // Try database as last resort
       logger.debug('Attempting database fallback', { address });
       const dbResult = await this.database?.getAccount(address);
-      
+
       logger.debug('Database fallback result', {
         address,
         hasResult: !!dbResult,
         resultKeys: dbResult ? Object.keys(dbResult) : null
       });
-      
+
       return dbResult;
     }
   }
@@ -160,14 +160,14 @@ export class RealDataService {
    */
   async getAddressRelationships(address, options = {}) {
     const { limit = 50, minVolume = '0' } = options;
-    
+
     logger.debug('getAddressRelationships called', {
       address,
       limit,
       minVolume,
       method: 'getAddressRelationships'
     });
-    
+
     const cacheKey = `relationships:${address}:${limit}:${minVolume}`;
     const cached = this.getFromCache(cacheKey);
     if (cached) {
@@ -185,7 +185,7 @@ export class RealDataService {
       // Get relationships from Subscan
       logger.debug('Fetching relationships from Subscan', { address, limit });
       const relationships = await subscanService.getAccountRelationships(address, { limit });
-      
+
       logger.debug('Subscan relationships response', {
         address,
         relationshipCount: relationships.length,
@@ -196,7 +196,7 @@ export class RealDataService {
       const filtered = relationships.filter(rel =>
         BigInt(rel.total_volume) >= BigInt(minVolume)
       );
-      
+
       logger.debug('Filtered relationships by volume', {
         address,
         originalCount: relationships.length,
@@ -207,13 +207,13 @@ export class RealDataService {
       // Enrich only the top relationships to avoid rate limiting
       const topRelationships = filtered.slice(0, 10); // Only enrich top 10 by volume
       const remainingRelationships = filtered.slice(10);
-      
+
       logger.debug('Enriching top relationships with account data', {
         address,
         topCount: topRelationships.length,
         skippedCount: remainingRelationships.length
       });
-      
+
       // Enrich top relationships sequentially to respect rate limit
       const enrichedTop = [];
       for (const rel of topRelationships) {
@@ -237,7 +237,7 @@ export class RealDataService {
           });
         }
       }
-      
+
       // Add remaining relationships without enrichment
       const enrichedRemaining = remainingRelationships.map(rel => ({
         ...rel,
@@ -245,9 +245,9 @@ export class RealDataService {
         risk_score: 0,
         tags: []
       }));
-      
+
       const enriched = [...enrichedTop, ...enrichedRemaining];
-      
+
       logger.debug('Relationships enriched', {
         address,
         totalCount: enriched.length,
@@ -282,7 +282,7 @@ export class RealDataService {
       maxNodes = 50, // Reduced from 100 to avoid rate limiting
       minVolume = '0'
     } = options;
-    
+
     logger.info('[METHOD] buildGraphData called', {
       centerAddress,
       depth,
@@ -305,11 +305,11 @@ export class RealDataService {
     // Add center node
     logger.debug('Fetching center node data', { centerAddress });
     const centerAccount = await this.getAccountData(centerAddress);
-    
+
     if (!centerAccount) {
       logger.warn('Center account data not found', { centerAddress });
     }
-    
+
     nodes.set(centerAddress, {
       address: centerAddress,
       identity: centerAccount?.identity || {},
@@ -319,7 +319,7 @@ export class RealDataService {
       degree: 0,
       totalVolume: '0'
     });
-    
+
     logger.debug('Center node added', {
       centerAddress,
       hasIdentity: !!centerAccount?.identity?.display,
@@ -336,7 +336,7 @@ export class RealDataService {
         visitedCount: visited.size
       });
       const { address, currentDepth } = queue.shift();
-      
+
       logger.debug('Processing node', {
         address,
         currentDepth,
@@ -361,12 +361,12 @@ export class RealDataService {
         relationshipLimit,
         minVolume
       });
-      
+
       const relationships = await this.getAddressRelationships(address, {
         limit: relationshipLimit,
         minVolume
       });
-      
+
       logger.debug('Relationships fetched', {
         address,
         relationshipCount: relationships.length,
@@ -386,7 +386,7 @@ export class RealDataService {
           // Use cached identity and merkle from relationship if available
           nodes.set(connectedAddress, {
             address: connectedAddress,
-            identity: rel.identity ? { display: rel.identity } : {}, 
+            identity: rel.identity ? { display: rel.identity } : {},
             balance: rel.balance || {}, // Use balance from enriched relationship data
             merkle: rel.merkle || null,
             nodeType: 'regular',
@@ -409,17 +409,21 @@ export class RealDataService {
         const hasSentVolume = rel.sent_volume && BigInt(rel.sent_volume) > 0;
         const hasReceivedVolume = rel.received_volume && BigInt(rel.received_volume) > 0;
         const isBidirectional = hasSentVolume && hasReceivedVolume;
-        
+
         // Calculate dominant direction for bidirectional relationships
         let dominantDirection = 'balanced';
         if (isBidirectional) {
           const sentAmount = BigInt(rel.sent_volume || 0);
           const receivedAmount = BigInt(rel.received_volume || 0);
           const ratio = Number(sentAmount * 100n / (sentAmount + receivedAmount));
-          
-          if (ratio > 70) dominantDirection = 'outgoing';
-          else if (ratio < 30) dominantDirection = 'incoming';
-          else dominantDirection = 'balanced';
+
+          if (ratio > 70) {
+            dominantDirection = 'outgoing';
+          } else if (ratio < 30) {
+            dominantDirection = 'incoming';
+          } else {
+            dominantDirection = 'balanced';
+          }
         } else {
           dominantDirection = hasSentVolume ? 'outgoing' : 'incoming';
         }
@@ -499,7 +503,7 @@ export class RealDataService {
         timestamp: Date.now()
       }
     };
-    
+
     logger.info('buildGraphData completed', {
       centerAddress,
       depth,
@@ -509,7 +513,7 @@ export class RealDataService {
       centerNodeDegree: nodes.get(centerAddress)?.degree,
       averageDegree: nodeArray.reduce((sum, n) => sum + n.degree, 0) / nodeArray.length
     });
-    
+
     return result;
   }
 
@@ -522,7 +526,7 @@ export class RealDataService {
       hasDatabaseDb: !!this.database?.db,
       hasIdentity: !!accountInfo.identity?.display
     });
-    
+
     if (!this.database?.db) {
       logger.debug('No database connection, skipping update', {
         address: accountInfo.address
@@ -551,7 +555,7 @@ export class RealDataService {
         accountInfo.identity?.verified ? 1 : 0,
         accountInfo.balance?.free || '0'
       );
-      
+
       logger.debug('Account updated in database', {
         address: accountInfo.address,
         identityDisplay: accountInfo.identity?.display
@@ -574,7 +578,7 @@ export class RealDataService {
       relationshipCount: relationships.length,
       hasDatabaseDb: !!this.database?.db
     });
-    
+
     if (!this.database?.db) {
       logger.debug('No database connection, skipping relationships update', {
         address
@@ -618,7 +622,7 @@ export class RealDataService {
       });
 
       transaction(relationships);
-      
+
       logger.debug('Relationships updated in database', {
         address,
         relationshipCount: relationships.length
@@ -646,7 +650,7 @@ export class RealDataService {
       });
       return cached.data;
     }
-    
+
     if (cached) {
       logger.debug('Cache expired', {
         key,
@@ -657,7 +661,7 @@ export class RealDataService {
     } else {
       logger.debug('Cache miss', { key });
     }
-    
+
     return null;
   }
 

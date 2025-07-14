@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Number Formatting</title>
+    <script src="./public/js/format-utils.js"></script>
+</head>
+<body>
+    <h1>Testing Number Formatting</h1>
+    <div id="test-results"></div>
+    
+    <script>
+        // Test the FormatUtils.addCommas function
+        const testNumbers = [1234567, 1000000, 123456789, 1000, 100, 12345678901234567890n];
+        const resultsDiv = document.getElementById('test-results');
+        
+        testNumbers.forEach(num => {
+            const result = FormatUtils.addCommas(num);
+            resultsDiv.innerHTML += `<p>${num} -> ${result}</p>`;
+        });
+        
+        // Test the formatNumber function
+        resultsDiv.innerHTML += '<h2>Testing formatNumber function</h2>';
+        const bigNumbers = ['12345678901234567890', '1000000000000000000', '123456789012345'];
+        bigNumbers.forEach(num => {
+            const result = FormatUtils.formatNumber(num);
+            resultsDiv.innerHTML += `<p>${num} -> ${result}</p>`;
+        });
+    </script>
+</body>
+</html>

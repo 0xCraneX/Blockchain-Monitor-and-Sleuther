@@ -1691,7 +1691,7 @@ class PolkadotGraphVisualization {
             if (!isNaN(numBalance)) {
                 if (numBalance < 1e10 && balance.includes('.')) {
                     // Already in DOT format
-                    formattedBalance = `${numBalance.toFixed(2)} DOT`;
+                    formattedBalance = `${FormatUtils.addCommas(Math.round(numBalance))} DOT`;
                 } else {
                     // Use FormatUtils for planck conversion
                     formattedBalance = FormatUtils.formatBalance(balance);

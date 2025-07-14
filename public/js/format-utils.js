@@ -10,9 +10,9 @@ class FormatUtils {
      * @param {number} decimals - Decimal places for the chain (10 for Polkadot)
      * @param {number} formatDecimals - Decimal places to display (usually 2)
      * @param {string} ticker - Currency ticker (DOT, KSM, etc.)
-     * @returns {string} Formatted amount like "1,234.56 DOT"
+     * @returns {string} Formatted amount like "1,234,567 DOT"
      */
-    static formatNumber(value, decimals = 10, formatDecimals = 2, ticker = 'DOT') {
+    static formatNumber(value, decimals = 10, formatDecimals = 0, ticker = 'DOT') {
         // Convert to BigInt if not already
         // Handle decimal numbers by truncating to integer
         let processedValue = value;
@@ -47,21 +47,14 @@ class FormatUtils {
             str = '0' + str;
         }
         
-        // Insert decimal point
+        // Insert decimal point and get integer part (always round down)
         const integerPart = str.substring(0, str.length - decimals) || '0';
-        const decimalPart = str.substring(str.length - decimals);
         
-        // Format integer part with thousands separators
+        // Format integer part with thousands separators (commas)
         const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
         
-        // Truncate decimal part to desired places
-        const truncatedDecimal = decimalPart.substring(0, formatDecimals);
-        
-        // Build result
+        // Build result - no decimals, only integer part with commas
         let result = formattedInteger;
-        if (formatDecimals > 0 && truncatedDecimal !== '00') {
-            result += '.' + truncatedDecimal;
-        }
         
         // Add ticker
         if (ticker) {
@@ -77,19 +70,43 @@ class FormatUtils {
     }
     
     /**
+     * Add comma thousands separators to a number, always using commas regardless of locale
+     * @param {number} num - The number to format
+     * @returns {string} - Number with comma separators
+     */
+    static addCommas(num) {
+        const rounded = Math.round(num);
+        const str = rounded.toString();
+        let result = '';
+        let count = 0;
+        
+        for (let i = str.length - 1; i >= 0; i--) {
+            if (count === 3) {
+                result = ',' + result;
+                count = 0;
+            }
+            result = str[i] + result;
+            count++;
+        }
+        
+        return result;
+    }
+
+    /**
      * Format balance for display on nodes
      */
     static formatBalance(balance) {
-        return this.formatNumber(balance, 10, 2, 'DOT');
+        return this.formatNumber(balance, 10, 0, 'DOT');
     }
     
     /**
      * Format transfer amount for display on edges
-     * Shows count and volume like "5 ⇆ 1,234.56 DOT"
+     * Shows count and volume like "5 ⇆ 1,234,567 DOT"
      */
     static formatTransfer(count, volume) {
-        const formattedVolume = this.formatNumber(volume, 10, 2, 'DOT');
-        return `${count} ⇆ ${formattedVolume}`;
+        const formattedVolume = this.formatNumber(volume, 10, 0, 'DOT');
+        const formattedCount = parseInt(count).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        return `${formattedCount} ⇆ ${formattedVolume}`;
     }
     
     /**

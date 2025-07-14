@@ -627,11 +627,11 @@ class PolkadotAddressSearch {
         const dots = parseFloat(balance) / Math.pow(10, 10);
         
         if (dots >= 1000000) {
-            return `${(dots / 1000000).toFixed(2)}M DOT`;
+            return `${FormatUtils.addCommas(Math.round(dots / 1000000))}M DOT`;
         } else if (dots >= 1000) {
-            return `${(dots / 1000).toFixed(2)}K DOT`;
+            return `${FormatUtils.addCommas(Math.round(dots / 1000))}K DOT`;
         } else {
-            return `${dots.toFixed(4)} DOT`;
+            return `${FormatUtils.addCommas(Math.round(dots))} DOT`;
         }
     }
 

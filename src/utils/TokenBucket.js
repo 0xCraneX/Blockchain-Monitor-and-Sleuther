@@ -1,6 +1,6 @@
 /**
  * Token Bucket Rate Limiter
- * 
+ *
  * Implements a token bucket algorithm for rate limiting API requests.
  * Tokens are added at a steady rate and consumed for each request.
  */
@@ -19,11 +19,11 @@ export class TokenBucket {
   refill() {
     const now = Date.now();
     const timePassed = now - this.lastRefill;
-    
+
     if (timePassed >= this.refillPeriodMs) {
       const periodsElapsed = Math.floor(timePassed / this.refillPeriodMs);
       const tokensToAdd = periodsElapsed * this.refillRate;
-      
+
       this.tokens = Math.min(this.capacity, this.tokens + tokensToAdd);
       this.lastRefill = now;
     }
@@ -36,12 +36,12 @@ export class TokenBucket {
    */
   consume(tokensNeeded = 1) {
     this.refill();
-    
+
     if (this.tokens >= tokensNeeded) {
       this.tokens -= tokensNeeded;
       return true;
     }
-    
+
     return false;
   }
 
@@ -52,14 +52,14 @@ export class TokenBucket {
    */
   getWaitTime(tokensNeeded = 1) {
     this.refill();
-    
+
     if (this.tokens >= tokensNeeded) {
       return 0;
     }
-    
+
     const tokensShortfall = tokensNeeded - this.tokens;
     const periodsNeeded = Math.ceil(tokensShortfall / this.refillRate);
-    
+
     return periodsNeeded * this.refillPeriodMs;
   }
 
@@ -70,11 +70,11 @@ export class TokenBucket {
    */
   async waitAndConsume(tokensNeeded = 1) {
     const waitTime = this.getWaitTime(tokensNeeded);
-    
+
     if (waitTime > 0) {
       await new Promise(resolve => setTimeout(resolve, waitTime));
     }
-    
+
     // Try to consume after waiting
     if (!this.consume(tokensNeeded)) {
       // If still can't consume, recursively wait again
@@ -88,7 +88,7 @@ export class TokenBucket {
    */
   getStatus() {
     this.refill();
-    
+
     return {
       tokens: this.tokens,
       capacity: this.capacity,
