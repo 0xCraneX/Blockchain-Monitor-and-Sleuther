@@ -7,12 +7,8 @@
 
 class PolkadotAnalysisApp {
     constructor() {
-        // Hardcoded target address for analysis
-        const TARGET_ADDRESS = '13RBN6UF43sxkxUrd2H4QSJccvLNGr6HY4v3mN2WtW59WaNk';
-        
         // Application state
         this.state = {
-            targetAddress: TARGET_ADDRESS, // Target address for auto-loading
             currentAddress: null,
             graphData: null,
             selectedNodes: new Set(),
@@ -266,18 +262,15 @@ class PolkadotAnalysisApp {
             // Check for URL parameters for direct address loading
             const urlParams = new URLSearchParams(window.location.search);
             const addressFromUrl = urlParams.get('address');
-            const targetAddress = this.state.targetAddress;
-            console.log('URL address:', addressFromUrl, 'Target address:', targetAddress);
+            console.log('URL address:', addressFromUrl);
             
-            const address = addressFromUrl || targetAddress;
-            console.log('Address to load:', address);
-            
-            if (address) {
-                // Set search input to the target address
+            if (addressFromUrl) {
+                console.log('Loading address from URL:', addressFromUrl);
+                // Set search input to the address from URL
                 const searchInput = document.getElementById('address-search');
                 if (searchInput) {
-                    searchInput.value = address;
-                    console.log('Set search input value to:', address);
+                    searchInput.value = addressFromUrl;
+                    console.log('Set search input value to:', addressFromUrl);
                 } else {
                     console.log('Search input element not found');
                 }
