@@ -429,10 +429,21 @@ class PolkadotGraphVisualization {
         if (filters.minVolume && filters.minVolume !== '0') {
             const minVolume = BigInt(filters.minVolume);
             filteredLinks = filteredLinks.filter(link => {
-                const volume = link.volume || '0';
-                // Convert decimal strings to integers for BigInt comparison
-                const volumeInt = Math.floor(Number(volume)).toString();
-                return BigInt(volumeInt) >= minVolume;
+                if (!link.volume || link.volume === '0') return false;
+                
+                try {
+                    // Volume is already in planck units (string format)
+                    // Handle decimal values by removing decimal part
+                    const volumeStr = link.volume.toString();
+                    const volumeInt = volumeStr.includes('.') ? volumeStr.split('.')[0] : volumeStr;
+                    const volumeBigInt = BigInt(volumeInt);
+                    
+                    const isAboveMin = volumeBigInt >= minVolume;
+                    return isAboveMin;
+                } catch (error) {
+                    console.error('Error parsing volume:', error, link.volume);
+                    return false;
+                }
             });
         }
         
@@ -440,9 +451,28 @@ class PolkadotGraphVisualization {
         if (filters.minBalance && filters.minBalance !== '0') {
             const minBalance = BigInt(filters.minBalance);
             filteredNodes = filteredNodes.filter(node => {
-                // Handle both balance formats (nested and flat)
-                const balance = node.balance?.free || node.balance || '0';
-                return BigInt(balance) >= minBalance;
+                try {
+                    // Handle both balance formats (nested and flat)
+                    const balance = node.balance?.free || node.balance || '0';
+                    
+                    // Check if balance is in DOT format (has decimal point)
+                    const balanceStr = balance.toString();
+                    let balancePlanck;
+                    
+                    if (balanceStr.includes('.')) {
+                        // Balance is in DOT format, convert to planck
+                        const balanceDot = parseFloat(balanceStr);
+                        balancePlanck = BigInt(Math.floor(balanceDot * 1e12));
+                    } else {
+                        // Balance is already in planck format
+                        balancePlanck = BigInt(balanceStr);
+                    }
+                    
+                    return balancePlanck >= minBalance;
+                } catch (error) {
+                    console.error('Error parsing balance:', error, node.balance);
+                    return false;
+                }
             });
         }
         
@@ -1353,13 +1383,6 @@ class PolkadotGraphVisualization {
     }
     
     getEdgeColor(edgeData) {
-        // Debug: Check if filters are available
-        if (!this._loggedFilters) {
-            console.log('Current filters in getEdgeColor:', this.state.currentFilters);
-            console.log('Sample edge data structure:', edgeData);
-            this._loggedFilters = true;
-        }
-        
         if (edgeData.suggestedColor) {
             return edgeData.suggestedColor;
         }
@@ -1371,16 +1394,6 @@ class PolkadotGraphVisualization {
         // Check volume threshold filter for red highlighting
         if (this.state.currentFilters?.volumeThreshold) {
             const threshold = this.state.currentFilters.volumeThreshold;
-            // Log only once to avoid spam
-            if (!this._loggedThreshold) {
-                console.log('Volume threshold active:', threshold, 'Sample edge:', {
-                    volume: edgeData.volume,
-                    source: typeof edgeData.source,
-                    target: typeof edgeData.target,
-                    hasVolume: edgeData.hasOwnProperty('volume')
-                });
-                this._loggedThreshold = true;
-            }
             if (edgeData.volume) {
                 try {
                     // Handle decimal values by converting to string and removing decimal part
@@ -1393,11 +1406,7 @@ class PolkadotGraphVisualization {
                     
                     const isAboveThreshold = edgeVolumeBigInt >= thresholdBigInt;
                     
-                    // Always log to see what's happening
-                    console.log(`Volume threshold check: edge=${Number(edgeVolumeBigInt)/1e12} DOT, threshold=${Number(thresholdBigInt)/1e12} DOT, above=${isAboveThreshold}`);
-                    
                     if (isAboveThreshold) {
-                        console.log(`🔴 HIGHLIGHTING EDGE RED: ${Number(edgeVolumeBigInt)/1e12} DOT >= ${Number(thresholdBigInt)/1e12} DOT`);
                         return '#FF0000'; // Bright red for connections above threshold
                     }
                 } catch (error) {
@@ -1919,18 +1928,7 @@ class PolkadotGraphVisualization {
      * @param {Object} filters - Filter configuration
      */
     setFilters(filters) {
-        console.log('Setting filters:', filters);
-        
-        // Only reset debug flags if filters actually changed
-        const filtersChanged = JSON.stringify(this.state.currentFilters) !== JSON.stringify(filters);
-        if (filtersChanged) {
-            this._loggedFilters = false;
-            this._loggedThreshold = false;
-        }
-        
         this.state.currentFilters = { ...filters };
-        console.log('Current filters after setting:', this.state.currentFilters);
-        
         this.applyFilters();
         this.updateSimulationParameters();
         this.render();
