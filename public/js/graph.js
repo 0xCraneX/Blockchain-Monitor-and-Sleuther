@@ -462,7 +462,7 @@ class PolkadotGraphVisualization {
                     if (balanceStr.includes('.')) {
                         // Balance is in DOT format, convert to planck
                         const balanceDot = parseFloat(balanceStr);
-                        balancePlanck = BigInt(Math.floor(balanceDot * 1e12));
+                        balancePlanck = BigInt(Math.floor(balanceDot * 1e10));
                     } else {
                         // Balance is already in planck format
                         balancePlanck = BigInt(balanceStr);
@@ -498,6 +498,42 @@ class PolkadotGraphVisualization {
                 connectedNodeIds.has(node.address));
         }
         
+        // Apply volume threshold highlighting to all links (visible and filtered)
+        if (filters.volumeThreshold) {
+            const threshold = filters.volumeThreshold;
+            this.state.data.links.forEach(link => {
+                if (link.volume) {
+                    try {
+                        // Handle decimal values by converting to string and removing decimal part
+                        const linkVolumeStr = link.volume.toString();
+                        const thresholdStr = threshold.toString();
+                        
+                        // Remove decimal part if present
+                        const linkVolumeBigInt = BigInt(linkVolumeStr.includes('.') ? linkVolumeStr.split('.')[0] : linkVolumeStr);
+                        const thresholdBigInt = BigInt(thresholdStr.includes('.') ? thresholdStr.split('.')[0] : thresholdStr);
+                        
+                        const isAboveThreshold = linkVolumeBigInt >= thresholdBigInt;
+                        
+                        // Store threshold status for use in rendering
+                        link._aboveThreshold = isAboveThreshold;
+                    } catch (error) {
+                        console.error('Error in volume threshold comparison during filter:', error, {
+                            linkVolume: link.volume,
+                            threshold: threshold
+                        });
+                        link._aboveThreshold = false;
+                    }
+                } else {
+                    link._aboveThreshold = false;
+                }
+            });
+        } else {
+            // Clear threshold highlighting if no threshold set
+            this.state.data.links.forEach(link => {
+                link._aboveThreshold = false;
+            });
+        }
+        
         // Update filtered data
         this.state.filteredData = {
             nodes: filteredNodes,
@@ -508,7 +544,8 @@ class PolkadotGraphVisualization {
             originalNodes: this.state.data.nodes.length,
             filteredNodes: filteredNodes.length,
             originalLinks: this.state.data.links.length,
-            filteredLinks: filteredLinks.length
+            filteredLinks: filteredLinks.length,
+            volumeThreshold: filters.volumeThreshold || 'none'
         });
     }
     
@@ -653,7 +690,7 @@ class PolkadotGraphVisualization {
      */
     renderEdges() {
         const linkSelection = this.edgeGroup
-            .selectAll('.edge')
+            .selectAll('.edge-group')
             .data(this.state.filteredData.links, d => d.id || `${d.source}-${d.target}`);
         
         // Remove old edges
@@ -663,24 +700,41 @@ class PolkadotGraphVisualization {
             .attr('opacity', 0)
             .remove();
         
-        // Add new edges
+        // Add new edges with threshold highlighting support
         const linkEnter = linkSelection.enter()
-            .append('line')
+            .append('g')
+            .attr('class', 'edge-group');
+        
+        // Add red outline for threshold highlighting (rendered first, underneath)
+        linkEnter.append('line')
+            .attr('class', 'edge-highlight')
+            .attr('stroke', '#FF0000')
+            .attr('stroke-width', d => this.getEdgeHighlightWidth(d))
+            .attr('stroke-opacity', d => d._aboveThreshold ? 0.8 : 0);
+        
+        // Add main edge line (rendered second, on top)
+        linkEnter.append('line')
             .attr('class', 'edge')
             .attr('stroke', d => this.getEdgeColor(d))
             .attr('stroke-width', d => this.getEdgeWidth(d))
             .attr('stroke-opacity', d => this.getEdgeOpacity(d))
             // .attr('marker-end', d => this.getEdgeMarker(d)); // Arrows removed
         
-        // Add stroke dasharray for special edge types
-        linkEnter
+        // Add stroke dasharray for special edge types on the main edge line
+        linkEnter.select('.edge')
             .attr('stroke-dasharray', d => this.getEdgeDashArray(d));
         
         // Merge enter and update selections
         const linkUpdate = linkEnter.merge(linkSelection);
         
         // Update edge appearance
-        linkUpdate
+        linkUpdate.select('.edge-highlight')
+            .transition()
+            .duration(300)
+            .attr('stroke-width', d => this.getEdgeHighlightWidth(d))
+            .attr('stroke-opacity', d => d._aboveThreshold ? 0.8 : 0);
+        
+        linkUpdate.select('.edge')
             .transition()
             .duration(300)
             .attr('stroke', d => this.getEdgeColor(d))
@@ -907,9 +961,9 @@ class PolkadotGraphVisualization {
                 .attr('transform', d => `translate(${d.x}, ${d.y})`);
         }
         
-        // Update edge positions
+        // Update edge positions (now groups containing multiple lines)
         if (this.edgeSelection) {
-            this.edgeSelection
+            this.edgeSelection.selectAll('line')
                 .attr('x1', d => d.source.x)
                 .attr('y1', d => d.source.y)
                 .attr('x2', d => d.target.x)
@@ -1331,12 +1385,13 @@ class PolkadotGraphVisualization {
         const baseWidth = this.config.edges.minWidth;
         const maxWidth = this.config.edges.maxWidth;
         
-        if (edgeData.suggestedWidth !== undefined) {
-            return edgeData.suggestedWidth;
-        }
+        let finalWidth = baseWidth;
         
+        if (edgeData.suggestedWidth !== undefined) {
+            finalWidth = edgeData.suggestedWidth;
+        }
         // Calculate width based on volume using FormatUtils for better scaling
-        if (edgeData.volume && edgeData.volume !== '0') {
+        else if (edgeData.volume && edgeData.volume !== '0') {
             // Find min/max volumes from all edges for proper scaling
             const allVolumes = this.state.filteredData.links
                 .map(l => l.volume ? BigInt(l.volume) : BigInt(0))
@@ -1346,11 +1401,16 @@ class PolkadotGraphVisualization {
                 const minVolume = allVolumes.reduce((a, b) => a < b ? a : b);
                 const maxVolume = allVolumes.reduce((a, b) => a > b ? a : b);
                 const scale = FormatUtils.getVisualScale(edgeData.volume, minVolume, maxVolume);
-                return baseWidth + (maxWidth - baseWidth) * scale;
+                finalWidth = baseWidth + (maxWidth - baseWidth) * scale;
             }
         }
         
-        return baseWidth;
+        return finalWidth;
+    }
+    
+    getEdgeHighlightWidth(edgeData) {
+        // Red highlight should be wider than the main edge for visibility
+        return this.getEdgeWidth(edgeData) + 4;
     }
     
     /**
@@ -1383,15 +1443,7 @@ class PolkadotGraphVisualization {
     }
     
     getEdgeColor(edgeData) {
-        if (edgeData.suggestedColor) {
-            return edgeData.suggestedColor;
-        }
-        
-        if (edgeData.suspiciousPattern) {
-            return this.config.colors.high;
-        }
-        
-        // Check volume threshold filter for red highlighting
+        // Store the threshold status for highlighting but don't override color here
         if (this.state.currentFilters?.volumeThreshold) {
             const threshold = this.state.currentFilters.volumeThreshold;
             if (edgeData.volume) {
@@ -1406,9 +1458,8 @@ class PolkadotGraphVisualization {
                     
                     const isAboveThreshold = edgeVolumeBigInt >= thresholdBigInt;
                     
-                    if (isAboveThreshold) {
-                        return '#FF0000'; // Bright red for connections above threshold
-                    }
+                    // Store threshold status for use in other methods but get base color first
+                    edgeData._aboveThreshold = isAboveThreshold;
                 } catch (error) {
                     console.error('Error in volume threshold comparison:', error, {
                         edgeVolume: edgeData.volume,
@@ -1418,8 +1469,19 @@ class PolkadotGraphVisualization {
             }
         }
         
+        // Determine base color first
+        let baseColor = '#666666'; // default
+        
+        // Check for suspicious patterns
+        if (edgeData.suspiciousPattern) {
+            baseColor = this.config.colors.high;
+        }
+        // Check for suggested color (blue/green edges)
+        else if (edgeData.suggestedColor) {
+            baseColor = edgeData.suggestedColor;
+        }
         // Color based on volume - higher volume = more alert color
-        if (edgeData.volume && edgeData.volume !== '0') {
+        else if (edgeData.volume && edgeData.volume !== '0') {
             const allVolumes = this.state.filteredData.links
                 .map(l => {
                     if (!l.volume) return BigInt(0);
@@ -1443,24 +1505,25 @@ class PolkadotGraphVisualization {
                 
                 // Smooth gradient from gray to yellow to orange to red based on volume
                 if (scale < 0.25) {
-                    return '#666666'; // Very low volume - gray
+                    baseColor = '#666666'; // Very low volume - gray
                 } else if (scale < 0.5) {
                     // Gradient from gray to yellow
                     const t = (scale - 0.25) * 4;
-                    return this.interpolateColor('#666666', '#FFC107', t);
+                    baseColor = this.interpolateColor('#666666', '#FFC107', t);
                 } else if (scale < 0.75) {
                     // Gradient from yellow to orange
                     const t = (scale - 0.5) * 4;
-                    return this.interpolateColor('#FFC107', '#FF9800', t);
+                    baseColor = this.interpolateColor('#FFC107', '#FF9800', t);
                 } else {
                     // Gradient from orange to red
                     const t = (scale - 0.75) * 4;
-                    return this.interpolateColor('#FF9800', '#F44336', t);
+                    baseColor = this.interpolateColor('#FF9800', '#F44336', t);
                 }
             }
         }
         
-        return '#666666';
+        // Return the base color unchanged - highlighting is handled by separate red outline
+        return baseColor;
     }
     
     getEdgeOpacity(edgeData) {

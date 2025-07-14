@@ -191,12 +191,14 @@ export class SubscanService {
   async makeRequest({ path, data, retryCount = 0 }) {
     const url = `${this.endpoint}${path}`;
 
-    logger.debug('Subscan API request', { 
+    logger.info('Subscan API request', { 
       path, 
       url,
       hasApiKey: !!this.apiKey, 
       retryCount,
-      headers: this.headers
+      headers: this.headers,
+      data: data || {},
+      fullUrl: url
     });
 
     try {
@@ -228,6 +230,13 @@ export class SubscanService {
       const result = await response.json();
 
       if (result.code !== 0) {
+        logger.error('Subscan API returned error', { 
+          path, 
+          code: result.code, 
+          message: result.message,
+          data: result.data,
+          fullResponse: result
+        });
         const errorCode = this.classifySubscanError(result.code, result.message);
         throw new SubscanError(
           `Subscan API error: ${result.message || 'Unknown error'}`,
@@ -251,7 +260,14 @@ export class SubscanService {
         throw error;
       }
 
-      logger.error('Subscan API request failed', { path, error: error.message });
+      logger.error('Subscan API request failed', { 
+        path, 
+        error: error.message,
+        errorType: error.constructor.name,
+        errorCode: error.code,
+        errorResponse: error.response,
+        fullError: error
+      });
       throw new SubscanError(
         `Request failed: ${error.message}`,
         'API_UNAVAILABLE',
@@ -371,20 +387,21 @@ export class SubscanService {
     try {
       logger.debug('Getting account info from Subscan', { address });
       
-      // Use the correct search endpoint with proper payload
+      // Use v2 search endpoint - it requires 'key' instead of 'address'
       const data = await this.request('/api/v2/scan/search', 
         { key: address }, 
         SubscanService.PRIORITY.CRITICAL
       );
 
-      if (!data || !data.account) {
+      if (!data) {
         throw new SubscanError(
           `No account data found for address ${address}`,
           'NO_DATA'
         );
       }
 
-      const account = data.account;
+      // For v2 search endpoint, account data is nested under 'account'
+      const account = data.account || data;
       
       // Extract identity from the correct nested structure
       let identityDisplay = null;
@@ -507,6 +524,8 @@ export class SubscanService {
 
       // First page gets HIGH priority, subsequent pages get MEDIUM priority
       const priority = page === 0 ? SubscanService.PRIORITY.HIGH : SubscanService.PRIORITY.MEDIUM;
+      
+      // Use v2 endpoint
       const data = await this.request('/api/v2/scan/transfers', params, priority);
 
       return {
@@ -553,7 +572,8 @@ export class SubscanService {
    * Get account relationships based on transfers
    */
   async getAccountRelationships(address, options = {}) {
-    const { limit = 100 } = options;
+    // Limit to 30 relationships per address to avoid rate limiting
+    const { limit = 30 } = options;
 
     try {
       logger.debug('Getting account relationships via Subscan API', { 
@@ -563,11 +583,30 @@ export class SubscanService {
         hasApiKey: !!this.apiKey 
       });
 
-      // Get both sent and received transfers
-      const [sent, received] = await Promise.all([
-        this.getTransfers(address, { row: limit, direction: 'sent' }),
-        this.getTransfers(address, { row: limit, direction: 'received' })
-      ]);
+      // Get both sent and received transfers - limit to prevent rate limiting
+      const transactionLimit = Math.min(limit * 2, 50); // Fetch 2x limit but max 50 to avoid overwhelming API
+      
+      // Make requests sequential to respect 5 req/s rate limit
+      let sent = { transfers: [], count: 0 };
+      let received = { transfers: [], count: 0 };
+      
+      try {
+        sent = await this.getTransfers(address, { row: transactionLimit, direction: 'sent' });
+      } catch (error) {
+        logger.warn('Failed to get sent transfers, continuing with received', { address, error: error.message });
+      }
+      
+      try {
+        received = await this.getTransfers(address, { row: transactionLimit, direction: 'received' });
+      } catch (error) {
+        logger.warn('Failed to get received transfers, continuing with sent only', { address, error: error.message });
+      }
+      
+      // If both requests failed, return empty array
+      if (sent.transfers.length === 0 && received.transfers.length === 0) {
+        logger.warn('No transfers found for address', { address });
+        return [];
+      }
 
       // Build relationship map
       const relationships = new Map();

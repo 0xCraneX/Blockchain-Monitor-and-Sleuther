@@ -20,14 +20,14 @@
         
         function testVolumeThreshold() {
             const threshold = parseFloat(document.getElementById('volume-threshold-filter').value);
-            const thresholdPlancks = BigInt(threshold * 1e12);
+            const thresholdPlancks = BigInt(threshold * 1e10);
             
             console.log(`Testing threshold: ${threshold} DOT (${thresholdPlancks} plancks)`);
             
             const results = [];
             testEdges.forEach(edge => {
                 const volumePlancks = BigInt(edge.volume);
-                const volumeDOT = Number(volumePlancks) / 1e12;
+                const volumeDOT = Number(volumePlancks) / 1e10;
                 const isAboveThreshold = volumePlancks >= thresholdPlancks;
                 
                 results.push({

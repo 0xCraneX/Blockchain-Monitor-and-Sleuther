@@ -204,26 +204,53 @@ export class RealDataService {
         minVolume
       });
 
-      // Enrich with account info
-      logger.debug('Enriching relationships with account data', {
+      // Enrich only the top relationships to avoid rate limiting
+      const topRelationships = filtered.slice(0, 10); // Only enrich top 10 by volume
+      const remainingRelationships = filtered.slice(10);
+      
+      logger.debug('Enriching top relationships with account data', {
         address,
-        relationshipsToEnrich: filtered.length
+        topCount: topRelationships.length,
+        skippedCount: remainingRelationships.length
       });
       
-      const enriched = await Promise.all(filtered.map(async rel => {
-        const accountData = await this.getAccountData(rel.connected_address);
-        return {
-          ...rel,
-          identity: accountData?.identity?.display || null,
-          risk_score: 0, // TODO: Calculate risk score
-          tags: []
-        };
+      // Enrich top relationships sequentially to respect rate limit
+      const enrichedTop = [];
+      for (const rel of topRelationships) {
+        try {
+          const accountData = await this.getAccountData(rel.connected_address);
+          enrichedTop.push({
+            ...rel,
+            identity: accountData?.identity?.display || null,
+            risk_score: 0, // TODO: Calculate risk score
+            tags: []
+          });
+        } catch (error) {
+          logger.debug('Failed to enrich relationship', { address: rel.connected_address });
+          enrichedTop.push({
+            ...rel,
+            identity: null,
+            risk_score: 0,
+            tags: []
+          });
+        }
+      }
+      
+      // Add remaining relationships without enrichment
+      const enrichedRemaining = remainingRelationships.map(rel => ({
+        ...rel,
+        identity: null,
+        risk_score: 0,
+        tags: []
       }));
+      
+      const enriched = [...enrichedTop, ...enrichedRemaining];
       
       logger.debug('Relationships enriched', {
         address,
-        enrichedCount: enriched.length,
-        hasIdentities: enriched.filter(r => r.identity).length
+        totalCount: enriched.length,
+        enrichedCount: enrichedTop.length,
+        hasIdentities: enrichedTop.filter(r => r.identity).length
       });
 
       this.setCache(cacheKey, enriched);
@@ -250,7 +277,7 @@ export class RealDataService {
    */
   async buildGraphData(centerAddress, depth = 2, options = {}) {
     const {
-      maxNodes = 100,
+      maxNodes = 50, // Reduced from 100 to avoid rate limiting
       minVolume = '0'
     } = options;
     
@@ -324,7 +351,7 @@ export class RealDataService {
       visited.add(address);
 
       // Get relationships
-      const relationshipLimit = Math.min(20, maxNodes - nodes.size);
+      const relationshipLimit = Math.min(maxNodes - nodes.size, 100);
       logger.debug('Fetching relationships for node', {
         address,
         currentDepth,
@@ -353,11 +380,11 @@ export class RealDataService {
 
         // Add connected node if not exists
         if (!nodes.has(connectedAddress)) {
-          const connectedAccount = await this.getAccountData(connectedAddress);
+          // Use cached identity from relationship if available
           nodes.set(connectedAddress, {
             address: connectedAddress,
-            identity: connectedAccount?.identity || {},
-            balance: connectedAccount?.balance || {},
+            identity: rel.identity ? { display: rel.identity } : {}, 
+            balance: {}, // Balance will be fetched on-demand
             nodeType: 'regular',
             degree: 0,
             totalVolume: '0',

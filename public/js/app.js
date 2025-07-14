@@ -568,7 +568,7 @@ class PolkadotAnalysisApp {
         if (volumeFilter) {
             const volume = parseFloat(volumeFilter.value);
             this.state.filters.minVolume = volume > 0 ? 
-                (BigInt(Math.floor(volume * 1e12)).toString()) : '0';
+                (BigInt(Math.floor(volume * 1e10)).toString()) : '0';
         }
         
         if (timeFilter) {
@@ -585,7 +585,7 @@ class PolkadotAnalysisApp {
             console.log('Volume threshold input value:', volumeThresholdFilter.value, 'parsed as:', threshold);
             
             if (threshold > 0) {
-                this.state.filters.volumeThreshold = (BigInt(Math.floor(threshold * 1e12)).toString());
+                this.state.filters.volumeThreshold = (BigInt(Math.floor(threshold * 1e10)).toString());
                 console.log(`Volume threshold set to ${threshold} DOT (${this.state.filters.volumeThreshold} plancks)`);
             } else {
                 this.state.filters.volumeThreshold = null;
@@ -610,7 +610,7 @@ class PolkadotAnalysisApp {
         
         if (volumeFilter) {
             const volume = this.state.filters.minVolume !== '0' ? 
-                Number(BigInt(this.state.filters.minVolume)) / 1e12 : 0;
+                Number(BigInt(this.state.filters.minVolume)) / 1e10 : 0;
             volumeFilter.value = volume;
         }
         
@@ -624,7 +624,7 @@ class PolkadotAnalysisApp {
         
         if (volumeThresholdFilter) {
             const threshold = this.state.filters.volumeThreshold ? 
-                Number(BigInt(this.state.filters.volumeThreshold)) / 1e12 : '';
+                Number(BigInt(this.state.filters.volumeThreshold)) / 1e10 : '';
             volumeThresholdFilter.value = threshold;
         }
     }
@@ -919,7 +919,7 @@ class PolkadotAnalysisApp {
             const balanceNum = Number(nodeData.balance.free);
             // If balance is greater than 1e10, it's likely in planck units
             if (balanceNum > 1e10) {
-                balance = (balanceNum / 1e12).toLocaleString() + ' DOT';
+                balance = (balanceNum / 1e10).toLocaleString() + ' DOT';
             } else {
                 // Already in DOT format
                 balance = balanceNum.toLocaleString() + ' DOT';
@@ -975,7 +975,7 @@ class PolkadotAnalysisApp {
      */
     displayEdgeDetails(edgeData) {
         const volume = edgeData.volume ? 
-            (Number(BigInt(edgeData.volume)) / 1e12).toLocaleString() + ' DOT' : 
+            (Number(BigInt(edgeData.volume)) / 1e10).toLocaleString() + ' DOT' : 
             'Unknown';
         const count = edgeData.count || 1;
         
@@ -1035,7 +1035,7 @@ class PolkadotAnalysisApp {
                     if (volumeStr.includes('.')) {
                         volumeStr = volumeStr.split('.')[0];
                     }
-                    const volume = Number(BigInt(volumeStr)) / 1e12;
+                    const volume = Number(BigInt(volumeStr)) / 1e10;
                     return total + volume;
                 }
             } catch (e) {
@@ -1067,7 +1067,7 @@ class PolkadotAnalysisApp {
                     if (volumeStr.includes('.')) {
                         volumeStr = volumeStr.split('.')[0];
                     }
-                    const volume = Number(BigInt(volumeStr)) / 1e12; // Convert to DOT
+                    const volume = Number(BigInt(volumeStr)) / 1e10; // Convert to DOT
                     
                     if (volume > 0) {
                         minVolume = Math.min(minVolume, volume);

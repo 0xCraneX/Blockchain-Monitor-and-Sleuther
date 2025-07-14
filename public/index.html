@@ -141,14 +141,29 @@
             <p>Built with D3.js and Polkadot.js</p>
         </footer>
     </div>
+    
+    <!-- Version indicator -->
+    <div id="version-indicator" style="position: fixed; bottom: 10px; left: 10px; background: rgba(0,0,0,0.8); color: #fff; padding: 5px 10px; border-radius: 3px; font-size: 11px; z-index: 9999;">
+        v1.0.5
+    </div>
 
-    <script src="/js/config.js?v=1.0.4"></script>
-    <script src="/js/format-utils.js?v=1.0.4"></script>
-    <script src="/js/address-validator.js?v=1.0.4"></script>
-    <script src="/js/search.js?v=1.0.4"></script>
-    <script src="/js/overlay-helpers.js?v=1.0.4"></script>
-    <script src="/js/client.js?v=1.0.4"></script>
-    <script src="/js/graph.js?v=1.0.4"></script>
-    <script src="/js/app.js?v=1.0.4"></script>
+    <script src="/js/config.js?v=1.0.5"></script>
+    <script src="/js/format-utils.js?v=1.0.5"></script>
+    <script src="/js/address-validator.js?v=1.0.5"></script>
+    <script src="/js/search.js?v=1.0.5"></script>
+    <script src="/js/overlay-helpers.js?v=1.0.5"></script>
+    <script src="/js/client.js?v=1.0.5"></script>
+    <script src="/js/graph.js?v=1.0.5"></script>
+    <script src="/js/app.js?v=1.0.5"></script>
+    <script>
+        // Update version indicator with timestamp to prevent caching
+        setInterval(() => {
+            const versionEl = document.getElementById('version-indicator');
+            if (versionEl) {
+                const timestamp = new Date().toLocaleTimeString();
+                versionEl.textContent = `v1.0.5 - ${timestamp}`;
+            }
+        }, 1000);
+    </script>
 </body>
 </html>

@@ -925,7 +925,7 @@ class AddressDetailsComponent extends BaseComponent {
     let dot;
     if (numBalance > 1e10) {
       // Looks like planck units, convert to DOT
-      dot = numBalance / 1e12;
+      dot = numBalance / 1e10;
       console.log('[DEBUG] formatBalance: Converting from planck to DOT:', numBalance, '->', dot);
     } else {
       // Looks like it's already in DOT format
@@ -1748,7 +1748,7 @@ class StatsDashboardComponent extends BaseComponent {
   }
 
   formatVolume(volume) {
-    const dot = parseFloat(volume) / 1e12;
+    const dot = parseFloat(volume) / 1e10;
     if (dot >= 1000000) {
       return `${(dot / 1000000).toFixed(1)}M DOT`;
     } else if (dot >= 1000) {

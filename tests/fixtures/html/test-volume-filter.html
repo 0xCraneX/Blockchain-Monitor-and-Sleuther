@@ -43,8 +43,8 @@
                         
                         const isAboveThreshold = edgeVolumeBigInt >= thresholdBigInt;
                         
-                        console.log(`Volume: ${Number(edgeVolumeBigInt)/1e12} DOT`);
-                        console.log(`Threshold: ${Number(thresholdBigInt)/1e12} DOT`);
+                        console.log(`Volume: ${Number(edgeVolumeBigInt)/1e10} DOT`);
+                        console.log(`Threshold: ${Number(thresholdBigInt)/1e10} DOT`);
                         console.log(`Above threshold: ${isAboveThreshold}`);
                         console.log(`Should be RED: ${isAboveThreshold}`);
                     } catch (error) {

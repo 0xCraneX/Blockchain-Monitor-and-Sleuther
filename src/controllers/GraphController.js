@@ -1226,7 +1226,7 @@ export class GraphController {
   _calculatePathScore(path) {
     // Score based on hop count, volume, and recency
     const hopPenalty = path.hops * 10;
-    const volumeBonus = Math.min(50, Math.log10(Number(BigInt(path.totalVolume || '0')) / 1e12) * 10);
+    const volumeBonus = Math.min(50, Math.log10(Number(BigInt(path.totalVolume || '0')) / 1e10) * 10);
     return Math.max(0, 100 - hopPenalty + volumeBonus);
   }
 
@@ -1294,7 +1294,7 @@ export class GraphController {
       volumeStr = volumeStr.split('.')[0];
     }
 
-    const volume = Number(BigInt(volumeStr)) / 1e12; // Convert to DOT
+    const volume = Number(BigInt(volumeStr)) / 1e10; // Convert to DOT
     return Math.min(10, Math.max(1, Math.log10(volume + 1) * 2));
   }
 
