@@ -576,7 +576,13 @@ export class SubscanService {
    */
   async getAccountRelationships(address, options = {}) {
     // Limit to 30 relationships per address to avoid rate limiting
-    const { limit = 30 } = options;
+    const { 
+      limit = 30, 
+      minVolume = null,
+      page = 0,
+      progressive = false,
+      onProgress = null 
+    } = options;
 
     try {
       logger.debug('Getting account relationships via Subscan API', {
@@ -782,6 +788,146 @@ export class SubscanService {
         hasApiKey: !!this.apiKey
       };
     }
+  }
+
+  /**
+   * Get filtered relationships with progressive loading
+   * Fetches all relationships matching the filter criteria, not just first N
+   */
+  async getFilteredRelationships(address, options = {}) {
+    const {
+      minVolume = null,
+      maxPages = 10,
+      pageSize = 100,
+      onProgress = null,
+      direction = 'all'
+    } = options;
+
+    const relationships = new Map();
+    let processedPages = 0;
+    let hasMore = true;
+
+    logger.info('Starting filtered relationship fetch', {
+      address,
+      minVolume: minVolume ? (BigInt(minVolume) / BigInt(10 ** 10)).toString() + ' DOT' : 'none',
+      maxPages,
+      pageSize
+    });
+
+    while (hasMore && processedPages < maxPages) {
+      try {
+        // Fetch transfers for current page
+        const transfers = await this.getTransfers(address, {
+          row: pageSize,
+          page: processedPages,
+          direction
+        });
+
+        if (!transfers.transfers || transfers.transfers.length === 0) {
+          hasMore = false;
+          break;
+        }
+
+        // Process transfers and build relationships
+        let filteredCount = 0;
+        for (const transfer of transfers.transfers) {
+          const value = BigInt(transfer.amount || '0');
+          
+          // Apply volume filter
+          if (minVolume && value < BigInt(minVolume)) {
+            continue;
+          }
+
+          filteredCount++;
+          const otherAddress = transfer.from === address ? transfer.to : transfer.from;
+          const key = otherAddress;
+
+          if (!relationships.has(key)) {
+            relationships.set(key, {
+              address: otherAddress,
+              totalVolume: BigInt(0),
+              transferCount: 0,
+              firstTransfer: transfer.block_timestamp,
+              lastTransfer: transfer.block_timestamp,
+              transfers: []
+            });
+          }
+
+          const rel = relationships.get(key);
+          rel.totalVolume += value;
+          rel.transferCount++;
+          rel.transfers.push({
+            hash: transfer.hash,
+            from: transfer.from,
+            to: transfer.to,
+            value: value.toString(),
+            blockNumber: transfer.block_num,
+            timestamp: transfer.block_timestamp
+          });
+
+          // Update first/last transfer times
+          if (transfer.block_timestamp < rel.firstTransfer) {
+            rel.firstTransfer = transfer.block_timestamp;
+          }
+          if (transfer.block_timestamp > rel.lastTransfer) {
+            rel.lastTransfer = transfer.block_timestamp;
+          }
+        }
+
+        processedPages++;
+
+        // Report progress
+        if (onProgress) {
+          onProgress({
+            page: processedPages,
+            totalPages: maxPages,
+            foundRelationships: relationships.size,
+            currentPageFiltered: filteredCount,
+            hasMore
+          });
+        }
+
+        logger.debug('Processed page of transfers', {
+          page: processedPages,
+          totalTransfers: transfers.transfers.length,
+          filteredTransfers: filteredCount,
+          totalRelationships: relationships.size
+        });
+
+        // Check if we've reached the end
+        if (transfers.transfers.length < pageSize) {
+          hasMore = false;
+        }
+
+      } catch (error) {
+        logger.error('Error fetching filtered relationships', {
+          address,
+          page: processedPages,
+          error: error.message
+        });
+        break;
+      }
+    }
+
+    // Convert to array and sort by volume
+    const sortedRelationships = Array.from(relationships.values())
+      .sort((a, b) => {
+        const diff = b.totalVolume - a.totalVolume;
+        return diff > 0 ? 1 : diff < 0 ? -1 : 0;
+      })
+      .map(rel => ({
+        ...rel,
+        totalVolume: rel.totalVolume.toString()
+      }));
+
+    logger.info('Completed filtered relationship fetch', {
+      address,
+      pagesProcessed: processedPages,
+      relationshipsFound: sortedRelationships.length,
+      topVolume: sortedRelationships[0]?.totalVolume || '0'
+    });
+
+    return sortedRelationships;
   }
 
   /**

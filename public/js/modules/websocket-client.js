@@ -73,12 +73,24 @@ export class WebSocketClient {
     });
 
     // Streaming updates
+    this.socket.on('stream:started', (data) => {
+      this.emit('stream:started', data);
+    });
+
     this.socket.on('stream:progress', (data) => {
       this.emit('stream:progress', data);
     });
 
-    this.socket.on('stream:complete', (data) => {
-      this.emit('stream:complete', data);
+    this.socket.on('stream:data', (data) => {
+      this.emit('stream:data', data);
+    });
+
+    this.socket.on('stream:completed', (data) => {
+      this.emit('stream:completed', data);
+    });
+
+    this.socket.on('stream:stopped', (data) => {
+      this.emit('stream:stopped', data);
     });
 
     this.socket.on('stream:error', (data) => {
@@ -155,6 +167,8 @@ export class WebSocketClient {
       progressive: true,
       batchSize: options.batchSize || 50,
       depth: options.depth || 2,
+      minVolume: options.minVolume || '0',
+      maxPages: options.maxPages || 10,
       ...options
     };
 

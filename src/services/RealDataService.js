@@ -280,7 +280,9 @@ export class RealDataService {
   async buildGraphData(centerAddress, depth = 2, options = {}) {
     const {
       maxNodes = 50, // Reduced from 100 to avoid rate limiting
-      minVolume = '0'
+      minVolume = '0',
+      progressive = false,
+      onProgress = null
     } = options;
 
     logger.info('[METHOD] buildGraphData called', {
@@ -673,6 +675,205 @@ export class RealDataService {
       dataType: Array.isArray(data) ? 'array' : typeof data,
       dataLength: Array.isArray(data) ? data.length : undefined
     });
+  }
+
+  /**
+   * Build filtered graph data with progressive loading
+   * Fetches ALL connections matching filter criteria, not limited by node count
+   */
+  async buildFilteredGraphData(centerAddress, depth = 2, options = {}) {
+    const {
+      minVolume = '0',
+      maxPages = 20,
+      pageSize = 100,
+      onProgress = null
+    } = options;
+
+    logger.info('Starting filtered graph build', {
+      centerAddress,
+      depth,
+      minVolume: minVolume ? (BigInt(minVolume) / BigInt(10 ** 10)).toString() + ' DOT' : 'none',
+      maxPages
+    });
+
+    const nodes = new Map();
+    const edges = new Map();
+    const visited = new Set();
+    const queue = [{ address: centerAddress, currentDepth: 0 }];
+    
+    // Add center node
+    const centerAccount = await this.getAccountData(centerAddress);
+    if (!centerAccount) {
+      throw new Error('Failed to fetch center account data');
+    }
+
+    nodes.set(centerAddress, {
+      id: centerAddress,
+      address: centerAddress,
+      label: centerAccount.identity?.display || centerAddress.slice(0, 6) + '...',
+      balance: centerAccount.balance,
+      identity: centerAccount.identity,
+      nodeType: 'center',
+      degree: 0,
+      depth: 0,
+      riskScore: 0,
+      lastActive: centerAccount.lastActive || Date.now()
+    });
+
+    let totalProgress = 0;
+    const addressesToProcess = [];
+
+    // Process queue with depth-first approach
+    while (queue.length > 0) {
+      const { address, currentDepth } = queue.shift();
+      
+      if (visited.has(address) || currentDepth >= depth) {
+        continue;
+      }
+      
+      visited.add(address);
+      addressesToProcess.push({ address, currentDepth });
+    }
+
+    // Process each address with filtered fetching
+    for (let i = 0; i < addressesToProcess.length; i++) {
+      const { address, currentDepth } = addressesToProcess[i];
+      
+      logger.debug('Processing address with filtered fetch', {
+        address,
+        currentDepth,
+        progress: `${i + 1}/${addressesToProcess.length}`
+      });
+
+      // Use the new filtered relationship fetching
+      const relationships = await subscanService.getFilteredRelationships(address, {
+        minVolume,
+        maxPages,
+        pageSize,
+        onProgress: (progress) => {
+          if (onProgress) {
+            totalProgress++;
+            onProgress({
+              type: 'fetching',
+              address,
+              depth: currentDepth,
+              ...progress,
+              totalProgress,
+              currentAddress: i + 1,
+              totalAddresses: addressesToProcess.length
+            });
+          }
+        }
+      });
+
+      // Process relationships
+      for (const rel of relationships) {
+        const connectedAddress = rel.address;
+
+        // Add node if not exists
+        if (!nodes.has(connectedAddress)) {
+          const accountData = await this.getAccountData(connectedAddress);
+          if (accountData) {
+            nodes.set(connectedAddress, {
+              id: connectedAddress,
+              address: connectedAddress,
+              label: accountData.identity?.display || connectedAddress.slice(0, 6) + '...',
+              balance: accountData.balance,
+              identity: accountData.identity,
+              nodeType: 'connected',
+              degree: 0,
+              depth: currentDepth + 1,
+              riskScore: 0,
+              lastActive: accountData.lastActive || Date.now()
+            });
+
+            // Add to queue for next depth
+            if (currentDepth + 1 < depth) {
+              queue.push({ 
+                address: connectedAddress, 
+                currentDepth: currentDepth + 1 
+              });
+            }
+          }
+        }
+
+        // Create edge
+        const [source, target] = [address, connectedAddress].sort();
+        const edgeId = `${source}-${target}`;
+
+        if (!edges.has(edgeId)) {
+          edges.set(edgeId, {
+            id: edgeId,
+            source: address,
+            target: connectedAddress,
+            volume: rel.totalVolume,
+            count: rel.transferCount,
+            edgeType: 'transfer',
+            transfers: rel.transfers,
+            firstTransfer: rel.firstTransfer,
+            lastTransfer: rel.lastTransfer
+          });
+        }
+
+        // Update node degrees
+        if (nodes.has(address)) nodes.get(address).degree++;
+        if (nodes.has(connectedAddress)) nodes.get(connectedAddress).degree++;
+      }
+
+      // Report completion for this address
+      if (onProgress) {
+        onProgress({
+          type: 'completed',
+          address,
+          depth: currentDepth,
+          foundRelationships: relationships.length,
+          currentNodes: nodes.size,
+          currentEdges: edges.size
+        });
+      }
+    }
+
+    // Convert to arrays with visual properties
+    const nodeArray = Array.from(nodes.values()).map(node => ({
+      ...node,
+      suggestedSize: Math.min(20 + node.degree * 2, 60),
+      suggestedColor: node.nodeType === 'center' ? '#e6007a' :
+        node.degree > 10 ? '#f44336' : '#2196F3'
+    }));
+
+    const edgeArray = Array.from(edges.values()).map(edge => ({
+      ...edge,
+      suggestedWidth: Math.min(1 + Math.log10(Number(BigInt(edge.volume) / BigInt('1000000000000') + 1n)) * 2, 10),
+      suggestedColor: BigInt(edge.volume) >= BigInt(minVolume) * 10n ? '#e6007a' : '#2196F3',
+      suggestedOpacity: 0.6 + Math.min(edge.count / 50, 0.4)
+    }));
+
+    const result = {
+      nodes: nodeArray,
+      edges: edgeArray,
+      metadata: {
+        centerAddress,
+        depth,
+        totalNodes: nodeArray.length,
+        totalEdges: edgeArray.length,
+        dataSource: 'filtered',
+        minVolume: minVolume ? (BigInt(minVolume) / BigInt(10 ** 10)).toString() + ' DOT' : 'none',
+        timestamp: Date.now()
+      }
+    };
+
+    logger.info('Filtered graph build completed', {
+      centerAddress,
+      depth,
+      totalNodes: nodeArray.length,
+      totalEdges: edgeArray.length,
+      minVolume: result.metadata.minVolume,
+      averageVolume: edgeArray.length > 0 ? 
+        edgeArray.reduce((sum, e) => sum + Number(BigInt(e.volume) / BigInt(10 ** 10)), 0) / edgeArray.length + ' DOT' : 
+        '0 DOT'
+    });
+
+    return result;
   }
 
   clearCache() {

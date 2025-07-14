@@ -538,6 +538,124 @@ class PolkadotAnalysisApp {
     }
     
     /**
+     * Load address with progressive streaming (for filtered data)
+     */
+    async loadAddressProgressive(address) {
+        console.log('Loading address with progressive streaming:', address);
+        
+        if (!this.isValidSubstrateAddress(address)) {
+            console.error('Invalid Substrate address format:', address);
+            this.showError('Invalid Substrate address format');
+            return;
+        }
+        
+        this.showLoading();
+        this.state.currentAddress = address;
+        
+        try {
+            // Initialize WebSocket if not connected
+            if (!this.websocket) {
+                console.log('Initializing WebSocket client...');
+                const { WebSocketClient } = await import('./modules/websocket-client.js');
+                this.websocket = new WebSocketClient();
+                await this.websocket.connect();
+                
+                // Setup streaming event handlers
+                this.websocket.on('stream:started', (data) => {
+                    console.log('Stream started:', data);
+                    this.showProgressMessage(`Starting progressive graph loading for ${data.minVolume || 'all volumes'}...`);
+                });
+                
+                this.websocket.on('stream:progress', (data) => {
+                    console.log('Stream progress:', data);
+                    if (data.progress) {
+                        this.showProgressMessage(`${data.progress.phase} - ${data.progress.percentage}% complete`);
+                    }
+                });
+                
+                this.websocket.on('stream:data', (data) => {
+                    console.log('Stream data batch:', data);
+                    // Could update graph incrementally here
+                });
+                
+                this.websocket.on('stream:completed', (data) => {
+                    console.log('Stream completed:', data);
+                    if (data.graph) {
+                        // Map API response format to expected format
+                        const mappedData = {
+                            nodes: data.graph.nodes || [],
+                            links: data.graph.edges || [],
+                            metadata: data.graph.metadata || {}
+                        };
+                        
+                        // Apply filters and load graph
+                        this.graph.setFilters(this.state.filters);
+                        this.graph.loadGraphData(mappedData);
+                        this.state.graphData = mappedData;
+                        
+                        // Show visualization
+                        this.showVisualizationSection();
+                        this.updateStatistics();
+                        this.updateAddressHistory(address);
+                        
+                        // Update URL
+                        const newUrl = new URL(window.location);
+                        newUrl.searchParams.set('address', address);
+                        window.history.replaceState(null, '', newUrl);
+                        
+                        this.hideLoading();
+                        this.showSuccessMessage(`Loaded ${data.summary.totalNodes} nodes and ${data.summary.totalEdges} connections in ${(data.summary.executionTime / 1000).toFixed(1)}s`);
+                    }
+                });
+                
+                this.websocket.on('stream:error', (data) => {
+                    console.error('Stream error:', data);
+                    this.showError(data.error || 'Progressive loading failed');
+                    this.hideLoading();
+                });
+            }
+            
+            // Start progressive streaming
+            this.websocket.startGraphStream(address, {
+                depth: this.state.filters.depth,
+                minVolume: this.state.filters.minVolume,
+                maxPages: 20
+            });
+            
+        } catch (error) {
+            console.error('Error in progressive loading:', error);
+            this.showError(error.message || 'Failed to start progressive loading');
+            this.hideLoading();
+        }
+    }
+
+    /**
+     * Show progress message
+     */
+    showProgressMessage(message) {
+        const loadingElement = document.querySelector('.loading-message');
+        if (loadingElement) {
+            loadingElement.textContent = message;
+        }
+    }
+
+    /**
+     * Show success message
+     */
+    showSuccessMessage(message) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-success alert-dismissible fade show';
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.querySelector('.container').insertBefore(alertDiv, document.querySelector('.container').firstChild);
+        
+        // Auto-dismiss after 5 seconds
+        setTimeout(() => alertDiv.remove(), 5000);
+    }
+
+    /**
      * Apply current filters to the graph
      */
     applyFilters() {
@@ -545,6 +663,13 @@ class PolkadotAnalysisApp {
         console.log('Applying filters:', this.state.filters);
         
         if (this.state.currentAddress) {
+            // Check if we should use progressive loading (when volume filter is applied)
+            if (BigInt(this.state.filters.minVolume) > BigInt(0)) {
+                console.log('Using progressive loading for volume filter:', this.state.filters.minVolume);
+                this.loadAddressProgressive(this.state.currentAddress);
+                return;
+            }
+            
             // Don't reload the entire graph, just update filters on existing graph
             if (this.state.graphData) {
                 console.log('Updating filters on existing graph data');

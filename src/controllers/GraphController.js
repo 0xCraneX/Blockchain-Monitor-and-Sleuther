@@ -134,6 +134,7 @@ export class GraphController {
         if (this.realDataService) {
           controllerLogger.debug('RealDataService methods check:', {
             hasBuildGraphData: typeof this.realDataService.buildGraphData === 'function',
+            hasBuildFilteredGraphData: typeof this.realDataService.buildFilteredGraphData === 'function',
             buildGraphDataType: typeof this.realDataService.buildGraphData,
             allMethods: Object.getOwnPropertyNames(Object.getPrototypeOf(this.realDataService || {})).filter(m => typeof this.realDataService[m] === 'function')
           });
@@ -159,6 +160,14 @@ export class GraphController {
           willUseRealData: conditionMet
         });
 
+        // Check if we should use filtered data loading
+        const shouldUseFilteredData = BigInt(minVolume) > BigInt(0);
+        controllerLogger.debug('Filter check:', {
+          minVolume,
+          minVolumeAsBigInt: BigInt(minVolume).toString(),
+          shouldUseFilteredData,
+          hasFilteredMethod: this.realDataService ? typeof this.realDataService.buildFilteredGraphData === 'function' : false
+        });
 
         if (this.realDataService && process.env.SKIP_BLOCKCHAIN !== 'true') {
           controllerLogger.info('=== ENTERING REAL DATA BRANCH ===');
@@ -166,49 +175,70 @@ export class GraphController {
           const realDataTimer = startPerformanceTimer('real_data_fetch');
 
           // DEBUG: Log before calling buildGraphData
-          controllerLogger.debug('About to call buildGraphData with:', {
+          controllerLogger.debug('About to call real data service with:', {
             address: address,
             depth: depth,
-            options: { maxNodes, minVolume, direction }
+            options: { maxNodes, minVolume, direction },
+            useFilteredMethod: shouldUseFilteredData
           });
 
           let realGraphData;
           try {
-            controllerLogger.debug('Calling realDataService.buildGraphData...');
+            controllerLogger.debug(`Calling realDataService.${shouldUseFilteredData ? 'buildFilteredGraphData' : 'buildGraphData'}...`);
 
             // Extra safety check before calling
             if (!this.realDataService) {
               throw new Error('RealDataService is not available (became null after initial check)');
             }
 
-            if (typeof this.realDataService.buildGraphData !== 'function') {
-              controllerLogger.error('buildGraphData is not a function', {
-                actualType: typeof this.realDataService.buildGraphData,
-                availableMethods: Object.getOwnPropertyNames(Object.getPrototypeOf(this.realDataService))
+            // Use filtered method if volume filter is applied
+            if (shouldUseFilteredData && typeof this.realDataService.buildFilteredGraphData === 'function') {
+              controllerLogger.info('Using filtered graph data method for volume filter:', {
+                minVolume,
+                minVolumeDOT: (BigInt(minVolume) / BigInt(10 ** 10)).toString() + ' DOT'
               });
-              throw new Error(`buildGraphData is not a function: ${typeof this.realDataService.buildGraphData}`);
-            }
 
-            realGraphData = await this.realDataService.buildGraphData(address, depth, {
-              maxNodes,
-              minVolume,
-              direction
-            });
-            controllerLogger.debug('buildGraphData returned:', {
+              realGraphData = await this.realDataService.buildFilteredGraphData(address, depth, {
+                minVolume,
+                maxPages: 20,
+                pageSize: 100,
+                onProgress: (progress) => {
+                  controllerLogger.debug('Progressive loading progress:', progress);
+                }
+              });
+            } else {
+              if (typeof this.realDataService.buildGraphData !== 'function') {
+                controllerLogger.error('buildGraphData is not a function', {
+                  actualType: typeof this.realDataService.buildGraphData,
+                  availableMethods: Object.getOwnPropertyNames(Object.getPrototypeOf(this.realDataService))
+                });
+                throw new Error(`buildGraphData is not a function: ${typeof this.realDataService.buildGraphData}`);
+              }
+
+              realGraphData = await this.realDataService.buildGraphData(address, depth, {
+                maxNodes,
+                minVolume,
+                direction
+              });
+            }
+            
+            controllerLogger.debug('Graph data returned:', {
               hasData: !!realGraphData,
               nodeCount: realGraphData?.nodes?.length || 0,
               edgeCount: realGraphData?.edges?.length || 0,
-              dataStructure: realGraphData ? Object.keys(realGraphData) : 'null/undefined'
+              dataStructure: realGraphData ? Object.keys(realGraphData) : 'null/undefined',
+              method: shouldUseFilteredData ? 'buildFilteredGraphData' : 'buildGraphData'
             });
           } catch (error) {
-            controllerLogger.error('Error calling buildGraphData:', {
+            controllerLogger.error('Error calling graph data method:', {
               errorMessage: error.message,
               errorStack: error.stack,
               errorName: error.name,
               realDataServiceState: {
                 exists: !!this.realDataService,
                 type: typeof this.realDataService,
-                hasBuildGraphData: this.realDataService ? typeof this.realDataService.buildGraphData : 'service is null'
+                hasBuildGraphData: this.realDataService ? typeof this.realDataService.buildGraphData : 'service is null',
+                hasBuildFilteredGraphData: this.realDataService ? typeof this.realDataService.buildFilteredGraphData : 'service is null'
               },
               errorType: error.constructor.name
             });
@@ -224,7 +254,8 @@ export class GraphController {
               id: n.address,
               ...n
             })),
-            edges: realGraphData.edges
+            edges: realGraphData.edges,
+            metadata: realGraphData.metadata
           };
 
           controllerLogger.info(`Real data retrieved and converted: ${graphData.nodes.length} nodes, ${graphData.edges.length} edges`);

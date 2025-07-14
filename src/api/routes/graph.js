@@ -94,6 +94,12 @@ function getServices(req) {
             realDataServiceCreated: !!req.app.locals.graphServices.realDataService,
             realDataServiceMethods: Object.getOwnPropertyNames(Object.getPrototypeOf(req.app.locals.graphServices.realDataService))
           });
+
+          // Set RealDataService in GraphWebSocket if available
+          if (req.app.locals.graphWebSocket && req.app.locals.graphWebSocket.setRealDataService) {
+            req.app.locals.graphWebSocket.setRealDataService(req.app.locals.graphServices.realDataService);
+            logger.info('Set RealDataService in GraphWebSocket');
+          }
         } catch (realDataError) {
           logger.error('Failed to create RealDataService', {
             error: realDataError.message,

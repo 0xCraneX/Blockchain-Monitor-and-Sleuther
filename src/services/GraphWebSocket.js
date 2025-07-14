@@ -16,10 +16,11 @@ const wsLogger = createLogger('GraphWebSocket');
  * Provides efficient room-based broadcasting for graph changes and analytics
  */
 export class GraphWebSocket {
-  constructor() {
+  constructor(realDataService = null) {
     const trackerId = logMethodEntry('GraphWebSocket', 'constructor');
 
     this.io = null;
+    this.realDataService = realDataService;
     this.subscribedClients = new Map(); // clientId -> Set of subscriptions
     this.addressSubscriptions = new Map(); // address -> Set of clientIds
     this.patternSubscriptions = new Set(); // clientIds subscribed to pattern alerts
@@ -37,10 +38,22 @@ export class GraphWebSocket {
     wsLogger.info('GraphWebSocket service initialized', {
       maxSubscriptionsPerClient: this.maxSubscriptionsPerClient,
       maxStreamingSessions: this.maxStreamingSessions,
-      maxPatternSubscriptions: this.maxPatternSubscriptions
+      maxPatternSubscriptions: this.maxPatternSubscriptions,
+      hasRealDataService: !!realDataService
     });
 
     logMethodExit('GraphWebSocket', 'constructor', trackerId);
+  }
+
+  /**
+   * Set the RealDataService instance (can be called after initialization)
+   * @param {RealDataService} realDataService - The RealDataService instance
+   */
+  setRealDataService(realDataService) {
+    this.realDataService = realDataService;
+    wsLogger.info('RealDataService set in GraphWebSocket', {
+      hasRealDataService: !!realDataService
+    });
   }
 
   /**
@@ -650,7 +663,7 @@ export class GraphWebSocket {
    */
   async streamGraphBuilding(socket, query) {
     try {
-      const { address, depth = 2, minVolume = '0', streamId } = query;
+      const { address, depth = 2, minVolume = '0', streamId, maxPages = 10 } = query;
 
       if (!address) {
         socket.emit('error', {
@@ -686,6 +699,8 @@ export class GraphWebSocket {
         sessionId,
         address,
         depth,
+        minVolume,
+        maxPages,
         startTime: Date.now(),
         status: 'active'
       });
@@ -695,6 +710,7 @@ export class GraphWebSocket {
         sessionId,
         address,
         depth,
+        minVolume: minVolume ? (BigInt(minVolume) / BigInt(10 ** 10)).toString() + ' DOT' : 'none',
         timestamp: Date.now()
       });
 
@@ -702,12 +718,17 @@ export class GraphWebSocket {
         clientId: socket.id,
         sessionId,
         address,
-        depth
+        depth,
+        minVolume: minVolume ? (BigInt(minVolume) / BigInt(10 ** 10)).toString() + ' DOT' : 'none'
       });
 
-      // Simulate progressive graph building
-      // In a real implementation, this would interface with GraphQueries
-      await this._simulateProgressiveGraphBuilding(socket, sessionId, address, depth, minVolume);
+      // Use real progressive graph building if available
+      if (BigInt(minVolume) > BigInt(0) && this.realDataService) {
+        await this._streamRealGraphData(socket, sessionId, address, depth, minVolume, maxPages);
+      } else {
+        // Fallback to simulation
+        await this._simulateProgressiveGraphBuilding(socket, sessionId, address, depth, minVolume);
+      }
 
     } catch (error) {
       logger.error('GraphWebSocket: Error in graph streaming', error);
@@ -741,6 +762,107 @@ export class GraphWebSocket {
       }
     } catch (error) {
       logger.error('GraphWebSocket: Error stopping graph streaming', error);
+    }
+  }
+
+  /**
+   * Stream real graph data progressively
+   * @param {Socket} socket - Socket instance
+   * @param {string} sessionId - Stream session ID
+   * @param {string} address - Center address
+   * @param {number} depth - Graph depth
+   * @param {string} minVolume - Minimum volume filter
+   * @param {number} maxPages - Maximum pages to fetch
+   */
+  async _streamRealGraphData(socket, sessionId, address, depth, minVolume, maxPages) {
+    const session = this.streamingSessions.get(socket.id);
+    if (!session || session.status !== 'active') {
+      return;
+    }
+
+    try {
+      wsLogger.info('Starting real graph data streaming', {
+        sessionId,
+        address,
+        depth,
+        minVolume: (BigInt(minVolume) / BigInt(10 ** 10)).toString() + ' DOT'
+      });
+
+      // Stream filtered graph data
+      const result = await this.realDataService.buildFilteredGraphData(address, depth, {
+        minVolume,
+        maxPages,
+        pageSize: 100,
+        onProgress: (progress) => {
+          // Check if session is still active
+          const currentSession = this.streamingSessions.get(socket.id);
+          if (!currentSession || currentSession.status !== 'active') {
+            return;
+          }
+
+          // Send progress update
+          socket.emit('stream:progress', {
+            sessionId,
+            progress: {
+              ...progress,
+              phase: progress.type === 'fetching' ? `Fetching connections (${progress.currentAddress}/${progress.totalAddresses})` : 'Processing',
+              percentage: Math.round((progress.currentAddress / progress.totalAddresses) * 100)
+            },
+            timestamp: Date.now()
+          });
+
+          // Send batch data if available
+          if (progress.type === 'completed' && progress.foundRelationships > 0) {
+            socket.emit('stream:data', {
+              sessionId,
+              batch: {
+                address: progress.address,
+                depth: progress.depth,
+                relationshipsFound: progress.foundRelationships,
+                currentNodes: progress.currentNodes,
+                currentEdges: progress.currentEdges
+              },
+              timestamp: Date.now()
+            });
+          }
+        }
+      });
+
+      // Send final result
+      if (session && session.status === 'active') {
+        socket.emit('stream:completed', {
+          sessionId,
+          summary: {
+            totalNodes: result.nodes.length,
+            totalEdges: result.edges.length,
+            executionTime: Date.now() - session.startTime,
+            metadata: result.metadata
+          },
+          graph: result,
+          timestamp: Date.now()
+        });
+
+        wsLogger.info('Real graph data streaming completed', {
+          sessionId,
+          totalNodes: result.nodes.length,
+          totalEdges: result.edges.length,
+          executionTime: Date.now() - session.startTime
+        });
+      }
+    } catch (error) {
+      wsLogger.error('Error streaming real graph data', {
+        sessionId,
+        error: error.message
+      });
+      
+      socket.emit('stream:error', {
+        sessionId,
+        error: error.message,
+        timestamp: Date.now()
+      });
+    } finally {
+      // Clean up session
+      this.streamingSessions.delete(socket.id);
     }
   }
 
