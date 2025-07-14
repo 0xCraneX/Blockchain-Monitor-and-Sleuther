@@ -346,7 +346,9 @@ class PolkadotAnalysisApp {
             const response = await fetch(`${apiUrl}/api/addresses/search?q=${encodeURIComponent(query)}&limit=10`);
             
             if (response.ok) {
-                const suggestions = await response.json();
+                const data = await response.json();
+                // API returns {results: [...]} format, extract the results array
+                const suggestions = data.results || [];
                 this.displaySearchSuggestions(suggestions);
             }
             
@@ -1379,7 +1381,9 @@ class PolkadotAnalysisApp {
             throw new Error('Search failed');
         }
         
-        return await response.json();
+        const data = await response.json();
+        // API returns {results: [...]} format, extract the results array
+        return data.results || [];
     }
     
     /**
