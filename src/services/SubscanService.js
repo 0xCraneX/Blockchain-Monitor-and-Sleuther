@@ -369,30 +369,75 @@ export class SubscanService {
    */
   async getAccountInfo(address) {
     try {
-      const data = await this.request('/api/v2/scan/accounts', 
-        { address: [address] }, 
+      logger.debug('Getting account info from Subscan', { address });
+      
+      // Use the correct search endpoint with proper payload
+      const data = await this.request('/api/v2/scan/search', 
+        { key: address }, 
         SubscanService.PRIORITY.CRITICAL
       );
 
-      // API returns a list, get the first item if available
-      const account = data.list && data.list.length > 0 ? data.list[0] : null;
-
-      if (!account) {
+      if (!data || !data.account) {
         throw new SubscanError(
           `No account data found for address ${address}`,
           'NO_DATA'
         );
       }
 
+      const account = data.account;
+      
+      // Extract identity from the correct nested structure
+      let identityDisplay = null;
+      
+      // Check for account.display first (direct display name)
+      if (account.display && typeof account.display === 'string' && account.display.trim() !== '') {
+        identityDisplay = account.display;
+        logger.debug('Found identity in account.display', { address, display: identityDisplay });
+      }
+      // Check for nested account_display.display structure
+      else if (account.account_display?.display && typeof account.account_display.display === 'string' && account.account_display.display.trim() !== '') {
+        identityDisplay = account.account_display.display;
+        logger.debug('Found identity in account.account_display.display', { address, display: identityDisplay });
+      }
+      // Check for account_display.people.display (some networks use this structure)
+      else if (account.account_display?.people?.display && typeof account.account_display.people.display === 'string' && account.account_display.people.display.trim() !== '') {
+        identityDisplay = account.account_display.people.display;
+        logger.debug('Found identity in account.account_display.people.display', { address, display: identityDisplay });
+      }
+      // Check for parent account display if this is a sub-account
+      else if (account.account_display?.parent?.display && typeof account.account_display.parent.display === 'string' && account.account_display.parent.display.trim() !== '') {
+        const parentDisplay = account.account_display.parent.display;
+        const subSymbol = account.account_display.parent.sub_symbol || '';
+        identityDisplay = subSymbol ? `${parentDisplay}:${subSymbol}` : parentDisplay;
+        logger.debug('Found identity in parent account', { address, display: identityDisplay });
+      }
+      else {
+        logger.debug('No identity found for address', { 
+          address,
+          accountStructure: {
+            hasDisplay: !!account.display,
+            hasAccountDisplay: !!account.account_display,
+            hasAccountDisplayDisplay: !!account.account_display?.display,
+            hasPeopleDisplay: !!account.account_display?.people?.display,
+            hasParentDisplay: !!account.account_display?.parent?.display
+          }
+        });
+      }
+
       return {
         address: account.address || address,
         identity: {
-          display: account.display_name || account.identity?.display || null,
-          legal: account.identity?.legal || null,
-          web: account.identity?.web || null,
-          email: account.identity?.email || null,
-          twitter: account.identity?.twitter || null,
-          verified: account.identity?.judgements?.some(j => j.status === 'KnownGood') || false
+          display: identityDisplay,
+          legal: account.account_display?.legal || null,
+          web: account.account_display?.web || null,
+          email: account.account_display?.email || null,
+          twitter: account.account_display?.twitter || null,
+          verified: account.account_display?.identity === true || false,
+          parent: account.account_display?.parent ? {
+            address: account.account_display.parent.address,
+            display: account.account_display.parent.display,
+            sub_symbol: account.account_display.parent.sub_symbol
+          } : null
         },
         balance: {
           free: account.balance || '0',
@@ -401,7 +446,13 @@ export class SubscanService {
         },
         nonce: account.nonce || 0,
         role: account.role || 'regular',
-        registrar: account.registrar || null
+        registrar: account.registrar || null,
+        merkle: account.account_display?.merkle ? {
+          address_type: account.account_display.merkle.address_type,
+          tag_type: account.account_display.merkle.tag_type,
+          tag_subtype: account.account_display.merkle.tag_subtype,
+          tag_name: account.account_display.merkle.tag_name
+        } : null
       };
     } catch (error) {
       if (error instanceof SubscanError) {
@@ -603,19 +654,25 @@ export class SubscanService {
    */
   async searchAccounts(query, _limit = 10) {
     try {
-      // First try direct address lookup
-      if (query.length > 40) {
+      logger.debug('Searching accounts with query', { query });
+      
+      // Try direct address lookup using the search endpoint
+      try {
         const accountInfo = await this.getAccountInfo(query);
         if (accountInfo) {
+          logger.debug('Found account via direct lookup', { query, hasIdentity: !!accountInfo.identity.display });
           return [accountInfo];
         }
+      } catch (error) {
+        // If direct lookup fails, log but continue
+        logger.debug('Direct lookup failed, this is expected for partial queries', { query, error: error.message });
       }
 
       // For identity search, we need to use a different approach
       // Subscan doesn't have a direct identity search endpoint in free tier
       // Would need to implement local caching or use paid features
 
-      logger.info('Identity search requires Subscan paid tier or local indexing');
+      logger.info('Identity search requires Subscan paid tier or local indexing', { query });
       return [];
     } catch (error) {
       logger.error('Failed to search accounts', { query, error: error.message });
