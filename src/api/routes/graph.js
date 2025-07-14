@@ -98,7 +98,16 @@ function getServices(req) {
           // Set RealDataService in GraphWebSocket if available
           if (req.app.locals.graphWebSocket && req.app.locals.graphWebSocket.setRealDataService) {
             req.app.locals.graphWebSocket.setRealDataService(req.app.locals.graphServices.realDataService);
-            logger.info('Set RealDataService in GraphWebSocket');
+            logger.info('Set RealDataService in GraphWebSocket', {
+              hasGraphWebSocket: !!req.app.locals.graphWebSocket,
+              hasSetMethod: !!req.app.locals.graphWebSocket.setRealDataService,
+              realDataServiceSet: !!req.app.locals.graphServices.realDataService
+            });
+          } else {
+            logger.warn('Could not set RealDataService in GraphWebSocket', {
+              hasGraphWebSocket: !!req.app.locals.graphWebSocket,
+              hasSetMethod: req.app.locals.graphWebSocket ? !!req.app.locals.graphWebSocket.setRealDataService : false
+            });
           }
         } catch (realDataError) {
           logger.error('Failed to create RealDataService', {

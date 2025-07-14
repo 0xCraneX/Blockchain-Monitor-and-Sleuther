@@ -246,11 +246,7 @@ function initializeControls() {
   // Set up control panel event handlers
   console.log('Initializing controls...');
   
-  // Example: Apply filters button
-  document.getElementById('apply-filters')?.addEventListener('click', () => {
-    console.log('Applying filters...');
-    // Implementation would go here
-  });
+  // Apply filters button is handled by app.js main application
 }
 
 function showSection(sectionId) {

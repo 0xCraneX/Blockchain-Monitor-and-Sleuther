@@ -109,6 +109,13 @@ export class GraphWebSocket {
       // Handle progressive graph building
       socket.on('stream:graph', (data) => {
         logWebSocketEvent('stream:graph', socket.id, data);
+        wsLogger.info('Received stream:graph event', {
+          socketId: socket.id,
+          address: data?.address,
+          minVolume: data?.minVolume,
+          depth: data?.depth,
+          hasRealDataService: !!this.realDataService
+        });
         this.streamGraphBuilding(socket, data);
       });
 
@@ -664,6 +671,19 @@ export class GraphWebSocket {
   async streamGraphBuilding(socket, query) {
     try {
       const { address, depth = 2, minVolume = '0', streamId, maxPages = 10 } = query;
+      
+      // Debug logging
+      wsLogger.info('streamGraphBuilding called', {
+        socketId: socket.id,
+        address,
+        depth,
+        minVolume,
+        streamId,
+        maxPages,
+        hasRealDataService: !!this.realDataService,
+        realDataServiceType: this.realDataService ? typeof this.realDataService : 'undefined',
+        minVolumeAsBigInt: minVolume ? BigInt(minVolume).toString() : '0'
+      });
 
       if (!address) {
         socket.emit('error', {
@@ -723,10 +743,22 @@ export class GraphWebSocket {
       });
 
       // Use real progressive graph building if available
-      if (BigInt(minVolume) > BigInt(0) && this.realDataService) {
+      const shouldUseRealData = BigInt(minVolume) > BigInt(0) && this.realDataService;
+      
+      wsLogger.info('Deciding streaming method', {
+        minVolumeGtZero: BigInt(minVolume) > BigInt(0),
+        hasRealDataService: !!this.realDataService,
+        shouldUseRealData,
+        realDataServiceMethods: this.realDataService ? Object.getOwnPropertyNames(Object.getPrototypeOf(this.realDataService)).filter(m => typeof this.realDataService[m] === 'function') : []
+      });
+      
+      if (shouldUseRealData) {
+        wsLogger.info('Using real data streaming');
         await this._streamRealGraphData(socket, sessionId, address, depth, minVolume, maxPages);
       } else {
-        // Fallback to simulation
+        wsLogger.info('Using simulated streaming', {
+          reason: !this.realDataService ? 'No RealDataService' : 'minVolume is 0'
+        });
         await this._simulateProgressiveGraphBuilding(socket, sessionId, address, depth, minVolume);
       }
 

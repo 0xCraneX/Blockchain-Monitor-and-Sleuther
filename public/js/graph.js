@@ -54,6 +54,8 @@ class PolkadotGraphVisualization {
                 exchange: '#2196F3',
                 validator: '#9C27B0',
                 mixer: '#FF5722',
+                center: '#00E5FF',           // Bright cyan for center/focus nodes
+                centerGlow: '#00BCD4',      // Darker cyan for glow effect
                 background: '#1a1a1a',
                 text: '#ffffff'
             },
@@ -271,66 +273,76 @@ class PolkadotGraphVisualization {
     createArrowMarkers() {
         const defs = this.svg.append('defs');
         
+        // Enhanced arrow size for better visibility
+        const arrowSize = 10;  // Increased from 6
+        const refX = 25;       // Adjusted for node radius
+        
         // Standard arrow marker - default blue
         defs.append('marker')
             .attr('id', 'arrow')
             .attr('viewBox', '0 -5 10 10')
-            .attr('refX', 8)
+            .attr('refX', refX)
             .attr('refY', 0)
-            .attr('markerWidth', 6)
-            .attr('markerHeight', 6)
+            .attr('markerWidth', arrowSize)
+            .attr('markerHeight', arrowSize)
             .attr('orient', 'auto')
             .append('path')
             .attr('d', 'M0,-5L10,0L0,5')
-            .attr('fill', '#2196F3');
+            .attr('fill', '#2196F3')
+            .attr('opacity', 0.8);
         
-        // Outgoing arrow marker - orange
+        // Outgoing arrow marker - orange (for transfers FROM center node)
         defs.append('marker')
             .attr('id', 'arrow-outgoing')
             .attr('viewBox', '0 -5 10 10')
-            .attr('refX', 8)
+            .attr('refX', refX)
             .attr('refY', 0)
-            .attr('markerWidth', 6)
-            .attr('markerHeight', 6)
+            .attr('markerWidth', arrowSize)
+            .attr('markerHeight', arrowSize)
             .attr('orient', 'auto')
             .append('path')
             .attr('d', 'M0,-5L10,0L0,5')
-            .attr('fill', '#FF9800');
+            .attr('fill', '#FF9800')
+            .attr('opacity', 0.9);
         
-        // Incoming arrow marker - green
+        // Incoming arrow marker - green (for transfers TO center node)
         defs.append('marker')
             .attr('id', 'arrow-incoming')
             .attr('viewBox', '0 -5 10 10')
-            .attr('refX', 8)
+            .attr('refX', refX)
             .attr('refY', 0)
-            .attr('markerWidth', 6)
-            .attr('markerHeight', 6)
+            .attr('markerWidth', arrowSize)
+            .attr('markerHeight', arrowSize)
             .attr('orient', 'auto')
             .append('path')
             .attr('d', 'M0,-5L10,0L0,5')
-            .attr('fill', '#4CAF50');
+            .attr('fill', '#4CAF50')
+            .attr('opacity', 0.9);
         
-        // Bidirectional arrow marker - purple
-        defs.append('marker')
+        // Bidirectional arrow marker - purple with double arrowhead
+        const bidirectionalMarker = defs.append('marker')
             .attr('id', 'arrow-bidirectional')
-            .attr('viewBox', '0 -5 10 10')
-            .attr('refX', 8)
+            .attr('viewBox', '0 -8 16 16')
+            .attr('refX', refX)
             .attr('refY', 0)
-            .attr('markerWidth', 6)
-            .attr('markerHeight', 6)
-            .attr('orient', 'auto')
-            .append('path')
-            .attr('d', 'M0,-5L10,0L0,5')
-            .attr('fill', '#9C27B0');
+            .attr('markerWidth', arrowSize)
+            .attr('markerHeight', arrowSize)
+            .attr('orient', 'auto');
+        
+        // Create a double-headed arrow shape for bidirectional
+        bidirectionalMarker.append('path')
+            .attr('d', 'M0,-5L10,0L0,5 M6,-8L16,-3L16,3L6,8')
+            .attr('fill', '#9C27B0')
+            .attr('opacity', 0.9);
         
         // Highlighted arrow marker
         defs.append('marker')
             .attr('id', 'arrow-highlighted')
             .attr('viewBox', '0 -5 10 10')
-            .attr('refX', 8)
+            .attr('refX', refX)
             .attr('refY', 0)
-            .attr('markerWidth', 6)
-            .attr('markerHeight', 6)
+            .attr('markerWidth', arrowSize * 1.2)
+            .attr('markerHeight', arrowSize * 1.2)
             .attr('orient', 'auto')
             .append('path')
             .attr('d', 'M0,-5L10,0L0,5')
@@ -442,6 +454,79 @@ class PolkadotGraphVisualization {
             
         } catch (error) {
             console.error('Error loading graph data:', error);
+            this.callbacks.onError(error);
+        }
+    }
+    
+    /**
+     * Add incremental data to existing graph (for progressive loading)
+     */
+    addIncrementalData(incrementalData) {
+        try {
+            // Validate incremental data
+            if (!incrementalData) {
+                console.warn('No incremental data provided');
+                return;
+            }
+            
+            console.log('Adding incremental data:', {
+                newNodes: incrementalData.nodes?.length || 0,
+                newEdges: incrementalData.edges?.length || 0
+            });
+            
+            let hasNewData = false;
+            
+            // Add new nodes (avoid duplicates)
+            if (incrementalData.nodes && incrementalData.nodes.length > 0) {
+                const existingNodeIds = new Set(this.state.data.nodes.map(n => n.address));
+                const newNodes = incrementalData.nodes.filter(node => !existingNodeIds.has(node.address));
+                
+                if (newNodes.length > 0) {
+                    this.state.data.nodes.push(...newNodes.map(node => ({ ...node })));
+                    hasNewData = true;
+                    console.log(`Added ${newNodes.length} new nodes`);
+                }
+            }
+            
+            // Add new edges (avoid duplicates)
+            if (incrementalData.edges && incrementalData.edges.length > 0) {
+                const existingEdgeIds = new Set(this.state.data.links.map(e => e.id || `${e.source}-${e.target}`));
+                const newEdges = incrementalData.edges.filter(edge => {
+                    const edgeId = edge.id || `${edge.source}-${edge.target}`;
+                    return !existingEdgeIds.has(edgeId);
+                });
+                
+                if (newEdges.length > 0) {
+                    this.state.data.links.push(...newEdges.map(edge => ({ ...edge })));
+                    hasNewData = true;
+                    console.log(`Added ${newEdges.length} new edges`);
+                }
+            }
+            
+            // Only re-render if we actually added new data
+            if (hasNewData) {
+                // Apply current filters to include new data
+                this.applyFilters();
+                
+                // Update simulation parameters if needed
+                this.updateSimulationParameters();
+                
+                // Re-render with new data
+                this.render();
+                
+                // Update metrics
+                this.metrics.nodeCount = this.state.filteredData.nodes.length;
+                this.metrics.edgeCount = this.state.filteredData.links.length;
+                this.metrics.lastUpdate = Date.now();
+                
+                // Trigger callback
+                this.callbacks.onDataUpdate(this.state.filteredData, this.metrics);
+                
+                console.log(`Graph updated incrementally. Total: ${this.state.data.nodes.length} nodes, ${this.state.data.links.length} edges`);
+            }
+            
+        } catch (error) {
+            console.error('Error adding incremental data:', error);
             this.callbacks.onError(error);
         }
     }
@@ -738,6 +823,30 @@ class PolkadotGraphVisualization {
             .on('mouseover', (event, d) => this.handleNodeMouseOver(event, d))
             .on('mouseout', (event, d) => this.handleNodeMouseOut(event, d))
             .call(this.createDragBehavior());
+        
+        // Add pulsing animation to center nodes for maximum visibility
+        nodeUpdate.filter(d => d.nodeType === 'center')
+            .select('circle')
+            .transition()
+            .duration(1500)
+            .ease(d3.easeSinInOut)
+            .attr('stroke-width', d => this.getNodeStrokeWidth(d) * 1.5)
+            .transition()
+            .duration(1500)
+            .ease(d3.easeSinInOut)
+            .attr('stroke-width', d => this.getNodeStrokeWidth(d))
+            .on('end', function repeat() {
+                d3.select(this)
+                    .transition()
+                    .duration(1500)
+                    .ease(d3.easeSinInOut)
+                    .attr('stroke-width', d => this.getNodeStrokeWidth(d) * 1.5)
+                    .transition()
+                    .duration(1500)
+                    .ease(d3.easeSinInOut)
+                    .attr('stroke-width', d => this.getNodeStrokeWidth(d))
+                    .on('end', repeat);
+            }.bind(this));
         
         // Store node selection for later use
         this.nodeSelection = nodeUpdate;
@@ -1374,6 +1483,11 @@ class PolkadotGraphVisualization {
             }
         }
         
+        // Center nodes are always significantly larger for maximum visibility
+        if (nodeData.nodeType === 'center') {
+            return maxRadius * 1.2; // 20% larger than normal max size
+        }
+        
         return baseRadius + (maxRadius - baseRadius) * sizeFactor;
     }
     
@@ -1389,7 +1503,7 @@ class PolkadotGraphVisualization {
         
         // Color based on node type
         switch (nodeData.nodeType) {
-            case 'center': return this.config.colors.exchange; // Target node
+            case 'center': return this.config.colors.center; // Special bright cyan for focus node
             case 'exchange': return this.config.colors.exchange;
             case 'validator': return this.config.colors.validator;
             case 'mixer': return this.config.colors.mixer;
@@ -1398,6 +1512,11 @@ class PolkadotGraphVisualization {
     }
     
     getNodeStrokeColor(nodeData) {
+        // Center nodes get special bright white stroke for maximum visibility
+        if (nodeData.nodeType === 'center') {
+            return '#FFFFFF';
+        }
+        
         if (this.state.selectedNodes.has(nodeData.address)) {
             return this.config.colors.high;
         }
@@ -1414,6 +1533,16 @@ class PolkadotGraphVisualization {
     }
     
     getNodeStrokeWidth(nodeData) {
+        // Guard against undefined nodeData
+        if (!nodeData) {
+            return this.config.nodes.strokeWidth;
+        }
+        
+        // Center nodes get extra thick stroke for maximum visibility
+        if (nodeData.nodeType === 'center') {
+            return this.config.nodes.strokeWidth * 3;
+        }
+        
         if (this.state.selectedNodes.has(nodeData.address)) {
             return this.config.nodes.strokeWidth * 2;
         }
@@ -1451,6 +1580,11 @@ class PolkadotGraphVisualization {
         const maxWidth = this.config.edges.maxWidth;
         
         let finalWidth = baseWidth;
+        
+        // Bidirectional edges get extra width for emphasis
+        if (edgeData.bidirectional || edgeData.direction === 'bidirectional') {
+            finalWidth = baseWidth * 1.5;
+        }
         
         if (edgeData.suggestedWidth !== undefined) {
             finalWidth = edgeData.suggestedWidth;
@@ -1544,6 +1678,20 @@ class PolkadotGraphVisualization {
         // Check for suggested color (blue/green edges)
         else if (edgeData.suggestedColor) {
             baseColor = edgeData.suggestedColor;
+        }
+        // Apply direction-based coloring for better clarity
+        else if (edgeData.direction) {
+            switch (edgeData.direction) {
+                case 'incoming':
+                    baseColor = '#4CAF50'; // Green for incoming
+                    break;
+                case 'outgoing':
+                    baseColor = '#FF9800'; // Orange for outgoing
+                    break;
+                case 'bidirectional':
+                    baseColor = '#9C27B0'; // Purple for bidirectional
+                    break;
+            }
         }
         // Color based on volume - higher volume = more alert color
         else if (edgeData.volume && edgeData.volume !== '0') {
@@ -1644,23 +1792,34 @@ class PolkadotGraphVisualization {
      * Get text label for edge
      */
     getEdgeLabelText(edgeData) {
+        let label = '';
+        
+        // Add direction indicator at the beginning
+        if (edgeData.direction) {
+            switch (edgeData.direction) {
+                case 'incoming':
+                    label = '← '; // Incoming arrow
+                    break;
+                case 'outgoing':
+                    label = '→ '; // Outgoing arrow
+                    break;
+                case 'bidirectional':
+                    label = '↔ '; // Bidirectional arrow
+                    break;
+            }
+        }
+        
         // Show formatted transfer info if we have both count and volume
         if (edgeData.count && edgeData.volume && edgeData.volume !== '0') {
-            return FormatUtils.formatTransfer(edgeData.count, edgeData.volume);
+            label += FormatUtils.formatTransfer(edgeData.count, edgeData.volume);
         }
-        
         // Show just volume if available
-        if (edgeData.volume && edgeData.volume !== '0') {
-            return FormatUtils.formatBalance(edgeData.volume);
+        else if (edgeData.volume && edgeData.volume !== '0') {
+            label += FormatUtils.formatBalance(edgeData.volume);
         }
         
-        // Show transaction count if available
-        if (edgeData.count && edgeData.count > 1) {
-            return `${edgeData.count} txs`;
-        }
-        
-        // Default to empty string for single transactions with no volume
-        return '';
+        // Return the formatted label
+        return label.trim();
     }
     
     shouldShowLabel(nodeData) {

@@ -574,8 +574,24 @@ class PolkadotAnalysisApp {
                 });
                 
                 this.websocket.on('stream:data', (data) => {
-                    console.log('Stream data batch:', data);
-                    // Could update graph incrementally here
+                    console.log('Stream data batch received:', data);
+                    
+                    // Update graph incrementally with new batch data
+                    if (data.batch && this.graph) {
+                        // Extract nodes and edges from the batch data
+                        const incrementalData = {
+                            nodes: data.batch.currentNodes || data.batch.nodes || [],
+                            edges: data.batch.currentEdges || data.batch.edges || []
+                        };
+                        
+                        // Add the incremental data to the graph
+                        this.graph.addIncrementalData(incrementalData);
+                        
+                        // Update statistics in real-time
+                        this.updateStatistics();
+                        
+                        console.log(`Progressive loading: added ${incrementalData.nodes.length} nodes, ${incrementalData.edges.length} edges`);
+                    }
                 });
                 
                 this.websocket.on('stream:completed', (data) => {
@@ -663,10 +679,12 @@ class PolkadotAnalysisApp {
         console.log('Applying filters:', this.state.filters);
         
         if (this.state.currentAddress) {
-            // Check if we should use progressive loading (when volume filter is applied)
+            // When volume filter is applied, reload the entire graph with the filter
+            // This ensures we get ALL connections matching the filter criteria
             if (BigInt(this.state.filters.minVolume) > BigInt(0)) {
-                console.log('Using progressive loading for volume filter:', this.state.filters.minVolume);
-                this.loadAddressProgressive(this.state.currentAddress);
+                console.log('Reloading graph with volume filter:', this.state.filters.minVolume);
+                // Reload the address with the new filter applied
+                this.loadAddressGraph(this.state.currentAddress);
                 return;
             }
             
