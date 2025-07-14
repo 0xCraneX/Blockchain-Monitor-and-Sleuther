@@ -53,11 +53,35 @@
                             <input type="number" id="volume-filter" min="0" value="0" step="0.1">
                         </div>
 
+                        <div class="filter-section">
+                            <h4 class="filter-section-title">Connection Filters</h4>
+                            <div class="filter-group">
+                                <label>Connection Direction:</label>
+                                <div class="radio-group">
+                                    <label class="radio-label">
+                                        <input type="radio" name="direction-filter" value="all" checked>
+                                        <span class="radio-text">Show All</span>
+                                    </label>
+                                    <label class="radio-label">
+                                        <input type="radio" name="direction-filter" value="incoming">
+                                        <span class="radio-text">Incoming Only</span>
+                                    </label>
+                                    <label class="radio-label">
+                                        <input type="radio" name="direction-filter" value="outgoing">
+                                        <span class="radio-text">Outgoing Only</span>
+                                    </label>
+                                    <label class="radio-label">
+                                        <input type="radio" name="direction-filter" value="bidirectional">
+                                        <span class="radio-text">Bidirectional Only</span>
+                                    </label>
+                                </div>
+                            </div>
 
-                        <div class="filter-group">
-                            <label for="volume-threshold-filter">Highlight Volume Threshold (DOT):</label>
-                            <input type="number" id="volume-threshold-filter" min="0" value="" step="1000" placeholder="e.g. 10000">
-                            <small>Connections above this volume will be highlighted in red</small>
+                            <div class="filter-group">
+                                <label for="volume-threshold-filter">Highlight Volume Threshold (DOT):</label>
+                                <input type="number" id="volume-threshold-filter" min="0" value="" step="1000" placeholder="e.g. 10000">
+                                <small>Connections above this volume will be highlighted in red</small>
+                            </div>
                         </div>
 
                         <button id="apply-filters" class="btn-primary">Apply Filters</button>
@@ -102,21 +126,39 @@
                     <div id="graph-container">
                         <svg id="network-graph"></svg>
                         <div class="graph-legend">
-                            <div class="legend-item">
-                                <span class="legend-color" style="background: #e6007a;"></span>
-                                <span>Target Address</span>
+                            <div class="legend-section">
+                                <h4>Node Types</h4>
+                                <div class="legend-item">
+                                    <span class="legend-color" style="background: #e6007a;"></span>
+                                    <span>Target Address</span>
+                                </div>
+                                <div class="legend-item">
+                                    <span class="legend-color" style="background: #E91E63;"></span>
+                                    <span>Exchange (CEX)</span>
+                                </div>
+                                <div class="legend-item">
+                                    <span class="legend-color" style="background: #9C27B0;"></span>
+                                    <span>Validator</span>
+                                </div>
+                                <div class="legend-item">
+                                    <span class="legend-color" style="background: #9E9E9E;"></span>
+                                    <span>Regular Address</span>
+                                </div>
                             </div>
-                            <div class="legend-item">
-                                <span class="legend-color" style="background: #2196F3;"></span>
-                                <span>Exchange</span>
-                            </div>
-                            <div class="legend-item">
-                                <span class="legend-color" style="background: #9C27B0;"></span>
-                                <span>Validator</span>
-                            </div>
-                            <div class="legend-item">
-                                <span class="legend-color" style="background: #9E9E9E;"></span>
-                                <span>Regular Address</span>
+                            <div class="legend-section">
+                                <h4>Connection Direction</h4>
+                                <div class="legend-item">
+                                    <span class="legend-arrow" style="color: #FF9800;">→</span>
+                                    <span>Outgoing</span>
+                                </div>
+                                <div class="legend-item">
+                                    <span class="legend-arrow" style="color: #4CAF50;">←</span>
+                                    <span>Incoming</span>
+                                </div>
+                                <div class="legend-item">
+                                    <span class="legend-arrow" style="color: #9C27B0;">↔</span>
+                                    <span>Bidirectional</span>
+                                </div>
                             </div>
                         </div>
                         

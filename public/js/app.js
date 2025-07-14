@@ -209,6 +209,14 @@ class PolkadotAnalysisApp {
                 });
             }
         });
+        
+        // Setup direction filter radio buttons
+        const directionRadios = document.querySelectorAll('input[name="direction-filter"]');
+        directionRadios.forEach(radio => {
+            radio.addEventListener('change', () => {
+                this.updateFiltersFromUI();
+            });
+        });
     }
     
     /**
@@ -540,7 +548,7 @@ class PolkadotAnalysisApp {
             maxNodes: 100,
             minVolume: '0',
             minBalance: '0',
-            direction: 'both',
+            direction: 'all',
             nodeTypes: [],
             timeRange: null,
             riskThreshold: null,
@@ -592,6 +600,13 @@ class PolkadotAnalysisApp {
                 console.log('Volume threshold cleared');
             }
         }
+        
+        // Direction filter
+        const directionFilter = document.querySelector('input[name="direction-filter"]:checked');
+        if (directionFilter) {
+            this.state.filters.direction = directionFilter.value;
+            console.log(`Direction filter set to: ${directionFilter.value}`);
+        }
     }
     
     /**
@@ -626,6 +641,13 @@ class PolkadotAnalysisApp {
             const threshold = this.state.filters.volumeThreshold ? 
                 Number(BigInt(this.state.filters.volumeThreshold)) / 1e10 : '';
             volumeThresholdFilter.value = threshold;
+        }
+        
+        // Update direction filter radio buttons
+        const directionValue = this.state.filters.direction || 'all';
+        const directionRadio = document.querySelector(`input[name="direction-filter"][value="${directionValue}"]`);
+        if (directionRadio) {
+            directionRadio.checked = true;
         }
     }
     

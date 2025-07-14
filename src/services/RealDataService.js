@@ -401,9 +401,28 @@ export class RealDataService {
           }
         }
 
-        // Create edge
+        // Create edge with direction detection
         const edgeId = `${address}->${connectedAddress}`;
         const reverseEdgeId = `${connectedAddress}->${address}`;
+
+        // Determine relationship direction based on sent/received volumes
+        const hasSentVolume = rel.sent_volume && BigInt(rel.sent_volume) > 0;
+        const hasReceivedVolume = rel.received_volume && BigInt(rel.received_volume) > 0;
+        const isBidirectional = hasSentVolume && hasReceivedVolume;
+        
+        // Calculate dominant direction for bidirectional relationships
+        let dominantDirection = 'balanced';
+        if (isBidirectional) {
+          const sentAmount = BigInt(rel.sent_volume || 0);
+          const receivedAmount = BigInt(rel.received_volume || 0);
+          const ratio = Number(sentAmount * 100n / (sentAmount + receivedAmount));
+          
+          if (ratio > 70) dominantDirection = 'outgoing';
+          else if (ratio < 30) dominantDirection = 'incoming';
+          else dominantDirection = 'balanced';
+        } else {
+          dominantDirection = hasSentVolume ? 'outgoing' : 'incoming';
+        }
 
         // Check if reverse edge exists (bidirectional)
         if (edges.has(reverseEdgeId)) {
@@ -411,6 +430,11 @@ export class RealDataService {
           existingEdge.bidirectional = true;
           existingEdge.volume = (BigInt(existingEdge.volume) + BigInt(rel.total_volume)).toString();
           existingEdge.count += rel.total_transactions;
+          existingEdge.direction = 'bidirectional';
+          existingEdge.dominantDirection = dominantDirection;
+          // Add volume breakdown for bidirectional edges
+          existingEdge.sentVolume = (BigInt(existingEdge.sentVolume || 0) + BigInt(rel.sent_volume || 0)).toString();
+          existingEdge.receivedVolume = (BigInt(existingEdge.receivedVolume || 0) + BigInt(rel.received_volume || 0)).toString();
         } else if (!edges.has(edgeId)) {
           edges.set(edgeId, {
             id: edgeId,
@@ -419,7 +443,11 @@ export class RealDataService {
             volume: rel.total_volume,
             count: rel.total_transactions,
             edgeType: 'transfer',
-            bidirectional: false,
+            bidirectional: isBidirectional,
+            direction: isBidirectional ? 'bidirectional' : dominantDirection,
+            dominantDirection: dominantDirection,
+            sentVolume: rel.sent_volume || '0',
+            receivedVolume: rel.received_volume || '0',
             firstTransfer: rel.first_interaction,
             lastTransfer: rel.last_interaction
           });

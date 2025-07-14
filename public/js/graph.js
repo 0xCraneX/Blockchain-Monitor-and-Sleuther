@@ -35,7 +35,7 @@ class PolkadotGraphVisualization {
                 minRadius: options.nodeMinRadius || 8,
                 maxRadius: options.nodeMaxRadius || 40,
                 strokeWidth: options.nodeStrokeWidth || 2,
-                labelFont: options.labelFont || '12px sans-serif'
+                labelFont: options.labelFont || '16px sans-serif' // Increased from 12px
             },
             
             edges: {
@@ -271,7 +271,7 @@ class PolkadotGraphVisualization {
     createArrowMarkers() {
         const defs = this.svg.append('defs');
         
-        // Standard arrow marker
+        // Standard arrow marker - default blue
         defs.append('marker')
             .attr('id', 'arrow')
             .attr('viewBox', '0 -5 10 10')
@@ -282,7 +282,46 @@ class PolkadotGraphVisualization {
             .attr('orient', 'auto')
             .append('path')
             .attr('d', 'M0,-5L10,0L0,5')
-            .attr('fill', '#666');
+            .attr('fill', '#2196F3');
+        
+        // Outgoing arrow marker - orange
+        defs.append('marker')
+            .attr('id', 'arrow-outgoing')
+            .attr('viewBox', '0 -5 10 10')
+            .attr('refX', 8)
+            .attr('refY', 0)
+            .attr('markerWidth', 6)
+            .attr('markerHeight', 6)
+            .attr('orient', 'auto')
+            .append('path')
+            .attr('d', 'M0,-5L10,0L0,5')
+            .attr('fill', '#FF9800');
+        
+        // Incoming arrow marker - green
+        defs.append('marker')
+            .attr('id', 'arrow-incoming')
+            .attr('viewBox', '0 -5 10 10')
+            .attr('refX', 8)
+            .attr('refY', 0)
+            .attr('markerWidth', 6)
+            .attr('markerHeight', 6)
+            .attr('orient', 'auto')
+            .append('path')
+            .attr('d', 'M0,-5L10,0L0,5')
+            .attr('fill', '#4CAF50');
+        
+        // Bidirectional arrow marker - purple
+        defs.append('marker')
+            .attr('id', 'arrow-bidirectional')
+            .attr('viewBox', '0 -5 10 10')
+            .attr('refX', 8)
+            .attr('refY', 0)
+            .attr('markerWidth', 6)
+            .attr('markerHeight', 6)
+            .attr('orient', 'auto')
+            .append('path')
+            .attr('d', 'M0,-5L10,0L0,5')
+            .attr('fill', '#9C27B0');
         
         // Highlighted arrow marker
         defs.append('marker')
@@ -447,6 +486,24 @@ class PolkadotGraphVisualization {
             });
         }
         
+        // Apply direction filter
+        if (filters.direction && filters.direction !== 'all') {
+            filteredLinks = filteredLinks.filter(link => {
+                const linkDirection = link.direction || 'outgoing';
+                
+                switch (filters.direction) {
+                    case 'incoming':
+                        return linkDirection === 'incoming';
+                    case 'outgoing':
+                        return linkDirection === 'outgoing';
+                    case 'bidirectional':
+                        return linkDirection === 'bidirectional' || link.bidirectional === true;
+                    default:
+                        return true; // Show all
+                }
+            });
+        }
+        
         // Apply balance filter
         if (filters.minBalance && filters.minBalance !== '0') {
             const minBalance = BigInt(filters.minBalance);
@@ -545,7 +602,8 @@ class PolkadotGraphVisualization {
             filteredNodes: filteredNodes.length,
             originalLinks: this.state.data.links.length,
             filteredLinks: filteredLinks.length,
-            volumeThreshold: filters.volumeThreshold || 'none'
+            volumeThreshold: filters.volumeThreshold || 'none',
+            direction: filters.direction || 'all'
         });
     }
     
@@ -718,7 +776,7 @@ class PolkadotGraphVisualization {
             .attr('stroke', d => this.getEdgeColor(d))
             .attr('stroke-width', d => this.getEdgeWidth(d))
             .attr('stroke-opacity', d => this.getEdgeOpacity(d))
-            // .attr('marker-end', d => this.getEdgeMarker(d)); // Arrows removed
+            .attr('marker-end', d => this.getEdgeMarker(d)); // Arrows re-enabled for direction indication
         
         // Add stroke dasharray for special edge types on the main edge line
         linkEnter.select('.edge')
@@ -772,21 +830,22 @@ class PolkadotGraphVisualization {
         // Add background rectangle for better readability
         edgeLabelEnter.append('rect')
             .attr('class', 'edge-label-background')
-            .attr('fill', 'rgba(0, 0, 0, 0.8)')
-            .attr('stroke', 'rgba(255, 255, 255, 0.2)')
-            .attr('stroke-width', 0.5)
-            .attr('rx', 2)
-            .attr('ry', 2);
+            .attr('fill', 'rgba(0, 0, 0, 0.9)') // Increased opacity for better contrast
+            .attr('stroke', 'rgba(255, 255, 255, 0.4)') // More visible border
+            .attr('stroke-width', 1) // Slightly thicker border
+            .attr('rx', 3) // Slightly rounded corners
+            .attr('ry', 3);
         
         // Add the edge label text
         edgeLabelEnter.append('text')
             .attr('class', 'edge-label-text')
             .attr('text-anchor', 'middle')
             .attr('font-family', 'Arial, sans-serif')
-            .attr('font-size', '10px')
+            .attr('font-size', '12px') // Increased from 10px
             .attr('fill', '#ffffff')
             .attr('pointer-events', 'none')
             .style('user-select', 'none')
+            .style('text-shadow', '1px 1px 2px rgba(0,0,0,0.8)') // Add text shadow for better contrast
             .text(d => this.getEdgeLabelText(d));
         
         // Merge selections
@@ -795,7 +854,7 @@ class PolkadotGraphVisualization {
         // Update edge label text and styling
         edgeLabelUpdate.select('.edge-label-text')
             .text(d => this.getEdgeLabelText(d))
-            .attr('font-size', '10px')
+            .attr('font-size', '12px') // Increased from 10px
             .attr('opacity', 0.9);
         
         // Update background rectangles
@@ -840,23 +899,24 @@ class PolkadotGraphVisualization {
         labelEnter.append('rect')
             .attr('class', 'label-background')
             .attr('fill', '#000000')
-            .attr('fill-opacity', 0.85)
+            .attr('fill-opacity', 0.9) // Increased opacity for better contrast
             .attr('stroke', '#ffffff')
-            .attr('stroke-width', 1)
-            .attr('stroke-opacity', 0.3)
-            .attr('rx', 3)
-            .attr('ry', 3);
+            .attr('stroke-width', 1.5) // Slightly thicker border
+            .attr('stroke-opacity', 0.5) // More visible border
+            .attr('rx', 4) // Slightly rounded corners
+            .attr('ry', 4);
         
         // Add the text label
         labelEnter.append('text')
             .attr('class', 'label-text')
             .attr('text-anchor', 'middle')
             .attr('font-family', this.config.nodes.labelFont)
-            .attr('font-size', '14px')
+            .attr('font-size', '16px') // Increased from 14px
             .attr('fill', '#ffffff')
             .attr('font-weight', 'bold')
             .attr('pointer-events', 'none')
-            .style('user-select', 'none');
+            .style('user-select', 'none')
+            .style('text-shadow', '1px 1px 2px rgba(0,0,0,0.8)'); // Add text shadow for better contrast
         
         // Merge selections
         const labelUpdate = labelEnter.merge(labelSelection);
@@ -882,7 +942,7 @@ class PolkadotGraphVisualization {
                         .attr('font-weight', 'bold');
                 });
             })
-            .attr('font-size', '14px')
+            .attr('font-size', '16px') // Increased from 14px
             .attr('fill', '#ffffff')
             .attr('opacity', 1);
         
@@ -1555,7 +1615,23 @@ class PolkadotGraphVisualization {
     }
     
     getEdgeMarker(edgeData) {
-        return edgeData.bidirectional ? null : 'url(#arrow)';
+        // Determine arrow type based on direction
+        const direction = edgeData.direction || 'outgoing';
+        
+        // Bidirectional edges get double arrows (or no arrows for cleaner look)
+        if (edgeData.bidirectional || direction === 'bidirectional') {
+            return 'url(#arrow-bidirectional)';
+        }
+        
+        // Use direction-specific arrows
+        switch (direction) {
+            case 'incoming':
+                return 'url(#arrow-incoming)';
+            case 'outgoing':
+                return 'url(#arrow-outgoing)';
+            default:
+                return 'url(#arrow)';
+        }
     }
     
     getEdgeDashArray(edgeData) {
@@ -1682,8 +1758,8 @@ class PolkadotGraphVisualization {
      */
     getLabelFontSize() {
         // Adjust font size based on zoom level for better readability
-        const baseSize = 10;
-        const scaleFactor = Math.max(0.8, Math.min(1.5, this.state.zoomLevel));
+        const baseSize = 14; // Increased from 10px
+        const scaleFactor = Math.max(0.9, Math.min(2.0, this.state.zoomLevel)); // Better scaling range
         return `${Math.round(baseSize * scaleFactor)}px`;
     }
     

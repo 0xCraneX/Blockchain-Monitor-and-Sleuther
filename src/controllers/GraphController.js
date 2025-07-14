@@ -1039,29 +1039,32 @@ export class GraphController {
       id: edge.id || `edge_${index}`,
       source: edge.source,
       target: edge.target,
-      count: edge.transferCount || 1,
+      count: edge.transferCount || edge.count || 1,
       volume: edge.volume || '0',
 
       // Edge type
-      edgeType: 'transfer',
+      edgeType: edge.edgeType || 'transfer',
 
       // Temporal data (only if available from real data)
-      firstTransfer: edge.firstTransferTime || null,
-      lastTransfer: edge.lastTransferTime || null,
+      firstTransfer: edge.firstTransferTime || edge.firstTransfer || null,
+      lastTransfer: edge.lastTransferTime || edge.lastTransfer || null,
 
       // Risk indicators
       suspiciousPattern: false,
       patternType: null,
 
+      // Direction information
+      bidirectional: edge.bidirectional || false,
+      direction: edge.direction || (edge.bidirectional ? 'bidirectional' : 'outgoing'),
+      dominantDirection: edge.dominantDirection || 'forward',
+      sentVolume: edge.sentVolume || '0',
+      receivedVolume: edge.receivedVolume || '0',
+
       // Visual hints
       suggestedWidth: this._calculateEdgeWidth(edge),
-      suggestedColor: '#2196F3',
+      suggestedColor: this._getEdgeColor(edge),
       suggestedOpacity: 0.8,
-      animated: false,
-
-      // Direction hints
-      bidirectional: false,
-      dominantDirection: 'forward'
+      animated: false
     }));
 
     return {
@@ -1304,6 +1307,20 @@ export class GraphController {
 
     const volume = Number(BigInt(volumeStr)) / 1e10; // Convert to DOT
     return Math.min(10, Math.max(1, Math.log10(volume + 1) * 2));
+  }
+
+  /**
+   * Get edge color based on direction and type
+   * @private
+   */
+  _getEdgeColor(edge) {
+    // Color based on direction
+    switch (edge.direction) {
+      case 'bidirectional': return '#9C27B0'; // Purple for bidirectional
+      case 'incoming': return '#4CAF50'; // Green for incoming
+      case 'outgoing': return '#FF9800'; // Orange for outgoing
+      default: return '#2196F3'; // Blue for default/unknown
+    }
   }
 
   /**
