@@ -1,0 +1,26 @@
+[
+  {
+    "severity": "CRITICAL",
+    "type": "DORMANT_AWAKENING",
+    "message": "Dormant whale awakens after 35 days",
+    "address": "15cfSaBcTxNr8rV59cbhdMNCRagFr3GE6B3zZRsCp4QHHKPu",
+    "amount": 50000,
+    "savedAt": "2025-07-16T22:35:30.588Z"
+  },
+  {
+    "severity": "IMPORTANT",
+    "type": "LARGE_MOVEMENT",
+    "message": "Large transfer detected",
+    "address": "1FRMM8PEEpiSnzr7eaAXWJfAYV8G2jhMmfgvNj8dyV24fg",
+    "amount": 100000,
+    "savedAt": "2025-07-16T22:35:30.588Z"
+  },
+  {
+    "severity": "NOTABLE",
+    "type": "NEW_WHALE",
+    "message": "New address entered top 1000",
+    "address": "1NewWhaleAddressXXXXXXXXXXXXXXXXXXXXXXXXXX",
+    "amount": 600000,
+    "savedAt": "2025-07-16T22:35:30.588Z"
+  }
+]

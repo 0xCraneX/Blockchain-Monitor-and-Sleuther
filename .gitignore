@@ -1,0 +1,12 @@
+node_modules/
+.env
+data/historical/*
+data/baselines/*
+data/anomalies/*
+!data/historical/.gitkeep
+!data/baselines/.gitkeep
+!data/anomalies/.gitkeep
+*.log
+.DS_Store
+dist/
+build/

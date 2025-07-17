@@ -1,0 +1,254 @@
+{
+  "scenarios": [
+    {
+      "id": "sleeping-giant",
+      "name": "The Sleeping Giant Awakens",
+      "type": "DORMANT_WHALE_ACTIVATION",
+      "severity": "CRITICAL",
+      "timeline": {
+        "dormantPeriod": {
+          "start": "2021-12-15T10:00:00Z",
+          "end": "2023-02-16T05:31:42Z",
+          "days": 880
+        },
+        "activationEvent": {
+          "timestamp": "2023-02-16T05:31:42Z",
+          "block": 14268787,
+          "transactions": 14
+        }
+      },
+      "address": {
+        "id": "15Q7LRbAKrVExHs9xtrhDKuNmPApo4iBQdJp3k11YMDjTF2f",
+        "name": "Ancient Whale #1",
+        "balance": "2470695.5 DOT",
+        "usdValue": 17294865,
+        "type": "whale",
+        "riskScore": 95
+      },
+      "pattern": {
+        "description": "Massive distribution to 14 addresses",
+        "recipients": 14,
+        "totalMoved": "2300000 DOT",
+        "avgPerRecipient": "164285 DOT",
+        "timeSpan": "12 minutes"
+      },
+      "marketImpact": {
+        "priceChange": -3.2,
+        "volumeSpike": 450,
+        "liquidations": 23,
+        "alertsTriggered": 67
+      },
+      "visualization": {
+        "type": "timeline",
+        "highlights": ["dormant_period", "activation_burst", "market_reaction"]
+      }
+    },
+    {
+      "id": "pattern-breaker",
+      "name": "The Pattern Breaker",
+      "type": "BEHAVIORAL_ANOMALY",
+      "severity": "HIGH",
+      "timeline": {
+        "normalPeriod": {
+          "start": "2024-01-01T00:00:00Z",
+          "end": "2025-01-14T21:59:59Z",
+          "patternDesc": "Daily transfers at 22:00 UTC"
+        },
+        "anomalyEvent": {
+          "timestamp": "2025-01-15T14:30:00Z",
+          "deviation": "8.5 hours early, 50x normal size"
+        }
+      },
+      "address": {
+        "id": "16ZL8yLyXv3V3L3z9ofR1ovFLziyXaN1DPq4yffMAZ9czzBD",
+        "name": "Web3 Foundation",
+        "balance": "6499538.08 DOT",
+        "type": "institutional",
+        "normalPattern": {
+          "avgDailyTx": 1.2,
+          "avgSize": "38000 DOT",
+          "preferredHour": 22,
+          "consistency": 94.5
+        }
+      },
+      "anomaly": {
+        "txSize": "1900000 DOT",
+        "sizeMultiple": 50,
+        "timeDeviation": 8.5,
+        "recipient": "Unknown New Address",
+        "flags": ["SIZE_ANOMALY", "TIME_ANOMALY", "NEW_RECIPIENT", "ROUND_NUMBER"]
+      },
+      "alerts": {
+        "generated": 4,
+        "severity": ["CRITICAL", "HIGH", "HIGH", "MEDIUM"],
+        "responseTime": "0.3 seconds"
+      }
+    },
+    {
+      "id": "whale-convergence",
+      "name": "Multi-Whale Convergence",
+      "type": "COORDINATED_MOVEMENT",
+      "severity": "CRITICAL",
+      "addresses": [
+        {
+          "id": "13fqhWQCqTHTPbU1fyvbz9Ua3NC47fVVexYuNQRBwpSeZyKM",
+          "balance": "676139 DOT",
+          "dormantDays": 188
+        },
+        {
+          "id": "16GDRhRYxk42paoK6TfHAqWej8PdDDUwdDazjv4bAn4KGNeb",
+          "balance": "1248339 DOT",
+          "dormantDays": 245
+        },
+        {
+          "id": "13Ybj8CPEArUee78DxUAP9yX3ABmFNVQME1ZH4w8HVncHGzc",
+          "balance": "1895234 DOT",
+          "dormantDays": 456
+        }
+      ],
+      "connection": {
+        "commonSource": "1qnJN7FViy3HZaxZK9tGAA71zxHSBeUweirKqCaox4t8GT7",
+        "lastInteraction": "2023-08-15T00:00:00Z",
+        "pattern": "All received similar amounts within 48 hours"
+      },
+      "simulation": {
+        "trigger": "First whale moves",
+        "cascade": "Others follow within 2-6 hours",
+        "totalVolume": "3819712 DOT",
+        "marketImpact": {
+          "estimatedPriceImpact": -5.7,
+          "liquidationRisk": "HIGH",
+          "exchangeStress": 8.5
+        }
+      },
+      "visualization": {
+        "type": "network_graph",
+        "showConnections": true,
+        "animateMovement": true
+      }
+    },
+    {
+      "id": "validator-exodus", 
+      "name": "The Validator Exodus",
+      "type": "VALIDATOR_UNSTAKING",
+      "severity": "HIGH",
+      "validators": [
+        {
+          "id": "14E5nqKAp3oAJcmzgZhUD2RcptBeUBScxKHgJKU4HPNcKVf3",
+          "name": "Veteran Validator #1",
+          "stake": "1250000 DOT",
+          "commission": 5,
+          "era": 867,
+          "reputation": 98.5
+        }
+      ],
+      "pattern": {
+        "initialUnstaking": "2025-01-15T10:00:00Z",
+        "followersCount": 3,
+        "totalStakeExiting": "4750000 DOT",
+        "unbondingPeriod": "28 days",
+        "clusterBehavior": true
+      },
+      "networkImpact": {
+        "validatorSetChange": -0.8,
+        "decentralizationScore": -2.3,
+        "securityImplication": "MEDIUM",
+        "stakingAPRChange": 0.05
+      },
+      "possibleReasons": [
+        "Technical upgrade concerns",
+        "Regulatory pressure",
+        "Better opportunities elsewhere",
+        "Coordinated migration"
+      ]
+    },
+    {
+      "id": "exchange-run",
+      "name": "The Exchange Run",
+      "type": "EXCHANGE_IMBALANCE",
+      "severity": "CRITICAL",
+      "exchange": {
+        "name": "Major CEX Hot Wallet",
+        "addresses": [
+          "13UVJyLnbVp77Z2t6qZV4fNpRjDHppL6c7weMJobZmSPaZcn",
+          "146HpE8rjRwvjFQpHPg3z83EGg7MFEJBwd4PUW3R2jTJT7Cp"
+        ],
+        "normalBalance": "8500000 DOT",
+        "normalDailyVolume": "2100000 DOT"
+      },
+      "anomaly": {
+        "startTime": "2025-01-15T06:00:00Z",
+        "withdrawals": "5670000 DOT",
+        "deposits": "980000 DOT",
+        "netOutflow": "4690000 DOT",
+        "outflowRate": "223% of normal",
+        "duration": "6 hours"
+      },
+      "progression": [
+        {
+          "hour": 1,
+          "severity": "LOW",
+          "outflow": "15% above normal"
+        },
+        {
+          "hour": 2,
+          "severity": "MEDIUM", 
+          "outflow": "45% above normal"
+        },
+        {
+          "hour": 3,
+          "severity": "HIGH",
+          "outflow": "120% above normal"
+        },
+        {
+          "hour": 4,
+          "severity": "CRITICAL",
+          "outflow": "223% above normal",
+          "alerts": ["LIQUIDITY_RISK", "BANK_RUN_PATTERN", "FTX_SIMILARITY_87%"]
+        }
+      ],
+      "historicalParallel": {
+        "event": "FTX November 2022",
+        "similarity": 87,
+        "outcome": "Exchange halted withdrawals 18 hours later"
+      }
+    }
+  ],
+  "supportingData": {
+    "globalStats": {
+      "totalAddresses": 15420,
+      "monitoredAddresses": 1000,
+      "dailyTransactions": 18500,
+      "totalVolumeTracked": "125000000 DOT",
+      "anomaliesLast30Days": 47,
+      "falsePositiveRate": 0.001,
+      "detectionLatency": "0.3-1.2 seconds"
+    },
+    "alertThresholds": {
+      "dormantDays": 180,
+      "sizeAnomalyMultiple": 10,
+      "timeDeviationHours": 4,
+      "exchangeImbalance": 0.3,
+      "validatorExitCluster": 3
+    },
+    "mlModelStats": {
+      "accuracy": 0.973,
+      "precision": 0.981,
+      "recall": 0.967,
+      "f1Score": 0.974,
+      "trainingSamples": 125000,
+      "lastUpdated": "2025-01-14T00:00:00Z"
+    }
+  },
+  "demoConfig": {
+    "autoPlayDelay": 2000,
+    "animationSpeed": 1.5,
+    "showRealData": false,
+    "fallbackMode": true,
+    "endpoints": {
+      "primary": "wss://demo.polkadot-whale-tracker.io",
+      "fallback": "local://synthetic-data",
+      "cache": "memory://demo-cache"
+    }
+  }
+}

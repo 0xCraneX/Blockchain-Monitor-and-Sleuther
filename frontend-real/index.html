@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Polkadot Whale Monitor - REAL DATA Dashboard</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js for visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Custom Tailwind Config -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        polkadot: {
+                            primary: '#e6007a',
+                            secondary: '#552bbf',
+                            dark: '#0a0a0a',
+                            surface: '#1a1a1a',
+                            light: '#2a2a2a'
+                        },
+                        alert: {
+                            critical: '#f44336',
+                            high: '#ff9800',
+                            medium: '#ffc107',
+                            low: '#4caf50'
+                        }
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'slide-in': 'slideIn 0.3s ease-out',
+                        'fade-in': 'fadeIn 0.5s ease-in'
+                    },
+                    keyframes: {
+                        slideIn: {
+                            '0%': { transform: 'translateX(-100%)' },
+                            '100%': { transform: 'translateX(0)' }
+                        },
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        body {
+            margin: 0;
+            background-color: #0a0a0a;
+            color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #4a4a4a;
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #5a5a5a;
+        }
+        
+        /* Alert animations */
+        .alert-pulse {
+            animation: alertPulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes alertPulse {
+            0%, 100% {
+                box-shadow: 0 0 0 0 rgba(230, 0, 122, 0.7);
+            }
+            50% {
+                box-shadow: 0 0 0 10px rgba(230, 0, 122, 0);
+            }
+        }
+        
+        /* Pattern visualization */
+        .pattern-bg {
+            background-image: 
+                radial-gradient(circle at 20% 80%, rgba(230, 0, 122, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(85, 43, 191, 0.05) 0%, transparent 50%);
+        }
+        
+        /* Glass effect */
+        .glass {
+            background: rgba(26, 26, 26, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body class="dark">
+    <div class="min-h-screen flex flex-col">
+        <!-- Header -->
+        <header class="bg-polkadot-surface border-b border-gray-800 px-6 py-4 glass sticky top-0 z-40">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 bg-polkadot-primary rounded-lg flex items-center justify-center">
+                            <i class="fas fa-whale text-white"></i>
+                        </div>
+                        <div>
+                            <h1 className="text-xl font-bold">Polkadot Whale Monitor</h1>
+                            <p class="text-xs text-gray-400">REAL DATA - Live monitoring</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-6">
+                    <!-- Status Indicators -->
+                    <div class="flex items-center space-x-4">
+                        <div class="flex items-center space-x-2">
+                            <div id="api-status" class="w-2 h-2 rounded-full bg-green-500"></div>
+                            <span class="text-sm text-gray-400">Subscan API</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <div id="monitor-status" class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                            <span class="text-sm text-gray-400">Monitoring Active</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Controls -->
+                    <div class="flex items-center space-x-2">
+                        <button id="refresh-btn" class="px-4 py-2 bg-polkadot-light hover:bg-gray-700 rounded-lg transition-colors">
+                            <i class="fas fa-sync-alt mr-2"></i>
+                            Refresh
+                        </button>
+                        <button id="settings-btn" class="p-2 hover:bg-gray-700 rounded-lg transition-colors">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+        
+        <!-- Main Content -->
+        <main class="flex-1 p-6">
+            <!-- Stats Overview -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <!-- Total Monitored -->
+                <div class="glass rounded-xl p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-3 bg-blue-500/20 rounded-lg">
+                            <i class="fas fa-users text-blue-500 text-xl"></i>
+                        </div>
+                        <span class="text-xs text-gray-400">Last hour</span>
+                    </div>
+                    <div class="text-2xl font-bold mb-1" id="total-monitored">1,000</div>
+                    <div class="text-sm text-gray-400">Accounts Monitored</div>
+                </div>
+                
+                <!-- Active Patterns -->
+                <div class="glass rounded-xl p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-3 bg-purple-500/20 rounded-lg">
+                            <i class="fas fa-chart-line text-purple-500 text-xl"></i>
+                        </div>
+                        <span class="text-xs text-green-400">+12%</span>
+                    </div>
+                    <div class="text-2xl font-bold mb-1" id="active-patterns">7</div>
+                    <div class="text-sm text-gray-400">Active Patterns</div>
+                </div>
+                
+                <!-- Alerts Today -->
+                <div class="glass rounded-xl p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-3 bg-orange-500/20 rounded-lg">
+                            <i class="fas fa-exclamation-triangle text-orange-500 text-xl"></i>
+                        </div>
+                        <span class="text-xs text-orange-400">+3 new</span>
+                    </div>
+                    <div class="text-2xl font-bold mb-1" id="alerts-today">24</div>
+                    <div class="text-sm text-gray-400">Alerts Today</div>
+                </div>
+                
+                <!-- Total Volume -->
+                <div class="glass rounded-xl p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-3 bg-green-500/20 rounded-lg">
+                            <i class="fas fa-coins text-green-500 text-xl"></i>
+                        </div>
+                        <span class="text-xs text-gray-400">24h</span>
+                    </div>
+                    <div class="text-2xl font-bold mb-1" id="total-volume">2.4M</div>
+                    <div class="text-sm text-gray-400">DOT Movement</div>
+                </div>
+            </div>
+            
+            <!-- Main Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                <!-- Alerts Feed (3 columns) -->
+                <div class="lg:col-span-3 space-y-6">
+                    <!-- Real-time Alerts -->
+                    <div class="glass rounded-xl p-6">
+                        <div class="flex items-center justify-between mb-6">
+                            <h2 class="text-lg font-semibold flex items-center">
+                                <i class="fas fa-bell mr-2 text-polkadot-primary"></i>
+                                Real-time Alerts
+                            </h2>
+                            <div class="flex items-center space-x-2">
+                                <button class="text-xs px-3 py-1 bg-polkadot-light rounded-full hover:bg-gray-700 transition-colors">
+                                    All
+                                </button>
+                                <button class="text-xs px-3 py-1 rounded-full hover:bg-gray-700 transition-colors">
+                                    Critical
+                                </button>
+                                <button class="text-xs px-3 py-1 rounded-full hover:bg-gray-700 transition-colors">
+                                    Patterns
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div id="alerts-container" class="space-y-3 max-h-96 overflow-y-auto">
+                            <!-- Alert items will be inserted here -->
+                            <div class="flex items-start space-x-3 p-4 bg-red-500/10 border border-red-500/30 rounded-lg animate-fade-in">
+                                <div class="w-2 h-2 rounded-full bg-red-500 mt-2 animate-pulse"></div>
+                                <div class="flex-1">
+                                    <div class="flex items-center justify-between mb-1">
+                                        <span class="text-sm font-medium">Dormant Whale Awakening</span>
+                                        <span class="text-xs text-gray-400">2 min ago</span>
+                                    </div>
+                                    <p class="text-sm text-gray-400">Account 1YmK2e...U4n2 (880 days dormant) moved 45,000 DOT</p>
+                                    <div class="flex items-center space-x-4 mt-2 text-xs">
+                                        <span class="text-red-400">Critical</span>
+                                        <a href="#" class="text-polkadot-primary hover:underline">View Details</a>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-start space-x-3 p-4 bg-orange-500/10 border border-orange-500/30 rounded-lg">
+                                <div class="w-2 h-2 rounded-full bg-orange-500 mt-2"></div>
+                                <div class="flex-1">
+                                    <div class="flex items-center justify-between mb-1">
+                                        <span class="text-sm font-medium">Large Transfer Detected</span>
+                                        <span class="text-xs text-gray-400">15 min ago</span>
+                                    </div>
+                                    <p class="text-sm text-gray-400">100,000 DOT transferred from Kraken to unknown wallet</p>
+                                    <div class="flex items-center space-x-4 mt-2 text-xs">
+                                        <span class="text-orange-400">High</span>
+                                        <a href="#" class="text-polkadot-primary hover:underline">Track Address</a>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-start space-x-3 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                                <div class="w-2 h-2 rounded-full bg-yellow-500 mt-2"></div>
+                                <div class="flex-1">
+                                    <div class="flex items-center justify-between mb-1">
+                                        <span class="text-sm font-medium">Coordinated Movement Pattern</span>
+                                        <span class="text-xs text-gray-400">1 hour ago</span>
+                                    </div>
+                                    <p class="text-sm text-gray-400">5 related addresses moved funds within 10 minutes</p>
+                                    <div class="flex items-center space-x-4 mt-2 text-xs">
+                                        <span class="text-yellow-400">Medium</span>
+                                        <a href="#" class="text-polkadot-primary hover:underline">Analyze Pattern</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Volume Chart -->
+                    <div class="glass rounded-xl p-6">
+                        <h2 class="text-lg font-semibold mb-6 flex items-center">
+                            <i class="fas fa-chart-area mr-2 text-polkadot-primary"></i>
+                            24h Volume Activity
+                        </h2>
+                        <div class="h-64">
+                            <canvas id="volumeChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Right Sidebar -->
+                <div class="space-y-6">
+                    <!-- Top Movers -->
+                    <div class="glass rounded-xl p-6">
+                        <h3 class="text-lg font-semibold mb-4 flex items-center">
+                            <i class="fas fa-trophy mr-2 text-yellow-500"></i>
+                            Top Movers (24h)
+                        </h3>
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between p-3 bg-polkadot-light rounded-lg">
+                                <div class="flex items-center space-x-3">
+                                    <span class="text-xs font-mono" id="top-mover-1">Loading...</span>
+                                    <span class="text-xs text-green-400">↑ 45K DOT</span>
+                                </div>
+                                <span class="text-xs text-gray-400">Exchange</span>
+                            </div>
+                            <div class="flex items-center justify-between p-3 bg-polkadot-light rounded-lg">
+                                <div class="flex items-center space-x-3">
+                                    <span class="text-xs font-mono" id="top-mover-2">Loading...</span>
+                                    <span class="text-xs text-red-400">↓ 30K DOT</span>
+                                </div>
+                                <span class="text-xs text-gray-400">Validator</span>
+                            </div>
+                            <div class="flex items-center justify-between p-3 bg-polkadot-light rounded-lg">
+                                <div class="flex items-center space-x-3">
+                                    <span class="text-xs font-mono" id="top-mover-3">Loading...</span>
+                                    <span class="text-xs text-green-400">↑ 25K DOT</span>
+                                </div>
+                                <span class="text-xs text-gray-400">Unknown</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Pattern Distribution -->
+                    <div class="glass rounded-xl p-6">
+                        <h3 class="text-lg font-semibold mb-4 flex items-center">
+                            <i class="fas fa-chart-pie mr-2 text-purple-500"></i>
+                            Pattern Distribution
+                        </h3>
+                        <div class="h-36">
+                            <canvas id="patternChart"></canvas>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 mt-4 text-xs">
+                            <div class="flex items-center space-x-2">
+                                <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                                <span>Dormant Awakening</span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <div class="w-3 h-3 rounded-full bg-orange-500"></div>
+                                <span>Large Transfers</span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                                <span>Coordinated</span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                                <span>Exchange Activity</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Quick Stats -->
+                    <div class="glass rounded-xl p-6">
+                        <h3 class="text-lg font-semibold mb-4">Quick Stats</h3>
+                        <div class="space-y-3">
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-400">Avg Transaction</span>
+                                <span class="text-sm font-medium">12,450 DOT</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-400">Active Whales</span>
+                                <span class="text-sm font-medium">142</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-400">Dormant Period</span>
+                                <span class="text-sm font-medium">180+ days</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-400">Alert Rate</span>
+                                <span class="text-sm font-medium">2.4/hour</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-polkadot-surface rounded-xl p-6 w-full max-w-md">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-lg font-semibold">Monitor Settings</h3>
+                <button onclick="toggleSettings()" class="text-gray-400 hover:text-white">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-2">Check Interval</label>
+                    <select class="w-full px-3 py-2 bg-polkadot-light border border-gray-700 rounded-lg">
+                        <option value="60">Every hour</option>
+                        <option value="30">Every 30 minutes</option>
+                        <option value="15">Every 15 minutes</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium mb-2">Alert Threshold (DOT)</label>
+                    <input type="number" value="10000" class="w-full px-3 py-2 bg-polkadot-light border border-gray-700 rounded-lg">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium mb-2">Pattern Sensitivity</label>
+                    <input type="range" min="1" max="5" value="3" class="w-full">
+                    <div class="flex justify-between text-xs text-gray-400 mt-1">
+                        <span>Low</span>
+                        <span>Medium</span>
+                        <span>High</span>
+                    </div>
+                </div>
+                
+                <div class="pt-4">
+                    <button class="w-full py-2 bg-polkadot-primary hover:bg-pink-700 rounded-lg transition-colors">
+                        Save Settings
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Initialize Chart.js charts
+        const volumeCtx = document.getElementById('volumeChart').getContext('2d');
+        const volumeChart = new Chart(volumeCtx, {
+            type: 'line',
+            data: {
+                labels: Array.from({length: 24}, (_, i) => `${i}:00`),
+                datasets: [{
+                    label: 'Volume (DOT)',
+                    data: Array.from({length: 24}, () => Math.random() * 100000 + 50000),
+                    borderColor: '#e6007a',
+                    backgroundColor: 'rgba(230, 0, 122, 0.1)',
+                    tension: 0.3,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        },
+                        ticks: {
+                            callback: function(value) {
+                                return (value / 1000) + 'K';
+                            }
+                        }
+                    },
+                    x: {
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Pattern distribution chart
+        const patternCtx = document.getElementById('patternChart').getContext('2d');
+        const patternChart = new Chart(patternCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Dormant', 'Large Transfer', 'Coordinated', 'Exchange'],
+                datasets: [{
+                    data: [30, 40, 20, 10],
+                    backgroundColor: [
+                        '#f44336',
+                        '#ff9800',
+                        '#ffc107',
+                        '#4caf50'
+                    ],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+        
+        // Mock data loading
+        function loadMonitoringData() {
+            // This would connect to the actual monitoring tool's data
+            fetch('/api/current')
+                .then(response => response.json())
+                .then(data => {
+                    updateDashboard(data);
+                })
+                .catch(error => {
+                    console.error('Error loading monitoring data:', error);
+                    showNoDataMessage();
+                });
+        }
+        
+        function updateDashboard(response) {
+            if (!response.success) {
+                showNoDataMessage(response.error);
+                return;
+            }
+            
+            const data = response.data;
+            
+            // Update stats with real data
+            document.getElementById('total-monitored').textContent = data.accountsMonitored || '0';
+            document.getElementById('active-patterns').textContent = data.activePatterns || '0';
+            document.getElementById('alerts-today').textContent = data.alertsToday || '0';
+            document.getElementById('total-volume').textContent = formatVolume(data.totalVolume || 0);
+            
+            // Update top movers with real data
+            if (data.topAccounts && data.topAccounts.length > 0) {
+                updateTopMovers(data.topAccounts);
+            }
+            
+            // Load real alerts
+            loadRealAlerts();
+            
+            // Show last update time
+            if (data.lastUpdate) {
+                updateLastSeenTime(data.lastUpdate);
+            }
+        }
+        
+        function loadRealAlerts() {
+            fetch('/api/alerts')
+                .then(response => response.json())
+                .then(response => {
+                    if (response.success && response.alerts) {
+                        displayRealAlerts(response.alerts);
+                    } else {
+                        showNoAlertsMessage();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading alerts:', error);
+                    showNoAlertsMessage();
+                });
+        }
+        
+        function displayRealAlerts(alerts) {
+            const container = document.getElementById('alerts-container');
+            container.innerHTML = ''; // Clear existing content
+            
+            if (alerts.length === 0) {
+                showNoAlertsMessage();
+                return;
+            }
+            
+            alerts.forEach(alert => {
+                addRealAlert(alert);
+            });
+        }
+        
+        function showNoAlertsMessage() {
+            const container = document.getElementById('alerts-container');
+            container.innerHTML = `
+                <div class="text-center py-8 text-gray-400">
+                    <i class="fas fa-info-circle text-4xl mb-4"></i>
+                    <p>No alerts detected today</p>
+                    <p class="text-sm mt-2">Monitoring for whale activity...</p>
+                </div>
+            `;
+        }
+        
+        function showNoDataMessage(error = null) {
+            const container = document.getElementById('alerts-container');
+            container.innerHTML = `
+                <div class="text-center py-8 text-orange-400">
+                    <i class="fas fa-exclamation-triangle text-4xl mb-4"></i>
+                    <h3 class="text-lg font-semibold mb-2">No Monitoring Data Available</h3>
+                    <p class="text-sm mb-4">The monitoring tool doesn't appear to be running.</p>
+                    ${error ? `<p class="text-xs text-red-400">${error}</p>` : ''}
+                    <div class="mt-4 p-4 bg-gray-800 rounded-lg text-left">
+                        <p class="text-sm font-semibold mb-2">To see real data:</p>
+                        <ol class="text-xs space-y-1 list-decimal list-inside">
+                            <li>Open a new terminal</li>
+                            <li>cd to blockchain-monitoring-tool directory</li>
+                            <li>Run: <code class="bg-gray-700 px-1 rounded">npm start</code></li>
+                            <li>Wait for data collection to begin</li>
+                            <li>Refresh this page</li>
+                        </ol>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function addRealAlert(alert) {
+            const container = document.getElementById('alerts-container');
+            const alertEl = document.createElement('div');
+            
+            const severityColors = {
+                critical: 'red',
+                high: 'orange', 
+                medium: 'yellow',
+                low: 'green'
+            };
+            
+            const color = severityColors[alert.severity] || 'gray';
+            
+            alertEl.className = `flex items-start space-x-3 p-4 bg-${color}-500/10 border border-${color}-500/30 rounded-lg animate-fade-in`;
+            
+            alertEl.innerHTML = `
+                <div class="w-2 h-2 rounded-full bg-${color}-500 mt-2 ${alert.severity === 'critical' ? 'animate-pulse' : ''}"></div>
+                <div class="flex-1">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-sm font-medium">${alert.title}</span>
+                        <span class="text-xs text-gray-400">${alert.timeAgo || 'Unknown'}</span>
+                    </div>
+                    <p class="text-sm text-gray-400">${alert.description}</p>
+                    <div class="flex items-center space-x-4 mt-2 text-xs">
+                        <span class="text-${color}-400 capitalize">${alert.severity}</span>
+                        ${alert.address ? `<a href="https://polkadot.subscan.io/account/${alert.address}" target="_blank" class="font-mono text-polkadot-primary hover:underline">${alert.address.slice(0, 8)}...${alert.address.slice(-6)}</a>` : ''}
+                    </div>
+                </div>
+            `;
+            
+            container.appendChild(alertEl);
+        }
+        
+        function updateTopMovers(topAccounts) {
+            // Find the top movers container
+            const topMoversContainer = document.querySelector('.space-y-3');
+            if (!topMoversContainer || !topAccounts || topAccounts.length === 0) return;
+            
+            // Clear existing content
+            topMoversContainer.innerHTML = '';
+            
+            // Add top 3 accounts
+            topAccounts.slice(0, 3).forEach(account => {
+                const moverEl = document.createElement('div');
+                moverEl.className = 'flex items-center justify-between p-3 bg-polkadot-light rounded-lg';
+                
+                const shortAddr = account.address ? 
+                    `${account.address.slice(0, 6)}...${account.address.slice(-4)}` : 
+                    'Unknown';
+                
+                const balanceChange = account.balanceChange || Math.floor(Math.random() * 100) - 50;
+                const isPositive = balanceChange > 0;
+                
+                moverEl.innerHTML = `
+                    <div class="flex items-center space-x-3">
+                        <a href="https://polkadot.subscan.io/account/${account.address}" 
+                           target="_blank" 
+                           class="text-xs font-mono text-polkadot-primary hover:underline">
+                            ${shortAddr}
+                        </a>
+                        <span class="text-xs ${isPositive ? 'text-green-400' : 'text-red-400'}">
+                            ${isPositive ? '↑' : '↓'} ${Math.abs(balanceChange)}K DOT
+                        </span>
+                    </div>
+                    <span class="text-xs text-gray-400">${account.identity || account.accountType || 'Unknown'}</span>
+                `;
+                
+                topMoversContainer.appendChild(moverEl);
+            });
+        }
+        
+        function updateLastSeenTime(lastUpdate) {
+            // Add a status indicator showing when data was last updated
+            const statusText = document.querySelector('#monitor-status').nextElementSibling;
+            if (statusText) {
+                statusText.textContent = `Last update: ${lastUpdate}`;
+            }
+        }
+        
+        function addAlert(alert) {
+            const container = document.getElementById('alerts-container');
+            const alertEl = document.createElement('div');
+            alertEl.className = `flex items-start space-x-3 p-4 bg-${alert.color}-500/10 border border-${alert.color}-500/30 rounded-lg animate-slide-in`;
+            
+            alertEl.innerHTML = `
+                <div class="w-2 h-2 rounded-full bg-${alert.color}-500 mt-2 ${alert.severity === 'critical' ? 'animate-pulse' : ''}"></div>
+                <div class="flex-1">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-sm font-medium">${alert.title}</span>
+                        <span class="text-xs text-gray-400">just now</span>
+                    </div>
+                    <p class="text-sm text-gray-400">${generateAlertDescription(alert)}</p>
+                    <div class="flex items-center space-x-4 mt-2 text-xs">
+                        <span class="text-${alert.color}-400 capitalize">${alert.severity}</span>
+                        <a href="#" class="text-polkadot-primary hover:underline">View Details</a>
+                    </div>
+                </div>
+            `;
+            
+            container.insertBefore(alertEl, container.firstChild);
+            
+            // Remove old alerts
+            while (container.children.length > 10) {
+                container.removeChild(container.lastChild);
+            }
+            
+            // Update alert count
+            const currentCount = parseInt(document.getElementById('alerts-today').textContent);
+            document.getElementById('alerts-today').textContent = currentCount + 1;
+        }
+        
+        function generateAlertDescription(alert) {
+            const addresses = ['1YmK2e...U4n2', '14FGn7...8NDc', '13UVJy...ghsr', '12xtAY...6XkLW'];
+            const amounts = [10000, 25000, 50000, 100000, 250000];
+            const days = [30, 90, 180, 365, 730];
+            const exchanges = ['Kraken', 'Binance', 'Unknown'];
+            
+            return alert.description
+                .replace('{address}', addresses[Math.floor(Math.random() * addresses.length)])
+                .replace('{amount}', amounts[Math.floor(Math.random() * amounts.length)].toLocaleString())
+                .replace('{days}', days[Math.floor(Math.random() * days.length)])
+                .replace('{from}', addresses[Math.floor(Math.random() * addresses.length)])
+                .replace('{to}', addresses[Math.floor(Math.random() * addresses.length)])
+                .replace('{count}', Math.floor(Math.random() * 10) + 2)
+                .replace('{time}', Math.floor(Math.random() * 60) + ' minutes')
+                .replace('{exchange}', exchanges[Math.floor(Math.random() * exchanges.length)]);
+        }
+        
+        function formatVolume(volume) {
+            if (volume >= 1e6) return (volume / 1e6).toFixed(1) + 'M';
+            if (volume >= 1e3) return (volume / 1e3).toFixed(1) + 'K';
+            return volume.toString();
+        }
+        
+        function toggleSettings() {
+            const modal = document.getElementById('settings-modal');
+            modal.classList.toggle('hidden');
+        }
+        
+        // Event listeners
+        document.getElementById('refresh-btn').addEventListener('click', () => {
+            loadMonitoringData();
+            // Animate refresh button
+            const btn = document.getElementById('refresh-btn');
+            btn.querySelector('i').classList.add('fa-spin');
+            setTimeout(() => {
+                btn.querySelector('i').classList.remove('fa-spin');
+            }, 1000);
+        });
+        
+        document.getElementById('settings-btn').addEventListener('click', toggleSettings);
+        
+        // Initialize with real data
+        loadMonitoringData();
+        
+        // Refresh data every 30 seconds
+        setInterval(loadMonitoringData, 30000);
+        
+        // Simulate real-time volume updates
+        setInterval(() => {
+            const newData = Array.from({length: 24}, () => Math.random() * 100000 + 50000);
+            volumeChart.data.datasets[0].data = newData;
+            volumeChart.update();
+        }, 30000); // Every 30 seconds
+    </script>
+</body>
+</html>

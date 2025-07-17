@@ -1,0 +1,1653 @@
+{
+  "timestamp": "2025-07-17T14:51:43.816Z",
+  "count": 100,
+  "totalBalance": 828831999.9131303,
+  "accounts": [
+    {
+      "address": "16ZL8yLyXv3V3L3z9ofR1ovFLziyXaN1DPq4yffMAZ9czzBD",
+      "balance": "128263513.6886350592",
+      "balanceFloat": 128263513.68863507,
+      "nonce": 119,
+      "accountDisplay": {
+        "address": "16ZL8yLyXv3V3L3z9ofR1ovFLziyXaN1DPq4yffMAZ9czzBD",
+        "merkle": {
+          "address_type": "user_wallet",
+          "tag_type": "Exchange",
+          "tag_subtype": "Mandatory KYC and AML",
+          "tag_name": "Binance.com"
+        },
+        "people": {}
+      },
+      "identity": "Binance.com",
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "36151918.6287609875",
+      "reserved": "36151918.6287609875",
+      "accountType": "exchange"
+    },
+    {
+      "address": "13Z7KjGnzdAdMre9cqRwTZHR6F2p36gqBsaNmQwwosiPz8JT",
+      "balance": "34510315.1645661878",
+      "balanceFloat": 34510315.16456619,
+      "nonce": 86,
+      "accountDisplay": {
+        "address": "13Z7KjGnzdAdMre9cqRwTZHR6F2p36gqBsaNmQwwosiPz8JT",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "0",
+      "reserved": "0",
+      "accountType": "whale"
+    },
+    {
+      "address": "15j4dg5GzsL1bw2U2AWgeyAk6QTxq43V7ZPbXdAmbVLjvDCK",
+      "balance": "17970279.0085871699",
+      "balanceFloat": 17970279.00858717,
+      "nonce": 0,
+      "accountDisplay": {
+        "address": "15j4dg5GzsL1bw2U2AWgeyAk6QTxq43V7ZPbXdAmbVLjvDCK",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "17970165.9634489099",
+      "reserved": "17970165.9634489099",
+      "accountType": "validator"
+    },
+    {
+      "address": "14Ns6kKbCoka3MS4Hn6b7oRw9fFejG8RH5rq5j63cWUfpPDJ",
+      "balance": "17969891.4454540217",
+      "balanceFloat": 17969891.44545402,
+      "nonce": 0,
+      "accountDisplay": {
+        "address": "14Ns6kKbCoka3MS4Hn6b7oRw9fFejG8RH5rq5j63cWUfpPDJ",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "17969781.3936570326",
+      "reserved": "17969781.3936570326",
+      "accountType": "validator"
+    },
+    {
+      "address": "12ouvKSvKnXAdXFR5oCL1vXimWrkDWG3joMNw3ETupTRs1ab",
+      "balance": "16230000",
+      "balanceFloat": 16230000,
+      "nonce": 0,
+      "accountDisplay": {
+        "address": "12ouvKSvKnXAdXFR5oCL1vXimWrkDWG3joMNw3ETupTRs1ab",
+        "merkle": {
+          "address_type": "user_wallet",
+          "tag_type": "Exchange",
+          "tag_subtype": "Mandatory KYC and AML",
+          "tag_name": "Binance.com"
+        },
+        "people": {}
+      },
+      "identity": "Binance.com",
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "0",
+      "reserved": "0",
+      "accountType": "exchange"
+    },
+    {
+      "address": "1gn68eNGNGqV3QjVcRRDVfw22xFn1eFyUizHCENVn256LXh",
+      "balance": "14330467.0182537706",
+      "balanceFloat": 14330467.01825377,
+      "nonce": 7,
+      "accountDisplay": {
+        "address": "1gn68eNGNGqV3QjVcRRDVfw22xFn1eFyUizHCENVn256LXh",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "0",
+      "reserved": "0",
+      "accountType": "whale"
+    },
+    {
+      "address": "1GVe7pAK2Pc4TVGuPBYbEU82VmaiQhKjFTzECpX7GGXgzBB",
+      "balance": "11920000.001192",
+      "balanceFloat": 11920000.001192,
+      "nonce": 0,
+      "accountDisplay": {
+        "address": "1GVe7pAK2Pc4TVGuPBYbEU82VmaiQhKjFTzECpX7GGXgzBB",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "11919878",
+      "reserved": "11919878",
+      "accountType": "validator"
+    },
+    {
+      "address": "13UVJyLnbVp9RBZYFwFGyDvVd1y27Tt8tkntv6Q7JVPhFsTB",
+      "balance": "11917706.1807150498",
+      "balanceFloat": 11917706.18071505,
+      "nonce": 0,
+      "accountDisplay": {
+        "address": "13UVJyLnbVp9RBZYFwFGyDvVd1y27Tt8tkntv6Q7JVPhFsTB",
+        "display": "modlpy/trsry",
+        "people": {
+          "display": "modlpy/trsry"
+        }
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "0",
+      "reserved": "0",
+      "accountType": "whale"
+    },
+    {
+      "address": "16GMHo9HZv8CcJy4WLoMaU9qusgzx2wxKDLbXStEBvt5274B",
+      "balance": "11339712.6991877216",
+      "balanceFloat": 11339712.699187722,
+      "nonce": 0,
+      "accountDisplay": {
+        "address": "16GMHo9HZv8CcJy4WLoMaU9qusgzx2wxKDLbXStEBvt5274B",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "11339606.5625477206",
+      "reserved": "11339606.5625477206",
+      "accountType": "validator"
+    },
+    {
+      "address": "13UVJyLnbVp9x5XDyJv8g8r3UddNwBrdaH7AADCmw9XQWvYW",
+      "balance": "11288994.5286019749",
+      "balanceFloat": 11288994.528601974,
+      "nonce": 0,
+      "accountDisplay": {
+        "address": "13UVJyLnbVp9x5XDyJv8g8r3UddNwBrdaH7AADCmw9XQWvYW",
+        "display": "modlpy/xcmch",
+        "people": {
+          "display": "modlpy/xcmch"
+        }
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "0",
+      "reserved": "0",
+      "accountType": "whale"
+    },
+    {
+      "address": "13SkL2uACPqBzpKBh3d2n5msYNFB2QapA5vEDeKeLjG2LS3Y",
+      "balance": "10529667.2775810028",
+      "balanceFloat": 10529667.277581003,
+      "nonce": 0,
+      "accountDisplay": {
+        "address": "13SkL2uACPqBzpKBh3d2n5msYNFB2QapA5vEDeKeLjG2LS3Y",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "10529305.6607829548",
+      "reserved": "10529305.6607829548",
+      "accountType": "validator"
+    },
+    {
+      "address": "11yLs2qzU15AhxnH1d7Koqcf83AwutKkDaGbqsJJ6yDWQjc",
+      "balance": "10444272.0755983272",
+      "balanceFloat": 10444272.075598327,
+      "nonce": 24,
+      "accountDisplay": {
+        "address": "11yLs2qzU15AhxnH1d7Koqcf83AwutKkDaGbqsJJ6yDWQjc",
+        "merkle": {
+          "address_type": "user_wallet",
+          "tag_type": "Exchange",
+          "tag_subtype": "Mandatory KYC and AML",
+          "tag_name": "Bybit.com"
+        },
+        "people": {}
+      },
+      "identity": "Bybit.com",
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "0",
+      "reserved": "0",
+      "accountType": "exchange"
+    },
+    {
+      "address": "14qtDMNNJiENyn2K8cprEZRtBQ7RDW25LjCzHuFUwivtrpRv",
+      "balance": "10137065.5600281615",
+      "balanceFloat": 10137065.560028162,
+      "nonce": 1,
+      "accountDisplay": {
+        "address": "14qtDMNNJiENyn2K8cprEZRtBQ7RDW25LjCzHuFUwivtrpRv",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "0",
+      "reserved": "0",
+      "accountType": "whale"
+    },
+    {
+      "address": "19KT274PAdSchBjDmnxh6vEMdy4QFU9Bo6jgMZhen3esYGG",
+      "balance": "10100116.8390490184",
+      "balanceFloat": 10100116.839049019,
+      "nonce": 11633,
+      "accountDisplay": {
+        "address": "19KT274PAdSchBjDmnxh6vEMdy4QFU9Bo6jgMZhen3esYGG",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "10097174.56018259",
+      "reserved": "10097174.56018259",
+      "accountType": "validator"
+    },
+    {
+      "address": "13Th6PcjJ468fy2cQeVDDdHE6ycJ3sFQ5S9wHiQRDkCKR6Tz",
+      "balance": "10000101.0991512643",
+      "balanceFloat": 10000101.099151265,
+      "nonce": 11,
+      "accountDisplay": {
+        "address": "13Th6PcjJ468fy2cQeVDDdHE6ycJ3sFQ5S9wHiQRDkCKR6Tz",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "10000039.3823133534",
+      "reserved": "10000039.3823133534",
+      "accountType": "validator"
+    },
+    {
+      "address": "13KJ3t8w1CKMkXCmZ6s3VwdWo4h747kXE88ZNh6rCBTvojmM",
+      "balance": "10000073.5121955821",
+      "balanceFloat": 10000073.512195582,
+      "nonce": 2915,
+      "accountDisplay": {
+        "address": "13KJ3t8w1CKMkXCmZ6s3VwdWo4h747kXE88ZNh6rCBTvojmM",
+        "account_index": "1NAjD",
+        "people": {
+          "display": "pos.dog",
+          "identity": true,
+          "judgements": [
+            {
+              "index": 1,
+              "judgement": "Reasonable"
+            }
+          ]
+        }
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "10000000.0001523494",
+      "reserved": "10000000.0001523494",
+      "accountType": "validator"
+    },
+    {
+      "address": "13E7LXW3NGYAJGKugiEitKZ4XjR4MXBs4ZhE1bkwBAaAoBCn",
+      "balance": "10000023.2671137954",
+      "balanceFloat": 10000023.267113796,
+      "nonce": 56,
+      "accountDisplay": {
+        "address": "13E7LXW3NGYAJGKugiEitKZ4XjR4MXBs4ZhE1bkwBAaAoBCn",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "10000000.000028672",
+      "reserved": "10000000.000028672",
+      "accountType": "validator"
+    },
+    {
+      "address": "1dz7HBjHWYegSw8YhAzDBszQPv62n96xtR3B7sFhYTe9HY9",
+      "balance": "9588908.8073071747",
+      "balanceFloat": 9588908.807307174,
+      "nonce": 101,
+      "accountDisplay": {
+        "address": "1dz7HBjHWYegSw8YhAzDBszQPv62n96xtR3B7sFhYTe9HY9",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "0",
+      "reserved": "0",
+      "accountType": "whale"
+    },
+    {
+      "address": "1344zprT7A4VFrQ46GJycLrjhBoYjf1RcsjbRLmk5DtsYshV",
+      "balance": "9099255.9094895994",
+      "balanceFloat": 9099255.9094896,
+      "nonce": 51937,
+      "accountDisplay": {
+        "address": "1344zprT7A4VFrQ46GJycLrjhBoYjf1RcsjbRLmk5DtsYshV",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "0",
+      "reserved": "0",
+      "accountType": "whale"
+    },
+    {
+      "address": "14UpRGUeAfsSZHFN63t4ojJrLNupPApUiLgovXtm7ZiAHUDA",
+      "balance": "8998387.4212737122",
+      "balanceFloat": 8998387.421273712,
+      "nonce": 0,
+      "accountDisplay": {
+        "address": "14UpRGUeAfsSZHFN63t4ojJrLNupPApUiLgovXtm7ZiAHUDA",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "8679840",
+      "reserved": "8679840",
+      "accountType": "validator"
+    },
+    {
+      "address": "14gAowz3LaAqYkRjqUZkjZUxKFUzLtN2oZJSfr3ziHBRhwgc",
+      "balance": "8990199.5233842646",
+      "balanceFloat": 8990199.523384264,
+      "nonce": 0,
+      "accountDisplay": {
+        "address": "14gAowz3LaAqYkRjqUZkjZUxKFUzLtN2oZJSfr3ziHBRhwgc",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "8990099.5233842646",
+      "reserved": "8990099.5233842646",
+      "accountType": "validator"
+    },
+    {
+      "address": "14AoK8VSrHFxZijXhZGSUipHzZbUgo2AkmEaviD9yxTb1ScX",
+      "balance": "8817455.2294006996",
+      "balanceFloat": 8817455.2294007,
+      "nonce": 0,
+      "accountDisplay": {
+        "address": "14AoK8VSrHFxZijXhZGSUipHzZbUgo2AkmEaviD9yxTb1ScX",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "8501870",
+      "reserved": "8501870",
+      "accountType": "validator"
+    },
+    {
+      "address": "1tZzPmcq8Auisttygmg9g6tPMtrh9i3b22D3tKXvde7ibRB",
+      "balance": "8701697.1161974018",
+      "balanceFloat": 8701697.116197402,
+      "nonce": 0,
+      "accountDisplay": {
+        "address": "1tZzPmcq8Auisttygmg9g6tPMtrh9i3b22D3tKXvde7ibRB",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "8395460",
+      "reserved": "8395460",
+      "accountType": "validator"
+    },
+    {
+      "address": "11Q7ismkHUbbUexpQc4DgTvedfsh8jKMDV7jZZoQwv57NLS",
+      "balance": "8571457.7972689195",
+      "balanceFloat": 8571457.79726892,
+      "nonce": 0,
+      "accountDisplay": {
+        "address": "11Q7ismkHUbbUexpQc4DgTvedfsh8jKMDV7jZZoQwv57NLS",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "8216820",
+      "reserved": "8216820",
+      "accountType": "validator"
+    },
+    {
+      "address": "13Xo4xYdMRQQoWD7TA9yCDHG1BXqQFvnjeGvU6LHhRhUsBhQ",
+      "balance": "8460207.1119985783",
+      "balanceFloat": 8460207.111998579,
+      "nonce": 0,
+      "accountDisplay": {
+        "address": "13Xo4xYdMRQQoWD7TA9yCDHG1BXqQFvnjeGvU6LHhRhUsBhQ",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "8100000",
+      "reserved": "8100000",
+      "accountType": "validator"
+    },
+    {
+      "address": "13mPEacdrf8yq5qEQyxbFpHX1CWJiDYBDbBGjja3Zm6RYiHj",
+      "balance": "8390726.1382015281",
+      "balanceFloat": 8390726.138201527,
+      "nonce": 3,
+      "accountDisplay": {
+        "address": "13mPEacdrf8yq5qEQyxbFpHX1CWJiDYBDbBGjja3Zm6RYiHj",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "0",
+      "reserved": "0",
+      "accountType": "whale"
+    },
+    {
+      "address": "14etN8LW2YB2WA7yBYDecyLFPpxMSaeV1nhxYbJi8uMJcfkD",
+      "balance": "8334695.7768084442",
+      "balanceFloat": 8334695.776808444,
+      "nonce": 0,
+      "accountDisplay": {
+        "address": "14etN8LW2YB2WA7yBYDecyLFPpxMSaeV1nhxYbJi8uMJcfkD",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "8045190",
+      "reserved": "8045190",
+      "accountType": "validator"
+    },
+    {
+      "address": "16QzZydJqbXiqzs7wW3pNdReMcWPb6ps7yj71g8VTrhHgJFt",
+      "balance": "8067153.557927752",
+      "balanceFloat": 8067153.557927752,
+      "nonce": 1466,
+      "accountDisplay": {
+        "address": "16QzZydJqbXiqzs7wW3pNdReMcWPb6ps7yj71g8VTrhHgJFt",
+        "merkle": {
+          "address_type": "user_wallet",
+          "tag_type": "Exchange",
+          "tag_subtype": "Mandatory KYC and AML",
+          "tag_name": "Okx.com"
+        },
+        "people": {}
+      },
+      "identity": "Okx.com",
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "8067122",
+      "reserved": "8067122",
+      "accountType": "exchange"
+    },
+    {
+      "address": "12nr7GiDrYHzAYT9L8HdeXnMfWcBuYfAXpgfzf3upujeCciz",
+      "balance": "7680773.1420255551",
+      "balanceFloat": 7680773.1420255555,
+      "nonce": 174990,
+      "accountDisplay": {
+        "address": "12nr7GiDrYHzAYT9L8HdeXnMfWcBuYfAXpgfzf3upujeCciz",
+        "merkle": {
+          "address_type": "hot_wallet",
+          "tag_type": "Exchange",
+          "tag_subtype": "Mandatory KYC and AML",
+          "tag_name": "Bybit.com"
+        },
+        "people": {}
+      },
+      "identity": "Bybit.com",
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "0",
+      "reserved": "0",
+      "accountType": "exchange"
+    },
+    {
+      "address": "166JJ1tU9JsjsjvKQ6shhvv54L46BDJq2G6HXmauzwu4AvJh",
+      "balance": "7659822.8647819067",
+      "balanceFloat": 7659822.864781907,
+      "nonce": 0,
+      "accountDisplay": {
+        "address": "166JJ1tU9JsjsjvKQ6shhvv54L46BDJq2G6HXmauzwu4AvJh",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "7659821.7306250067",
+      "reserved": "7659821.7306250067",
+      "accountType": "validator"
+    },
+    {
+      "address": "12UCSRxm3sCoX6tCkycf5TMgA3xY7Uyp44NjqFEHM6gRbcxL",
+      "balance": "7470929.3883456633",
+      "balanceFloat": 7470929.388345663,
+      "nonce": 65,
+      "accountDisplay": {
+        "address": "12UCSRxm3sCoX6tCkycf5TMgA3xY7Uyp44NjqFEHM6gRbcxL",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "7470919.0632566362",
+      "reserved": "7470919.0632566362",
+      "accountType": "validator"
+    },
+    {
+      "address": "12WLDL2AXoH3MHr1xj8K4m9rCcRKSWKTUz8A4mX3ah5khJBn",
+      "balance": "7340011.000081",
+      "balanceFloat": 7340011.000081,
+      "nonce": 0,
+      "accountDisplay": {
+        "address": "12WLDL2AXoH3MHr1xj8K4m9rCcRKSWKTUz8A4mX3ah5khJBn",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "7339909",
+      "reserved": "7339909",
+      "accountType": "validator"
+    },
+    {
+      "address": "13yk62yQYctYsRPXDFvC5WzBtanAsHDasenooLAxKvf5bNkK",
+      "balance": "7290000.0002155711",
+      "balanceFloat": 7290000.000215571,
+      "nonce": 0,
+      "accountDisplay": {
+        "address": "13yk62yQYctYsRPXDFvC5WzBtanAsHDasenooLAxKvf5bNkK",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "7289833.7370765711",
+      "reserved": "7289833.7370765711",
+      "accountType": "validator"
+    },
+    {
+      "address": "14NSRugu2B7XPwcyPTFsDsBodZb72NgrhMih6ith8dSSGmfc",
+      "balance": "7290000.000049",
+      "balanceFloat": 7290000.000049,
+      "nonce": 0,
+      "accountDisplay": {
+        "address": "14NSRugu2B7XPwcyPTFsDsBodZb72NgrhMih6ith8dSSGmfc",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "7289900",
+      "reserved": "7289900",
+      "accountType": "validator"
+    },
+    {
+      "address": "15FZotswrG9r6KQvBPb5Y3ybs6CA5FLbFbyzhk4ABfgDup22",
+      "balance": "7289742.3975767849",
+      "balanceFloat": 7289742.397576785,
+      "nonce": 0,
+      "accountDisplay": {
+        "address": "15FZotswrG9r6KQvBPb5Y3ybs6CA5FLbFbyzhk4ABfgDup22",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "7289712.3973637849",
+      "reserved": "7289712.3973637849",
+      "accountType": "validator"
+    },
+    {
+      "address": "13Fv7btqKR2NQVZSaJAK1DhxKpxgjzE8twaWnwDk8B1u6voR",
+      "balance": "7289450.5039269588",
+      "balanceFloat": 7289450.503926959,
+      "nonce": 0,
+      "accountDisplay": {
+        "address": "13Fv7btqKR2NQVZSaJAK1DhxKpxgjzE8twaWnwDk8B1u6voR",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "7289420.5022039588",
+      "reserved": "7289420.5022039588",
+      "accountType": "validator"
+    },
+    {
+      "address": "1YrgDeWz4zkBLWtwzkXwBBrADugpdMmP7sWTs5nPZVHZMm7",
+      "balance": "7283154.6258318978",
+      "balanceFloat": 7283154.625831897,
+      "nonce": 62,
+      "accountDisplay": {
+        "address": "1YrgDeWz4zkBLWtwzkXwBBrADugpdMmP7sWTs5nPZVHZMm7",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "7283129.512026683",
+      "reserved": "7283129.512026683",
+      "accountType": "validator"
+    },
+    {
+      "address": "15qhQde3g7t8MyTqZ1pLtJzyw4zxM87myKkvjgKv5VYQWrPW",
+      "balance": "7173850.7826647441",
+      "balanceFloat": 7173850.782664744,
+      "nonce": 46,
+      "accountDisplay": {
+        "address": "15qhQde3g7t8MyTqZ1pLtJzyw4zxM87myKkvjgKv5VYQWrPW",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "0",
+      "reserved": "0",
+      "accountType": "whale"
+    },
+    {
+      "address": "1xKjsPUd2MJSSucTbXL5BknBy1nnpGSH3zFCcUXiC7gFFyP",
+      "balance": "7171372.613631776",
+      "balanceFloat": 7171372.613631776,
+      "nonce": 65,
+      "accountDisplay": {
+        "address": "1xKjsPUd2MJSSucTbXL5BknBy1nnpGSH3zFCcUXiC7gFFyP",
+        "merkle": {
+          "address_type": "user_wallet",
+          "tag_type": "Exchange",
+          "tag_subtype": "Mandatory KYC and AML",
+          "tag_name": "Kraken.com"
+        },
+        "people": {}
+      },
+      "identity": "Kraken.com",
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "7170956.8279139879",
+      "reserved": "7170956.8279139879",
+      "accountType": "exchange"
+    },
+    {
+      "address": "11uxhjMSBpFKisDMg36WPVZrqELeGVteeq1eoQKhqHbXVta",
+      "balance": "7115838.1436738211",
+      "balanceFloat": 7115838.143673821,
+      "nonce": 30,
+      "accountDisplay": {
+        "address": "11uxhjMSBpFKisDMg36WPVZrqELeGVteeq1eoQKhqHbXVta",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "7115439.7312006703",
+      "reserved": "7115439.7312006703",
+      "accountType": "validator"
+    },
+    {
+      "address": "13z6tqM18GgaeVD6H9ciwfyQp5dogD58hWJThu5iXKtHfixb",
+      "balance": "7072783.0197288096",
+      "balanceFloat": 7072783.01972881,
+      "nonce": 55,
+      "accountDisplay": {
+        "address": "13z6tqM18GgaeVD6H9ciwfyQp5dogD58hWJThu5iXKtHfixb",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "7072773.9868480499",
+      "reserved": "7072773.9868480499",
+      "accountType": "validator"
+    },
+    {
+      "address": "13a6JAbZpMQYsMEfgJnLM36twAMHPLfbjY5YMmXNRS5WugM5",
+      "balance": "7034562.80729208",
+      "balanceFloat": 7034562.80729208,
+      "nonce": 1,
+      "accountDisplay": {
+        "address": "13a6JAbZpMQYsMEfgJnLM36twAMHPLfbjY5YMmXNRS5WugM5",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "0",
+      "reserved": "0",
+      "accountType": "whale"
+    },
+    {
+      "address": "12LdngMrL3xmSSj6bCpAqprZBWWkHBfYdv47RxWMPZtWzuwK",
+      "balance": "6999291.3350953775",
+      "balanceFloat": 6999291.335095378,
+      "nonce": 1303,
+      "accountDisplay": {
+        "address": "12LdngMrL3xmSSj6bCpAqprZBWWkHBfYdv47RxWMPZtWzuwK",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "6998479.0598752554",
+      "reserved": "6998479.0598752554",
+      "accountType": "validator"
+    },
+    {
+      "address": "15KVfAvMFs8kad3gSM2ZyPv9fcJzarZWX4XFRKTLGaEzUKgr",
+      "balance": "6799670.2788278773",
+      "balanceFloat": 6799670.278827878,
+      "nonce": 40,
+      "accountDisplay": {
+        "address": "15KVfAvMFs8kad3gSM2ZyPv9fcJzarZWX4XFRKTLGaEzUKgr",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "0",
+      "reserved": "0",
+      "accountType": "whale"
+    },
+    {
+      "address": "12ZMM3vPtEwqmNgzjLqELYYeCvoP1cpf3yn2qwD9J8K1Q4pn",
+      "balance": "6511797.5315521522",
+      "balanceFloat": 6511797.531552152,
+      "nonce": 0,
+      "accountDisplay": {
+        "address": "12ZMM3vPtEwqmNgzjLqELYYeCvoP1cpf3yn2qwD9J8K1Q4pn",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "6511696.7475721522",
+      "reserved": "6511696.7475721522",
+      "accountType": "validator"
+    },
+    {
+      "address": "13hLwqcVHqjiJMbZhR9LtfdhoxmTdssi7Kp8EJaW2yfk3knK",
+      "balance": "6404680.2724311864",
+      "balanceFloat": 6404680.272431186,
+      "nonce": 0,
+      "accountDisplay": {
+        "address": "13hLwqcVHqjiJMbZhR9LtfdhoxmTdssi7Kp8EJaW2yfk3knK",
+        "people": {
+          "parent": {
+            "address": "15DAjHAziLo53dtHQPdNfQCEbiryoFsko7b6rABYNy9wzwzF",
+            "display": "Bifrost",
+            "sub_symbol": "vDOT Staker Proxy",
+            "identity": true
+          }
+        }
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "6404679.2724311864",
+      "reserved": "6404679.2724311864",
+      "accountType": "validator"
+    },
+    {
+      "address": "14QkQ7wVVDRrhbC1UqHsFwKFUns1SRud94CXMWGHWB8Jhtro",
+      "balance": "6372363.520997087",
+      "balanceFloat": 6372363.520997087,
+      "nonce": 0,
+      "accountDisplay": {
+        "address": "14QkQ7wVVDRrhbC1UqHsFwKFUns1SRud94CXMWGHWB8Jhtro",
+        "people": {
+          "parent": {
+            "address": "15DAjHAziLo53dtHQPdNfQCEbiryoFsko7b6rABYNy9wzwzF",
+            "display": "Bifrost",
+            "sub_symbol": "vDOT Staker Proxy",
+            "identity": true
+          }
+        }
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "6371909.6183341186",
+      "reserved": "6371909.6183341186",
+      "accountType": "validator"
+    },
+    {
+      "address": "14vtfeKAVKh1Jzb3s7e43SqZ3zB5MLsdCxZPoKDxeoCFKLu5",
+      "balance": "6357005.1784973321",
+      "balanceFloat": 6357005.178497332,
+      "nonce": 0,
+      "accountDisplay": {
+        "address": "14vtfeKAVKh1Jzb3s7e43SqZ3zB5MLsdCxZPoKDxeoCFKLu5",
+        "people": {
+          "parent": {
+            "address": "15DAjHAziLo53dtHQPdNfQCEbiryoFsko7b6rABYNy9wzwzF",
+            "display": "Bifrost",
+            "sub_symbol": "vDOT Voter Proxy",
+            "identity": true
+          }
+        }
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "6357003.8808223589",
+      "reserved": "6357003.8808223589",
+      "accountType": "validator"
+    },
+    {
+      "address": "12Z6FSvMFRjno881i1qpFndrtZtcVCLs5v4nR92McQNX31CT",
+      "balance": "6250636.5638589232",
+      "balanceFloat": 6250636.5638589235,
+      "nonce": 62,
+      "accountDisplay": {
+        "address": "12Z6FSvMFRjno881i1qpFndrtZtcVCLs5v4nR92McQNX31CT",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "6250217.4613848214",
+      "reserved": "6250217.4613848214",
+      "accountType": "validator"
+    },
+    {
+      "address": "11gqpAyU17G9EFW5n5MNngh824F3Y2as72V2rgc7Wq5JVRd",
+      "balance": "6071013.5297828051",
+      "balanceFloat": 6071013.529782805,
+      "nonce": 55,
+      "accountDisplay": {
+        "address": "11gqpAyU17G9EFW5n5MNngh824F3Y2as72V2rgc7Wq5JVRd",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "6070989.0365177904",
+      "reserved": "6070989.0365177904",
+      "accountType": "validator"
+    },
+    {
+      "address": "15tkQXN8hj28sucMHYcGfMvyxWJqHtcVEDvj5jrNJ1TWSJyX",
+      "balance": "6046689.2182379855",
+      "balanceFloat": 6046689.218237986,
+      "nonce": 7,
+      "accountDisplay": {
+        "address": "15tkQXN8hj28sucMHYcGfMvyxWJqHtcVEDvj5jrNJ1TWSJyX",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "6000000",
+      "reserved": "6000000",
+      "accountType": "validator"
+    },
+    {
+      "address": "13iVNghf2zS3gnSc8KEZP7JMyQwxscu1XmAH7TZUXvMLeB26",
+      "balance": "5973511.196705106",
+      "balanceFloat": 5973511.196705106,
+      "nonce": 69,
+      "accountDisplay": {
+        "address": "13iVNghf2zS3gnSc8KEZP7JMyQwxscu1XmAH7TZUXvMLeB26",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "5968509.1584777642",
+      "reserved": "5968509.1584777642",
+      "accountType": "validator"
+    },
+    {
+      "address": "15zFju56Eb1frUBfB6KJg6NN7dst61mZAAjywZyrHZCuoqoh",
+      "balance": "5835862.4952161278",
+      "balanceFloat": 5835862.4952161275,
+      "nonce": 59,
+      "accountDisplay": {
+        "address": "15zFju56Eb1frUBfB6KJg6NN7dst61mZAAjywZyrHZCuoqoh",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "0",
+      "reserved": "0",
+      "accountType": "whale"
+    },
+    {
+      "address": "1qnJN7FViy3HZaxZK9tGAA71zxHSBeUweirKqCaox4t8GT7",
+      "balance": "5703148.6012042332",
+      "balanceFloat": 5703148.601204233,
+      "nonce": 642251,
+      "accountDisplay": {
+        "address": "1qnJN7FViy3HZaxZK9tGAA71zxHSBeUweirKqCaox4t8GT7",
+        "merkle": {
+          "address_type": "hot_wallet",
+          "tag_type": "Exchange",
+          "tag_subtype": "Mandatory KYC and AML",
+          "tag_name": "Binance.com"
+        },
+        "people": {}
+      },
+      "identity": "Binance.com",
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "0",
+      "reserved": "0",
+      "accountType": "exchange"
+    },
+    {
+      "address": "14NEHDwc5PPQfEjzLVDbVbi4djQLQZ9u7mMU3BPhTFJf4cD6",
+      "balance": "5701924.3473812928",
+      "balanceFloat": 5701924.347381293,
+      "nonce": 74,
+      "accountDisplay": {
+        "address": "14NEHDwc5PPQfEjzLVDbVbi4djQLQZ9u7mMU3BPhTFJf4cD6",
+        "merkle": {
+          "address_type": "user_wallet",
+          "tag_type": "Exchange",
+          "tag_subtype": "Mandatory KYC and AML",
+          "tag_name": "Kraken.com"
+        },
+        "people": {}
+      },
+      "identity": "Kraken.com",
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "0",
+      "reserved": "0",
+      "accountType": "exchange"
+    },
+    {
+      "address": "12XQctYQRUmwtDiKAMEAGFanTQ8viDDLJJgRDhAMCMVTkbqF",
+      "balance": "5633700.8717622033",
+      "balanceFloat": 5633700.871762203,
+      "nonce": 2,
+      "accountDisplay": {
+        "address": "12XQctYQRUmwtDiKAMEAGFanTQ8viDDLJJgRDhAMCMVTkbqF",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "0",
+      "reserved": "0",
+      "accountType": "whale"
+    },
+    {
+      "address": "12WW2nRdq2Xbe6Rjz5A8d9Wcp7fwRg7GFNEU392L9Zy6YtLM",
+      "balance": "5627100.9240038926",
+      "balanceFloat": 5627100.924003893,
+      "nonce": 0,
+      "accountDisplay": {
+        "address": "12WW2nRdq2Xbe6Rjz5A8d9Wcp7fwRg7GFNEU392L9Zy6YtLM",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "5627000.4530328926",
+      "reserved": "5627000.4530328926",
+      "accountType": "validator"
+    },
+    {
+      "address": "14ticRRPLVkeWSarb3U6Q5HX858QJ46GcCWWSrWwRowB9nra",
+      "balance": "5592848.6930801757",
+      "balanceFloat": 5592848.693080176,
+      "nonce": 70,
+      "accountDisplay": {
+        "address": "14ticRRPLVkeWSarb3U6Q5HX858QJ46GcCWWSrWwRowB9nra",
+        "merkle": {
+          "address_type": "user_wallet",
+          "tag_type": "Exchange",
+          "tag_subtype": "Mandatory KYC and AML",
+          "tag_name": "Kraken.com"
+        },
+        "people": {}
+      },
+      "identity": "Kraken.com",
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "5592431.8667272454",
+      "reserved": "5592431.8667272454",
+      "accountType": "exchange"
+    },
+    {
+      "address": "156U1ffF2ZSR5sBpYNUxvXu3rprh4x4of3WdYuBcReD87qcc",
+      "balance": "5580957.9948371883",
+      "balanceFloat": 5580957.994837188,
+      "nonce": 0,
+      "accountDisplay": {
+        "address": "156U1ffF2ZSR5sBpYNUxvXu3rprh4x4of3WdYuBcReD87qcc",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "5580956.8958371883",
+      "reserved": "5580956.8958371883",
+      "accountType": "validator"
+    },
+    {
+      "address": "12K2F1PeLUiVmt7GfBgiQvtGP4HbtUJ55cLvwbybE8W3nau5",
+      "balance": "5550859.7996255399",
+      "balanceFloat": 5550859.79962554,
+      "nonce": 0,
+      "accountDisplay": {
+        "address": "12K2F1PeLUiVmt7GfBgiQvtGP4HbtUJ55cLvwbybE8W3nau5",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "5550759.5836255399",
+      "reserved": "5550759.5836255399",
+      "accountType": "validator"
+    },
+    {
+      "address": "16fttU3nadc7KgFwxUqLyyryUiqW5VMbVMpTQ18GzNtbK9Tz",
+      "balance": "5436613.6030124217",
+      "balanceFloat": 5436613.603012422,
+      "nonce": 41,
+      "accountDisplay": {
+        "address": "16fttU3nadc7KgFwxUqLyyryUiqW5VMbVMpTQ18GzNtbK9Tz",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "0",
+      "reserved": "0",
+      "accountType": "whale"
+    },
+    {
+      "address": "13c1FsantxSuaNocA6pUsAxiinHSVp2m7hUVg1EJSwxf2L2j",
+      "balance": "5432205.5824150837",
+      "balanceFloat": 5432205.582415083,
+      "nonce": 0,
+      "accountDisplay": {
+        "address": "13c1FsantxSuaNocA6pUsAxiinHSVp2m7hUVg1EJSwxf2L2j",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "5432104.1823840837",
+      "reserved": "5432104.1823840837",
+      "accountType": "validator"
+    },
+    {
+      "address": "16PwWCQsBRTduCFzPt5y6wfHCGxFPFHAKwF97ZQCinGqHLYm",
+      "balance": "5431859.0020315143",
+      "balanceFloat": 5431859.002031514,
+      "nonce": 0,
+      "accountDisplay": {
+        "address": "16PwWCQsBRTduCFzPt5y6wfHCGxFPFHAKwF97ZQCinGqHLYm",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "5431737.0020315143",
+      "reserved": "5431737.0020315143",
+      "accountType": "validator"
+    },
+    {
+      "address": "15fUbpx8ooAWN1mZK6jN4cjeAS3a5remWPmctDu9KRBshhqA",
+      "balance": "5425487.000178048",
+      "balanceFloat": 5425487.000178048,
+      "nonce": 0,
+      "accountDisplay": {
+        "address": "15fUbpx8ooAWN1mZK6jN4cjeAS3a5remWPmctDu9KRBshhqA",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "5425385",
+      "reserved": "5425385",
+      "accountType": "validator"
+    },
+    {
+      "address": "13aUbVbnthMvYuSLUbfK6eTQWaDWLriRrP89ExD17Ep19BkK",
+      "balance": "5387481.8391962452",
+      "balanceFloat": 5387481.839196245,
+      "nonce": 0,
+      "accountDisplay": {
+        "address": "13aUbVbnthMvYuSLUbfK6eTQWaDWLriRrP89ExD17Ep19BkK",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "5387381.1709582452",
+      "reserved": "5387381.1709582452",
+      "accountType": "validator"
+    },
+    {
+      "address": "13NRQGknuzoDWWTu7dmAnN4Ehc4roFRMHoSDprKqkNNHdDnF",
+      "balance": "5272057.615686245",
+      "balanceFloat": 5272057.615686245,
+      "nonce": 0,
+      "accountDisplay": {
+        "address": "13NRQGknuzoDWWTu7dmAnN4Ehc4roFRMHoSDprKqkNNHdDnF",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "5272000",
+      "reserved": "5272000",
+      "accountType": "validator"
+    },
+    {
+      "address": "13fbwXLxHhueoBP3dStumroAVVDBw88nU5MfMSivPCPBKJ6M",
+      "balance": "5073005.3900936572",
+      "balanceFloat": 5073005.390093657,
+      "nonce": 0,
+      "accountDisplay": {
+        "address": "13fbwXLxHhueoBP3dStumroAVVDBw88nU5MfMSivPCPBKJ6M",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "5072980",
+      "reserved": "5072980",
+      "accountType": "validator"
+    },
+    {
+      "address": "16htn59rxuhMH5VQLYTuE7wpnU91Y3McTLaM7mKPpSZZbxaS",
+      "balance": "5011834.35348258",
+      "balanceFloat": 5011834.35348258,
+      "nonce": 0,
+      "accountDisplay": {
+        "address": "16htn59rxuhMH5VQLYTuE7wpnU91Y3McTLaM7mKPpSZZbxaS",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "5000000",
+      "reserved": "5000000",
+      "accountType": "validator"
+    },
+    {
+      "address": "146NJqYe7w9ug2UDwtLEBQgGbbTBVpyMHyJPB9tJFXgHCJV3",
+      "balance": "4990307.8971008",
+      "balanceFloat": 4990307.8971008,
+      "nonce": 0,
+      "accountDisplay": {
+        "address": "146NJqYe7w9ug2UDwtLEBQgGbbTBVpyMHyJPB9tJFXgHCJV3",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "4900000",
+      "reserved": "4900000",
+      "accountType": "validator"
+    },
+    {
+      "address": "13oSJ635GZos8UYrrcwXtp3XWC1G3XHrPvN6skMLdxzUr4sr",
+      "balance": "4619958.0569193912",
+      "balanceFloat": 4619958.056919391,
+      "nonce": 0,
+      "accountDisplay": {
+        "address": "13oSJ635GZos8UYrrcwXtp3XWC1G3XHrPvN6skMLdxzUr4sr",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "4619857.3207783912",
+      "reserved": "4619857.3207783912",
+      "accountType": "validator"
+    },
+    {
+      "address": "15sr8Dvq3AT3Z2Z1y8FnQ4VipekAHhmQnrkgzegUr1tNgbcn",
+      "balance": "4612410.9597097609",
+      "balanceFloat": 4612410.959709761,
+      "nonce": 0,
+      "accountDisplay": {
+        "address": "15sr8Dvq3AT3Z2Z1y8FnQ4VipekAHhmQnrkgzegUr1tNgbcn",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "4612112.2158635552",
+      "reserved": "4612112.2158635552",
+      "accountType": "validator"
+    },
+    {
+      "address": "13sWwbe5kdHSEdmboCdeeXnk532i7HN67evcN1pPKM5BnFTR",
+      "balance": "4612263.8856354285",
+      "balanceFloat": 4612263.885635428,
+      "nonce": 0,
+      "accountDisplay": {
+        "address": "13sWwbe5kdHSEdmboCdeeXnk532i7HN67evcN1pPKM5BnFTR",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "4612163.3055374285",
+      "reserved": "4612163.3055374285",
+      "accountType": "validator"
+    },
+    {
+      "address": "12wJqyreWd7FNnhWWNRggVcqGw63mtB4vuyBCwas6YmzpCQf",
+      "balance": "4605035.6830046911",
+      "balanceFloat": 4605035.683004691,
+      "nonce": 11,
+      "accountDisplay": {
+        "address": "12wJqyreWd7FNnhWWNRggVcqGw63mtB4vuyBCwas6YmzpCQf",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "4605034.6830046911",
+      "reserved": "4605034.6830046911",
+      "accountType": "validator"
+    },
+    {
+      "address": "1vTfju3zruADh7sbBznxWCpircNp9ErzJaPQZKyrUknApRu",
+      "balance": "4574014.7775689445",
+      "balanceFloat": 4574014.777568945,
+      "nonce": 0,
+      "accountDisplay": {
+        "address": "1vTfju3zruADh7sbBznxWCpircNp9ErzJaPQZKyrUknApRu",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "4567159",
+      "reserved": "4567159",
+      "accountType": "validator"
+    },
+    {
+      "address": "136GehDWrz4tqL7ivAT53VeS3PweRZDSHyrbnWLdWJpchW8M",
+      "balance": "4561770.5999596778",
+      "balanceFloat": 4561770.599959678,
+      "nonce": 36,
+      "accountDisplay": {
+        "address": "136GehDWrz4tqL7ivAT53VeS3PweRZDSHyrbnWLdWJpchW8M",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "4500867.2412596778",
+      "reserved": "4500867.2412596778",
+      "accountType": "validator"
+    },
+    {
+      "address": "15u2N1pqWr56teREjQTP5M3tk1SPQjEoUAV6jFfcQCoVy3S5",
+      "balance": "4477861.1264067654",
+      "balanceFloat": 4477861.126406766,
+      "nonce": 31778,
+      "accountDisplay": {
+        "address": "15u2N1pqWr56teREjQTP5M3tk1SPQjEoUAV6jFfcQCoVy3S5",
+        "merkle": {
+          "address_type": "hot_wallet",
+          "tag_type": "Exchange",
+          "tag_subtype": "Mandatory KYC and AML",
+          "tag_name": "Bitget.com"
+        },
+        "people": {}
+      },
+      "identity": "Bitget.com",
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "0",
+      "reserved": "0",
+      "accountType": "exchange"
+    },
+    {
+      "address": "141B8uMKztkYk1Fua84yEyJAheg7Cifi7eWZSNnBb2KR2PWu",
+      "balance": "4421315.1432905116",
+      "balanceFloat": 4421315.143290511,
+      "nonce": 3,
+      "accountDisplay": {
+        "address": "141B8uMKztkYk1Fua84yEyJAheg7Cifi7eWZSNnBb2KR2PWu",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "0",
+      "reserved": "0",
+      "accountType": "whale"
+    },
+    {
+      "address": "153YgsfWKhkayAJRNbNfeQba7MZM65wyKN9UEbk6fU9dsq9Q",
+      "balance": "4415810.7463043242",
+      "balanceFloat": 4415810.746304324,
+      "nonce": 10,
+      "accountDisplay": {
+        "address": "153YgsfWKhkayAJRNbNfeQba7MZM65wyKN9UEbk6fU9dsq9Q",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "4381000",
+      "reserved": "4381000",
+      "accountType": "validator"
+    },
+    {
+      "address": "15vAqwsm23DaXXanw9Zqm9HT7ywBQxFyiFCGGBsTF4Gfr9dL",
+      "balance": "4178773.4557499861",
+      "balanceFloat": 4178773.455749986,
+      "nonce": 152,
+      "accountDisplay": {
+        "address": "15vAqwsm23DaXXanw9Zqm9HT7ywBQxFyiFCGGBsTF4Gfr9dL",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "0",
+      "reserved": "0",
+      "accountType": "whale"
+    },
+    {
+      "address": "16iNp8A8EU6naBzvDmJR2i4hgP5EQnZHeGQ6omKeK9C4NTkp",
+      "balance": "4128539.52",
+      "balanceFloat": 4128539.52,
+      "nonce": 0,
+      "accountDisplay": {
+        "address": "16iNp8A8EU6naBzvDmJR2i4hgP5EQnZHeGQ6omKeK9C4NTkp",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "4128000",
+      "reserved": "4128000",
+      "accountType": "validator"
+    },
+    {
+      "address": "15MwrtvvV56EVHMHTqGDLaNhzm9MettUWyfR7kQBeEqPF7wR",
+      "balance": "4113840",
+      "balanceFloat": 4113840,
+      "nonce": 1,
+      "accountDisplay": {
+        "address": "15MwrtvvV56EVHMHTqGDLaNhzm9MettUWyfR7kQBeEqPF7wR",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "0",
+      "reserved": "0",
+      "accountType": "whale"
+    },
+    {
+      "address": "16exbdjFr5x9CfPXHztZA3HUzQGNiFggfZFLM1k33QZW8gK7",
+      "balance": "4054117.6",
+      "balanceFloat": 4054117.6,
+      "nonce": 0,
+      "accountDisplay": {
+        "address": "16exbdjFr5x9CfPXHztZA3HUzQGNiFggfZFLM1k33QZW8gK7",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "4054017",
+      "reserved": "4054017",
+      "accountType": "validator"
+    },
+    {
+      "address": "12x2JzNyvQsRkKF6dG8FS5rtXMYatGT74ro6kW6AVdXdL8u9",
+      "balance": "4050800",
+      "balanceFloat": 4050800,
+      "nonce": 0,
+      "accountDisplay": {
+        "address": "12x2JzNyvQsRkKF6dG8FS5rtXMYatGT74ro6kW6AVdXdL8u9",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "4050700",
+      "reserved": "4050700",
+      "accountType": "validator"
+    },
+    {
+      "address": "14MwMnvX6LkSQke7vszkZEu3YhUamfPJaTFGmZ4vSSRo1oDi",
+      "balance": "4049130.1699792278",
+      "balanceFloat": 4049130.1699792277,
+      "nonce": 756,
+      "accountDisplay": {
+        "address": "14MwMnvX6LkSQke7vszkZEu3YhUamfPJaTFGmZ4vSSRo1oDi",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "0",
+      "reserved": "0",
+      "accountType": "whale"
+    },
+    {
+      "address": "13e9cUkCHDWuimeE5hYZRmZfDg3sgscsnAJTpN8buzPxVkd4",
+      "balance": "4035633.8042187619",
+      "balanceFloat": 4035633.804218762,
+      "nonce": 5,
+      "accountDisplay": {
+        "address": "13e9cUkCHDWuimeE5hYZRmZfDg3sgscsnAJTpN8buzPxVkd4",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "4035040",
+      "reserved": "4035040",
+      "accountType": "validator"
+    },
+    {
+      "address": "1odhHWsddwRnDQLpyKypBSNhqQbFi43RuHxVaCgeTVEcQv7",
+      "balance": "4013531.3492450881",
+      "balanceFloat": 4013531.349245088,
+      "nonce": 103,
+      "accountDisplay": {
+        "address": "1odhHWsddwRnDQLpyKypBSNhqQbFi43RuHxVaCgeTVEcQv7",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "2481796.058378344",
+      "reserved": "2481796.058378344",
+      "accountType": "whale"
+    },
+    {
+      "address": "12dqWe1tovSDPunvXB3jG6o4dMqHhZiuDyktS6188BWc7ixs",
+      "balance": "3992229.0624773955",
+      "balanceFloat": 3992229.0624773954,
+      "nonce": 308,
+      "accountDisplay": {
+        "address": "12dqWe1tovSDPunvXB3jG6o4dMqHhZiuDyktS6188BWc7ixs",
+        "merkle": {
+          "address_type": "user_wallet",
+          "tag_type": "Exchange",
+          "tag_subtype": "Mandatory KYC and AML",
+          "tag_name": "Coinbase.com"
+        },
+        "people": {}
+      },
+      "identity": "Coinbase.com",
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "0",
+      "reserved": "0",
+      "accountType": "exchange"
+    },
+    {
+      "address": "14Xs22PogFVE4nfPmsRFhmnqX3RqdrUANZRaVJU7Hik8DArR",
+      "balance": "3973017.3172551193",
+      "balanceFloat": 3973017.3172551193,
+      "nonce": 0,
+      "accountDisplay": {
+        "address": "14Xs22PogFVE4nfPmsRFhmnqX3RqdrUANZRaVJU7Hik8DArR",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "3967123",
+      "reserved": "3967123",
+      "accountType": "validator"
+    },
+    {
+      "address": "1665ypcQXKmqXtjE9yuWsZqK5MQmBQokFjPGLq5SvoKAWBjQ",
+      "balance": "3969999.9844005231",
+      "balanceFloat": 3969999.984400523,
+      "nonce": 1,
+      "accountDisplay": {
+        "address": "1665ypcQXKmqXtjE9yuWsZqK5MQmBQokFjPGLq5SvoKAWBjQ",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "3969959.9024005231",
+      "reserved": "3969959.9024005231",
+      "accountType": "validator"
+    },
+    {
+      "address": "16honGZtr648D3Xg2edwknVLjRNVeSeZX99EwiE5mFuAsAuF",
+      "balance": "3905063.1621537101",
+      "balanceFloat": 3905063.16215371,
+      "nonce": 333,
+      "accountDisplay": {
+        "address": "16honGZtr648D3Xg2edwknVLjRNVeSeZX99EwiE5mFuAsAuF",
+        "merkle": {
+          "address_type": "user_wallet",
+          "tag_type": "Exchange",
+          "tag_subtype": "Mandatory KYC and AML",
+          "tag_name": "Coinbase.com"
+        },
+        "people": {}
+      },
+      "identity": "Coinbase.com",
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "3905038.0585920977",
+      "reserved": "3905038.0585920977",
+      "accountType": "exchange"
+    },
+    {
+      "address": "12z6xUYPAUW3WeDb7uH52DqEfejYQ2wMHEVe18XXdPsSFbER",
+      "balance": "3859951.268879496",
+      "balanceFloat": 3859951.268879496,
+      "nonce": 320,
+      "accountDisplay": {
+        "address": "12z6xUYPAUW3WeDb7uH52DqEfejYQ2wMHEVe18XXdPsSFbER",
+        "merkle": {
+          "address_type": "user_wallet",
+          "tag_type": "Exchange",
+          "tag_subtype": "Mandatory KYC and AML",
+          "tag_name": "Coinbase.com"
+        },
+        "people": {}
+      },
+      "identity": "Coinbase.com",
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "3859926.0225623731",
+      "reserved": "3859926.0225623731",
+      "accountType": "exchange"
+    },
+    {
+      "address": "14w9qCiwTACDzBfTXebmbfTSP8tiNA5CZhA1gdedY37E62cr",
+      "balance": "3849854.6546744083",
+      "balanceFloat": 3849854.6546744085,
+      "nonce": 319,
+      "accountDisplay": {
+        "address": "14w9qCiwTACDzBfTXebmbfTSP8tiNA5CZhA1gdedY37E62cr",
+        "merkle": {
+          "address_type": "user_wallet",
+          "tag_type": "Exchange",
+          "tag_subtype": "Mandatory KYC and AML",
+          "tag_name": "Coinbase.com"
+        },
+        "people": {}
+      },
+      "identity": "Coinbase.com",
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "0",
+      "reserved": "0",
+      "accountType": "exchange"
+    },
+    {
+      "address": "13KjpoC6rn9NsKzweB5p68oBcsp77NvMSGdp6BZTMHjHTupB",
+      "balance": "3832996.6054518111",
+      "balanceFloat": 3832996.605451811,
+      "nonce": 119,
+      "accountDisplay": {
+        "address": "13KjpoC6rn9NsKzweB5p68oBcsp77NvMSGdp6BZTMHjHTupB",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "3831621.9261316402",
+      "reserved": "3831621.9261316402",
+      "accountType": "validator"
+    },
+    {
+      "address": "14cmU7YxjDjMXkvKmyaNZ6cgXFioZt9Z6PENEg6PA5FY74DB",
+      "balance": "3822071.8246420259",
+      "balanceFloat": 3822071.824642026,
+      "nonce": 314,
+      "accountDisplay": {
+        "address": "14cmU7YxjDjMXkvKmyaNZ6cgXFioZt9Z6PENEg6PA5FY74DB",
+        "merkle": {
+          "address_type": "user_wallet",
+          "tag_type": "Exchange",
+          "tag_subtype": "Mandatory KYC and AML",
+          "tag_name": "Coinbase.com"
+        },
+        "people": {}
+      },
+      "identity": "Coinbase.com",
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "0",
+      "reserved": "0",
+      "accountType": "exchange"
+    },
+    {
+      "address": "14MB5KHLdVvqAC5MrNHJj6sCUcNjMUJXZCqLbDYP4UHV34UB",
+      "balance": "3821085.9991188699",
+      "balanceFloat": 3821085.99911887,
+      "nonce": 297,
+      "accountDisplay": {
+        "address": "14MB5KHLdVvqAC5MrNHJj6sCUcNjMUJXZCqLbDYP4UHV34UB",
+        "merkle": {
+          "address_type": "user_wallet",
+          "tag_type": "Exchange",
+          "tag_subtype": "Mandatory KYC and AML",
+          "tag_name": "Coinbase.com"
+        },
+        "people": {}
+      },
+      "identity": "Coinbase.com",
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "3821060.328276002",
+      "reserved": "3821060.328276002",
+      "accountType": "exchange"
+    },
+    {
+      "address": "1Bt1P3QbMnvSvrLUCzRtjSxZgBWgbT4T2TeM5QFWYzLWa4b",
+      "balance": "3814126.5535988653",
+      "balanceFloat": 3814126.5535988654,
+      "nonce": 316,
+      "accountDisplay": {
+        "address": "1Bt1P3QbMnvSvrLUCzRtjSxZgBWgbT4T2TeM5QFWYzLWa4b",
+        "merkle": {
+          "address_type": "user_wallet",
+          "tag_type": "Exchange",
+          "tag_subtype": "Mandatory KYC and AML",
+          "tag_name": "Coinbase.com"
+        },
+        "people": {}
+      },
+      "identity": "Coinbase.com",
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "0",
+      "reserved": "0",
+      "accountType": "exchange"
+    },
+    {
+      "address": "162irz3JWpH3dNLo5vUdEz7RTzStkKJyjeYSmSTQE6yYGi1K",
+      "balance": "3811125.4150434146",
+      "balanceFloat": 3811125.4150434146,
+      "nonce": 311,
+      "accountDisplay": {
+        "address": "162irz3JWpH3dNLo5vUdEz7RTzStkKJyjeYSmSTQE6yYGi1K",
+        "merkle": {
+          "address_type": "user_wallet",
+          "tag_type": "Exchange",
+          "tag_subtype": "Mandatory KYC and AML",
+          "tag_name": "Coinbase.com"
+        },
+        "people": {}
+      },
+      "identity": "Coinbase.com",
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "3811099.9740056525",
+      "reserved": "3811099.9740056525",
+      "accountType": "exchange"
+    },
+    {
+      "address": "164Hrh9B45T7jbxHcEfJdXDQG5xGytoiEJ37rUCnhxCa4B3C",
+      "balance": "3810647.3362741447",
+      "balanceFloat": 3810647.3362741447,
+      "nonce": 324,
+      "accountDisplay": {
+        "address": "164Hrh9B45T7jbxHcEfJdXDQG5xGytoiEJ37rUCnhxCa4B3C",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "0",
+      "reserved": "0",
+      "accountType": "whale"
+    },
+    {
+      "address": "128foj9mWNHXbcYRvEZKnnjDGMjXiRZDWAUqoRf41XG8SzU5",
+      "balance": "3658448.6308615884",
+      "balanceFloat": 3658448.6308615883,
+      "nonce": 290,
+      "accountDisplay": {
+        "address": "128foj9mWNHXbcYRvEZKnnjDGMjXiRZDWAUqoRf41XG8SzU5",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "0",
+      "reserved": "0",
+      "accountType": "whale"
+    },
+    {
+      "address": "13YMK2efcJncYrXsaJCvHbaaDt3vfubdn75r4hdVxcggU4n2",
+      "balance": "3578025.5390193861",
+      "balanceFloat": 3578025.5390193863,
+      "nonce": 0,
+      "accountDisplay": {
+        "address": "13YMK2efcJncYrXsaJCvHbaaDt3vfubdn75r4hdVxcggU4n2",
+        "display": "para:2034",
+        "people": {}
+      },
+      "identity": null,
+      "lastActive": "2025-07-17T14:51:43.812Z",
+      "locked": "0",
+      "reserved": "0",
+      "accountType": "whale"
+    }
+  ]
+}

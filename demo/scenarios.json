@@ -1,0 +1,69 @@
+[
+  {
+    "id": "dormant-whale-1",
+    "type": "DORMANT_AWAKENING",
+    "title": "Dormant Whale Awakens After 880 Days",
+    "description": "Large Holder 1 hasn't moved funds since 2/15/2023. Total volume: 2,470,695 DOT",
+    "severity": "HIGH",
+    "data": {
+      "address": "15Q7LRbAKrVExHs9xtrhDKuNmPApo4iBQdJp3k11YMDjTF2f",
+      "name": "Large Holder 1",
+      "dormantDays": 880,
+      "lastSeen": "2023-02-16T05:31:42.000Z",
+      "totalVolume": "2,470,695 DOT"
+    },
+    "demoScript": [
+      "This address has been dormant for 880 days",
+      "Last activity was during the ecosystem building phase",
+      "If this whale moves, it could impact market dynamics",
+      "Our system would detect this within seconds of the transaction"
+    ],
+    "visualNotes": "Show timeline visualization with long dormant period"
+  },
+  {
+    "id": "dormant-whale-2",
+    "type": "DORMANT_AWAKENING",
+    "title": "Dormant Whale Awakens After 188 Days",
+    "description": "Large Holder 2 hasn't moved funds since 1/7/2025. Total volume: 676,139 DOT",
+    "severity": "HIGH",
+    "data": {
+      "address": "13fqhWQCqTHTPbU1fyvbz9Ua3NC47fVVexYuNQRBwpSeZyKM",
+      "name": "Large Holder 2",
+      "dormantDays": 188,
+      "lastSeen": "2025-01-07T15:28:54.000Z",
+      "totalVolume": "676,139 DOT"
+    },
+    "demoScript": [
+      "This address has been dormant for 188 days",
+      "Last activity was during 1/7/2025",
+      "If this whale moves, it could impact market dynamics",
+      "Our system would detect this within seconds of the transaction"
+    ],
+    "visualNotes": "Show timeline visualization with long dormant period"
+  },
+  {
+    "id": "activity-pattern-1",
+    "type": "FREQUENCY_ANOMALY",
+    "title": "Burst Activity Pattern Detected",
+    "description": "Web3 Foundation shows concentrated activity during specific hours",
+    "severity": "MEDIUM",
+    "data": {
+      "address": "16ZL8yLyXv3V3L3z9ofR1ovFLziyXaN1DPq4yffMAZ9czzBD",
+      "name": "Web3 Foundation",
+      "avgDailyTransactions": 1.2214285714285715,
+      "mostActiveHour": 22,
+      "pattern": {
+        "type": "semi-active",
+        "frequency": "medium",
+        "volumeProfile": "whale"
+      }
+    },
+    "demoScript": [
+      "This address averages 1.2 transactions per day",
+      "Most activity occurs at 22:00 UTC",
+      "This could indicate automated trading or scheduled operations",
+      "Sudden changes to this pattern would trigger alerts"
+    ],
+    "visualNotes": "Show hourly activity heatmap"
+  }
+]

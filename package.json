@@ -1,0 +1,43 @@
+{
+  "name": "polkadot-whale-monitor",
+  "version": "1.0.0",
+  "description": "Real-time whale monitoring for Polkadot network",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node index.js --dev",
+    "test": "node test.js",
+    "demo": "node index.js --demo",
+    "demo:fast": "node index.js --demo --fast",
+    "test:api": "node src/test/test-api.js",
+    "test:storage": "node src/test/test-storage.js",
+    "test:patterns": "node src/test/test-patterns.js",
+    "reset": "rm -rf data/snapshots/*.json && echo 'Data reset complete'",
+    "web": "node server.js",
+    "monitor-with-web": "npm run start & npm run web",
+    "monitor:real": "node monitor-real-blockchain.js",
+    "monitor:real-web": "node monitor-real-blockchain.js & node server-real.js"
+  },
+  "keywords": [
+    "polkadot",
+    "whale",
+    "monitoring",
+    "blockchain"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@polkadot/api": "^16.4.1",
+    "axios": "^1.6.5",
+    "chalk": "^4.1.2",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "limiter": "^2.1.0",
+    "lru-cache": "^10.1.0",
+    "node-cron": "^3.0.3",
+    "p-retry": "^4.6.2"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
