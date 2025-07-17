@@ -407,7 +407,7 @@ export class RealDataService {
           });
 
           // Add to queue for next depth
-          if (currentDepth + 1 < depth) {
+          if (currentDepth < depth) {
             queue.push({ address: connectedAddress, currentDepth: currentDepth + 1 });
           }
         }
@@ -797,7 +797,7 @@ export class RealDataService {
             });
 
             // Add to queue for next depth
-            if (currentDepth + 1 < depth) {
+            if (currentDepth < depth) {
               queue.push({ 
                 address: connectedAddress, 
                 currentDepth: currentDepth + 1 

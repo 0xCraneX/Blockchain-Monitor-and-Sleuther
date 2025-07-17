@@ -45,6 +45,7 @@
                                 <option value="2" selected>2 degrees</option>
                                 <option value="3">3 degrees</option>
                                 <option value="4">4 degrees</option>
+                                <option value="5">5 degrees</option>
                             </select>
                         </div>
 
@@ -188,24 +189,24 @@
     
     <!-- Version indicator -->
     <div id="version-indicator" style="position: fixed; bottom: 10px; left: 10px; background: rgba(0,0,0,0.8); color: #fff; padding: 5px 10px; border-radius: 3px; font-size: 11px; z-index: 9999;">
-        v1.0.6
+        v1.0.7
     </div>
 
-    <script src="/js/config.js?v=1.0.6"></script>
-    <script src="/js/format-utils.js?v=1.0.6"></script>
-    <script src="/js/address-validator.js?v=1.0.6"></script>
-    <script src="/js/search.js?v=1.0.6"></script>
-    <script src="/js/overlay-helpers.js?v=1.0.6"></script>
-    <script src="/js/client.js?v=1.0.6"></script>
-    <script src="/js/graph.js?v=1.0.6"></script>
-    <script src="/js/app.js?v=1.0.6"></script>
+    <script src="/js/config.js?v=1.0.7"></script>
+    <script src="/js/format-utils.js?v=1.0.7"></script>
+    <script src="/js/address-validator.js?v=1.0.7"></script>
+    <script src="/js/search.js?v=1.0.7"></script>
+    <script src="/js/overlay-helpers.js?v=1.0.7"></script>
+    <script src="/js/client.js?v=1.0.7"></script>
+    <script src="/js/graph.js?v=1.0.7"></script>
+    <script src="/js/app.js?v=1.0.7"></script>
     <script>
         // Update version indicator with timestamp to prevent caching
         setInterval(() => {
             const versionEl = document.getElementById('version-indicator');
             if (versionEl) {
                 const timestamp = new Date().toLocaleTimeString();
-                versionEl.textContent = `v1.0.6 - ${timestamp}`;
+                versionEl.textContent = `v1.0.7 - ${timestamp}`;
             }
         }, 1000);
     </script>
