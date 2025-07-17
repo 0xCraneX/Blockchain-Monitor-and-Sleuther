@@ -887,7 +887,7 @@ class PolkadotAnalysisApp {
      */
     handleViewportChange(transform, zoomLevel) {
         // Update any UI elements that depend on zoom level
-        console.log('Viewport changed, zoom level:', zoomLevel);
+        // console.log('Viewport changed, zoom level:', zoomLevel); // Commented out to reduce log spam
     }
     
     /**

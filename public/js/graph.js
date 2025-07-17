@@ -252,8 +252,7 @@ class PolkadotGraphVisualization {
         // Arrows removed - cleaner visualization without endpoint markers
         // this.createArrowMarkers();
         
-        // TEMPORARILY DISABLED: Force simulation to isolate context error
-        console.log('Force simulation temporarily disabled for debugging');
+        // Initialize force simulation
         
         // Initialize minimal simulation without forces that use this.getNodeRadius
         this.simulation = d3.forceSimulation()
@@ -266,11 +265,10 @@ class PolkadotGraphVisualization {
             .force('center', d3.forceCenter(
                 this.config.width / 2, 
                 this.config.height / 2))
-            // DISABLED: Collision force that uses getNodeRadius
-            // .force('collision', d3.forceCollide()
-            //     .radius(function(d) { return self.getNodeRadius(d) * 2 + self.config.forces.collideRadius; })
-            //     .strength(1.5)
-            //     .iterations(3))
+            .force('collision', d3.forceCollide()
+                .radius((d) => this.getNodeRadius(d) * 2 + this.config.forces.collideRadius)
+                .strength(1.5)
+                .iterations(3))
             .alpha(this.config.forces.alpha)
             .alphaDecay(this.config.forces.alphaDecay)
             .velocityDecay(this.config.forces.velocityDecay)
@@ -911,9 +909,7 @@ class PolkadotGraphVisualization {
             .on('mouseout', (event, d) => this.handleNodeMouseOut(event, d))
             .call(this.createDragBehavior());
         
-        // TEMPORARILY DISABLED: Pulsing animations to isolate the context error
-        // TODO: Re-enable once the context collision bug is resolved
-        console.log('Pulsing animations temporarily disabled for debugging');
+        // Pulsing animations re-enabled - context error has been resolved
         
             // Store node selection for later use
             this.nodeSelection = nodeUpdate;
@@ -2563,25 +2559,28 @@ class PolkadotGraphVisualization {
      * Focus on a specific node
      */
     focusOnNode(nodeOrAddress) {
+        // Get address and find node
+        const address = typeof nodeOrAddress === 'string' ? nodeOrAddress : nodeOrAddress.address;
+        const node = this.state.filteredData.nodes.find(n => 
+            (n.id || n.address) === address
+        );
+        
+        if (!node) {
+            console.warn('Node not found:', address);
+            return;
+        }
+        
         // Skip zoom operations if zoom is disabled
         if (!this.zoom) {
             console.log("Zoom disabled - focusOnNode zoom transform not available");
             // Still highlight the node even if we cant zoom
-            const address = typeof nodeOrAddress === "string" ? nodeOrAddress : nodeOrAddress.address;
-            const node = this.state.filteredData.nodes.find(n => (n.id || n.address) === address);
-            if (node) {
-                this.highlightNode(node);
-            }
+            this.highlightNode(node);
             return;
         }
+        
         try {
-            const address = typeof nodeOrAddress === 'string' ? nodeOrAddress : nodeOrAddress.address;
-            const node = this.state.filteredData.nodes.find(n => 
-                (n.id || n.address) === address
-            );
-            
-            if (!node || !node.x || !node.y) {
-                console.warn('Node not found or not positioned:', address);
+            if (!node.x || !node.y) {
+                console.warn('Node not positioned:', address);
                 return;
             }
             
@@ -2610,7 +2609,7 @@ class PolkadotGraphVisualization {
         
         // Highlight the node temporarily
         const nodeElement = this.nodeSelection.filter(d => 
-            (d.id || d.address) === address
+            (d.id || d.address) === node.address
         );
         
         if (!nodeElement.empty()) {
