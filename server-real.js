@@ -90,7 +90,8 @@ app.get('/api/alerts', (req, res) => {
                 address: alert.address,
                 amount: alert.amount,
                 type: alertType,
-                timeAgo: getTimeAgo(alert.timestamp) || 'Unknown'
+                timeAgo: getTimeAgo(alert.timestamp) || 'Unknown',
+                metadata: alert.metadata // Preserve metadata for stats calculation
             };
         });
         
@@ -111,6 +112,123 @@ app.get('/api/alerts', (req, res) => {
 });
 
 // API endpoint to get monitoring status
+// API endpoint for monitoring statistics
+app.get('/api/monitoring-stats', async (req, res) => {
+    try {
+        const days = parseInt(req.query.days) || 1;
+        
+        // Load alerts for the specified period
+        const allAlerts = [];
+        for (let i = 0; i < days; i++) {
+            const date = new Date();
+            date.setDate(date.getDate() - i);
+            const dateStr = date.toISOString().split('T')[0];
+            const alertsPath = path.join(__dirname, `data/alerts/${dateStr}.json`);
+            
+            if (fs.existsSync(alertsPath)) {
+                const dayAlerts = JSON.parse(fs.readFileSync(alertsPath, 'utf8'));
+                allAlerts.push(...dayAlerts);
+            }
+        }
+        
+        // Calculate statistics
+        const stats = {
+            alertsToday: getTodaysAlerts().length,
+            activePatterns: countUniquePatterns(allAlerts),
+            dotMovement: calculateTotalMovement(allAlerts),
+            topMovers: getTopMovers(allAlerts),
+            severityBreakdown: getSeverityBreakdown(allAlerts),
+            typeBreakdown: getTypeBreakdown(allAlerts)
+        };
+        
+        res.json({
+            success: true,
+            stats,
+            period: `${days} day${days > 1 ? 's' : ''}`
+        });
+        
+    } catch (error) {
+        console.error('Error calculating stats:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+function countUniquePatterns(alerts) {
+    const patterns = new Set();
+    alerts.forEach(alert => {
+        if (alert.type || alert.pattern) {
+            patterns.add(alert.type || alert.pattern);
+        }
+    });
+    return patterns.size;
+}
+
+function calculateTotalMovement(alerts) {
+    return alerts.reduce((total, alert) => {
+        return total + (parseFloat(alert.amount) || 0);
+    }, 0);
+}
+
+function getTopMovers(alerts) {
+    // Group by address and calculate net movement
+    const movements = {};
+    
+    alerts.forEach(alert => {
+        if (!alert.address || !alert.amount) return;
+        
+        if (!movements[alert.address]) {
+            movements[alert.address] = {
+                address: alert.address,
+                in: 0,
+                out: 0,
+                net: 0,
+                type: alert.metadata?.identity || 'Unknown'
+            };
+        }
+        
+        // Determine if it's incoming or outgoing based on metadata
+        if (alert.metadata && alert.metadata.to === alert.address) {
+            movements[alert.address].in += parseFloat(alert.amount);
+        } else {
+            movements[alert.address].out += parseFloat(alert.amount);
+        }
+    });
+    
+    // Calculate net movement and sort
+    const movers = Object.values(movements).map(m => {
+        m.net = m.in - m.out;
+        return m;
+    });
+    
+    // Get top gainers and losers
+    const sorted = movers.sort((a, b) => Math.abs(b.net) - Math.abs(a.net));
+    const topGainers = sorted.filter(m => m.net > 0).slice(0, 3);
+    const topLosers = sorted.filter(m => m.net < 0).slice(0, 3);
+    
+    return { gainers: topGainers, losers: topLosers };
+}
+
+function getSeverityBreakdown(alerts) {
+    const breakdown = { critical: 0, high: 0, medium: 0, low: 0 };
+    alerts.forEach(alert => {
+        const severity = determineSeverity(alert);
+        breakdown[severity]++;
+    });
+    return breakdown;
+}
+
+function getTypeBreakdown(alerts) {
+    const breakdown = {};
+    alerts.forEach(alert => {
+        const type = alert.type || alert.pattern || 'unknown';
+        breakdown[type] = (breakdown[type] || 0) + 1;
+    });
+    return breakdown;
+}
+
 app.get('/api/status', (req, res) => {
     try {
         const dataDir = path.join(__dirname, 'data');
@@ -212,15 +330,25 @@ function getTopMovers(data) {
 }
 
 function determineSeverity(alert) {
-    if (alert.type === 'dormant_awakening' || alert.pattern === 'dormant_awakening') {
+    const type = (alert.type || alert.pattern || '').toLowerCase();
+    const amount = parseFloat(alert.amount) || 0;
+    
+    // Critical severity for dormant awakenings and very large transfers
+    if (type === 'dormant_awakening' || amount > 500000) {
         return 'critical';
     }
-    if (alert.type === 'large_transfer' || (alert.amount && parseFloat(alert.amount) > 50000)) {
+    
+    // High severity for large transfers and new whales
+    if (type === 'large_transfer' || type === 'new_whale' || amount > 100000) {
         return 'high';
     }
-    if (alert.type === 'coordinated_movement') {
+    
+    // Medium severity for whale movements and coordinated patterns
+    if (type === 'whale_movement' || type === 'coordinated_movement' || amount > 50000) {
         return 'medium';
     }
+    
+    // Default to low for exchange activity and smaller amounts
     return 'low';
 }
 

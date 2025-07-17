@@ -614,9 +614,54 @@
             // Load real alerts
             loadRealAlerts();
             
+            // Load monitoring stats
+            loadMonitoringStats();
+            
             // Show last update time
             if (data.lastUpdate) {
                 updateLastSeenTime(data.lastUpdate);
+            }
+        }
+        
+        function loadMonitoringStats() {
+            fetch('/api/monitoring-stats?days=1')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.stats) {
+                        // Update active patterns count
+                        document.getElementById('active-patterns').textContent = data.stats.activePatterns || '0';
+                        
+                        // Update DOT movement (format as millions)
+                        const movement = data.stats.dotMovement || 0;
+                        const movementM = (movement / 1000000).toFixed(1);
+                        document.getElementById('dot-movement').textContent = `${movementM}M DOT`;
+                        
+                        // Update top movers
+                        if (data.stats.topMovers) {
+                            updateTopMoversFromStats(data.stats.topMovers);
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading monitoring stats:', error);
+                });
+        }
+        
+        function updateTopMoversFromStats(topMovers) {
+            // Update gainers
+            if (topMovers.gainers && topMovers.gainers.length > 0) {
+                topMovers.gainers.slice(0, 3).forEach((mover, index) => {
+                    const element = document.getElementById(`top-mover-${index + 1}`);
+                    if (element) {
+                        element.textContent = mover.address.slice(0, 8) + '...';
+                        const amountElement = element.nextElementSibling;
+                        if (amountElement) {
+                            const amount = Math.abs(mover.net / 1000).toFixed(0);
+                            amountElement.textContent = `↑ ${amount}K DOT`;
+                            amountElement.className = 'text-xs text-green-400';
+                        }
+                    }
+                });
             }
         }
         
