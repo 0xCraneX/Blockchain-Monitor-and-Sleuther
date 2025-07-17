@@ -647,8 +647,11 @@ class PolkadotGraphVisualization {
             });
         }
         
-        // Filter nodes to only include those connected by remaining links
-        // But if there are no links at all after filtering, show all filtered nodes
+        // Keep all nodes that passed the initial filters, regardless of link filtering
+        // This ensures nodes at the requested depth remain visible even if their
+        // connections are filtered out by volume or direction filters
+        // Comment out the node filtering based on connected links
+        /*
         if (filteredLinks.length > 0) {
             const connectedNodeIds = new Set();
             filteredLinks.forEach(link => {
@@ -659,6 +662,7 @@ class PolkadotGraphVisualization {
             filteredNodes = filteredNodes.filter(node => 
                 connectedNodeIds.has(node.address));
         }
+        */
         
         // Apply volume threshold highlighting to all links (visible and filtered)
         if (filters.volumeThreshold) {

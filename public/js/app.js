@@ -675,14 +675,23 @@ class PolkadotAnalysisApp {
      * Apply current filters to the graph
      */
     applyFilters() {
+        const previousDepth = this.state.filters.depth;
         this.updateFiltersFromUI();
         console.log('Applying filters:', this.state.filters);
         
         if (this.state.currentAddress) {
-            // When volume filter is applied, reload the entire graph with the filter
+            // Check if depth has changed - this requires reloading from API
+            const depthChanged = previousDepth !== this.state.filters.depth;
+            
+            // When volume filter is applied OR depth has changed, reload the entire graph
             // This ensures we get ALL connections matching the filter criteria
-            if (BigInt(this.state.filters.minVolume) > BigInt(0)) {
-                console.log('Reloading graph with volume filter:', this.state.filters.minVolume);
+            if (BigInt(this.state.filters.minVolume) > BigInt(0) || depthChanged) {
+                console.log('Reloading graph:', {
+                    reason: depthChanged ? 'depth changed' : 'volume filter',
+                    previousDepth,
+                    newDepth: this.state.filters.depth,
+                    volumeFilter: this.state.filters.minVolume
+                });
                 // Reload the address with the new filter applied
                 this.loadAddressGraph(this.state.currentAddress);
                 return;
