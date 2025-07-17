@@ -13,7 +13,7 @@ class PolkadotAnalysisApp {
             graphData: null,
             selectedNodes: new Set(),
             filters: {
-                depth: 1,
+                depth: 2,  // Changed from 1 to 2 to show two levels of connections
                 maxNodes: 100,
                 minVolume: '0',
                 minBalance: '0',
@@ -919,9 +919,11 @@ class PolkadotAnalysisApp {
             }
             
             // Use the regular graph endpoint to get data for this node
+            // Use depth: 2 to get connections one level deeper
             const params = new URLSearchParams({
-                depth: 1,
-                minVolume: this.state.filters.minVolume || 0
+                depth: 2,
+                minVolume: this.state.filters.minVolume || 0,
+                maxNodes: 150  // Increase max nodes for expansion
             });
             
             const apiUrl = window.APP_CONFIG?.API_BASE_URL || '';
