@@ -259,6 +259,55 @@ app.get('/api/status', (req, res) => {
     }
 });
 
+// Endpoint to trigger fresh data collection
+app.post('/api/refresh', async (req, res) => {
+    try {
+        console.log('🔄 Refresh triggered - running new monitoring cycle...');
+        
+        // Import and run the monitoring tool
+        const { spawn } = require('child_process');
+        
+        // Run monitoring in background
+        const monitorProcess = spawn('node', ['index.js', 'run'], {
+            stdio: 'pipe',
+            cwd: __dirname
+        });
+        
+        let output = '';
+        let errorOutput = '';
+        
+        monitorProcess.stdout.on('data', (data) => {
+            output += data.toString();
+        });
+        
+        monitorProcess.stderr.on('data', (data) => {
+            errorOutput += data.toString();
+        });
+        
+        monitorProcess.on('close', (code) => {
+            if (code === 0) {
+                console.log('✅ Monitoring cycle completed successfully');
+            } else {
+                console.error('❌ Monitoring cycle failed with code:', code);
+            }
+        });
+        
+        // Don't wait for completion, return immediately
+        res.json({
+            success: true,
+            message: 'Fresh data collection started',
+            status: 'running'
+        });
+        
+    } catch (error) {
+        console.error('Error triggering refresh:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
 // Helper Functions
 function countActivePatterns(data) {
     if (!data || !data.accounts) return 0;
