@@ -97,6 +97,36 @@
             }
         }
         
+        /* Filter button states */
+        .filter-btn.active {
+            background-color: #e6007a !important;
+            color: white;
+        }
+        
+        .filter-btn:not(.active):hover {
+            background-color: #374151;
+        }
+        
+        /* Range slider styling */
+        #min-amount-slider::-webkit-slider-thumb {
+            appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #e6007a;
+            cursor: pointer;
+            border: 2px solid #1f2937;
+        }
+        
+        #min-amount-slider::-moz-range-thumb {
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #e6007a;
+            cursor: pointer;
+            border: 2px solid #1f2937;
+        }
+        
         /* Pattern visualization */
         .pattern-bg {
             background-image: 
@@ -221,15 +251,55 @@
                                 Real-time Alerts
                             </h2>
                             <div class="flex items-center space-x-2">
-                                <button class="text-xs px-3 py-1 bg-polkadot-light rounded-full hover:bg-gray-700 transition-colors">
+                                <button id="filter-all" class="text-xs px-3 py-1 bg-polkadot-light rounded-full hover:bg-gray-700 transition-colors filter-btn active">
                                     All
                                 </button>
-                                <button class="text-xs px-3 py-1 rounded-full hover:bg-gray-700 transition-colors">
+                                <button id="filter-critical" class="text-xs px-3 py-1 rounded-full hover:bg-gray-700 transition-colors filter-btn">
                                     Critical
                                 </button>
-                                <button class="text-xs px-3 py-1 rounded-full hover:bg-gray-700 transition-colors">
+                                <button id="filter-patterns" class="text-xs px-3 py-1 rounded-full hover:bg-gray-700 transition-colors filter-btn">
                                     Patterns
                                 </button>
+                                <div class="relative">
+                                    <button id="filter-amount-btn" class="text-xs px-3 py-1 rounded-full hover:bg-gray-700 transition-colors border border-gray-600">
+                                        <i class="fas fa-filter mr-1"></i>
+                                        Min: <span id="min-amount-display">0</span> DOT
+                                    </button>
+                                    <div id="amount-filter-dropdown" class="hidden absolute right-0 top-8 bg-gray-800 border border-gray-600 rounded-lg p-4 min-w-64 shadow-xl z-10">
+                                        <div class="mb-4">
+                                            <label class="block text-xs text-gray-400 mb-2">Minimum Amount (DOT)</label>
+                                            <input type="range" id="min-amount-slider" min="0" max="100000" step="1000" value="0" 
+                                                   class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+                                            <div class="flex justify-between text-xs text-gray-500 mt-1">
+                                                <span>0</span>
+                                                <span>50K</span>
+                                                <span>100K</span>
+                                            </div>
+                                        </div>
+                                        <div class="mb-4">
+                                            <label class="block text-xs text-gray-400 mb-2">Or enter exact amount</label>
+                                            <input type="number" id="min-amount-input" placeholder="Enter amount..." 
+                                                   class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-sm">
+                                        </div>
+                                        <div class="flex space-x-2">
+                                            <button id="apply-filter" class="flex-1 px-3 py-2 bg-polkadot-primary text-white rounded text-xs hover:bg-polkadot-primary/80">
+                                                Apply
+                                            </button>
+                                            <button id="clear-filter" class="flex-1 px-3 py-2 bg-gray-600 text-white rounded text-xs hover:bg-gray-500">
+                                                Clear
+                                            </button>
+                                        </div>
+                                        <div class="mt-3 pt-3 border-t border-gray-600">
+                                            <div class="text-xs text-gray-400">Quick filters:</div>
+                                            <div class="flex flex-wrap gap-1 mt-1">
+                                                <button class="quick-filter px-2 py-1 bg-gray-600 rounded text-xs hover:bg-gray-500" data-amount="10000">10K+</button>
+                                                <button class="quick-filter px-2 py-1 bg-gray-600 rounded text-xs hover:bg-gray-500" data-amount="50000">50K+</button>
+                                                <button class="quick-filter px-2 py-1 bg-gray-600 rounded text-xs hover:bg-gray-500" data-amount="100000">100K+</button>
+                                                <button class="quick-filter px-2 py-1 bg-gray-600 rounded text-xs hover:bg-gray-500" data-amount="500000">500K+</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         
@@ -428,6 +498,14 @@
     </div>
     
     <script>
+        // Filter state
+        let currentAlerts = [];
+        let currentFilters = {
+            severity: 'all',
+            minAmount: 0,
+            pattern: 'all'
+        };
+        
         // Initialize Chart.js charts
         const volumeCtx = document.getElementById('volumeChart').getContext('2d');
         const volumeChart = new Chart(volumeCtx, {
@@ -559,17 +637,55 @@
         }
         
         function displayRealAlerts(alerts) {
+            currentAlerts = alerts; // Store all alerts for filtering
+            applyFilters();
+        }
+        
+        function applyFilters() {
             const container = document.getElementById('alerts-container');
             container.innerHTML = ''; // Clear existing content
             
-            if (alerts.length === 0) {
+            // Filter alerts based on current filters
+            let filteredAlerts = currentAlerts.filter(alert => {
+                // Severity filter
+                if (currentFilters.severity !== 'all') {
+                    if (currentFilters.severity === 'critical' && alert.severity !== 'critical') {
+                        return false;
+                    }
+                    if (currentFilters.severity === 'patterns' && 
+                        !['whale_movement', 'coordinated_movement', 'large_transfer'].includes(alert.type)) {
+                        return false;
+                    }
+                }
+                
+                // Amount filter
+                if (currentFilters.minAmount > 0 && alert.amount < currentFilters.minAmount) {
+                    return false;
+                }
+                
+                return true;
+            });
+            
+            if (filteredAlerts.length === 0) {
                 showNoAlertsMessage();
                 return;
             }
             
-            alerts.forEach(alert => {
+            filteredAlerts.forEach(alert => {
                 addRealAlert(alert);
             });
+            
+            // Update filtered count in stats
+            updateFilteredCount(filteredAlerts.length, currentAlerts.length);
+        }
+        
+        function updateFilteredCount(filtered, total) {
+            const alertsElement = document.getElementById('alerts-today');
+            if (filtered === total) {
+                alertsElement.textContent = total;
+            } else {
+                alertsElement.textContent = `${filtered}/${total}`;
+            }
         }
         
         function showNoAlertsMessage() {
@@ -756,6 +872,96 @@
         });
         
         document.getElementById('settings-btn').addEventListener('click', toggleSettings);
+        
+        // Filter event listeners
+        document.getElementById('filter-all').addEventListener('click', () => {
+            setActiveFilter('filter-all');
+            currentFilters.severity = 'all';
+            applyFilters();
+        });
+        
+        document.getElementById('filter-critical').addEventListener('click', () => {
+            setActiveFilter('filter-critical');
+            currentFilters.severity = 'critical';
+            applyFilters();
+        });
+        
+        document.getElementById('filter-patterns').addEventListener('click', () => {
+            setActiveFilter('filter-patterns');
+            currentFilters.severity = 'patterns';
+            applyFilters();
+        });
+        
+        // Amount filter dropdown toggle
+        document.getElementById('filter-amount-btn').addEventListener('click', () => {
+            const dropdown = document.getElementById('amount-filter-dropdown');
+            dropdown.classList.toggle('hidden');
+        });
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            const dropdown = document.getElementById('amount-filter-dropdown');
+            const button = document.getElementById('filter-amount-btn');
+            if (!dropdown.contains(e.target) && !button.contains(e.target)) {
+                dropdown.classList.add('hidden');
+            }
+        });
+        
+        // Amount slider and input sync
+        const slider = document.getElementById('min-amount-slider');
+        const input = document.getElementById('min-amount-input');
+        const display = document.getElementById('min-amount-display');
+        
+        slider.addEventListener('input', (e) => {
+            const value = parseInt(e.target.value);
+            input.value = value;
+            display.textContent = formatVolume(value);
+        });
+        
+        input.addEventListener('input', (e) => {
+            const value = parseInt(e.target.value) || 0;
+            slider.value = Math.min(value, 100000); // Cap at slider max
+            display.textContent = formatVolume(value);
+        });
+        
+        // Apply filter button
+        document.getElementById('apply-filter').addEventListener('click', () => {
+            const amount = parseInt(input.value) || parseInt(slider.value) || 0;
+            currentFilters.minAmount = amount;
+            display.textContent = formatVolume(amount);
+            applyFilters();
+            document.getElementById('amount-filter-dropdown').classList.add('hidden');
+        });
+        
+        // Clear filter button
+        document.getElementById('clear-filter').addEventListener('click', () => {
+            currentFilters.minAmount = 0;
+            slider.value = 0;
+            input.value = '';
+            display.textContent = '0';
+            applyFilters();
+            document.getElementById('amount-filter-dropdown').classList.add('hidden');
+        });
+        
+        // Quick filter buttons
+        document.querySelectorAll('.quick-filter').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const amount = parseInt(btn.dataset.amount);
+                currentFilters.minAmount = amount;
+                slider.value = amount;
+                input.value = amount;
+                display.textContent = formatVolume(amount);
+                applyFilters();
+                document.getElementById('amount-filter-dropdown').classList.add('hidden');
+            });
+        });
+        
+        function setActiveFilter(activeId) {
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.getElementById(activeId).classList.add('active');
+        }
         
         // Initialize with real data
         loadMonitoringData();
