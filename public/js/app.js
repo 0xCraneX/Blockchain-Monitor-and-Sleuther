@@ -1134,27 +1134,41 @@ class PolkadotAnalysisApp {
         const displayIdentity = identity === 'Unknown' ? 'No identity' : identity;
         
         nodeInfoContainer.innerHTML = `
-            <p><span class="label">Identity:</span> ${displayIdentity}</p>
-            <p><span class="label">Address:</span> 
-                <span style="font-size: 11px; word-break: break-all;">${address}</span>
-            </p>
-            <p><span class="label">Type:</span> ${nodeType}</p>
-            <p><span class="label">Balance:</span> ${balance}</p>
-            <p><span class="label">Connections:</span> ${connections}</p>
-            
-            <div style="margin-top: 15px;">
-                <button class="btn-primary investigate-node-btn" data-address="${address}">
-                    Investigate
-                </button>
-                <button class="btn-secondary expand-node-btn" data-address="${address}">
-                    Expand
-                </button>
+            <div style="position: relative;">
+                <button class="node-details-close" style="position: absolute; top: -10px; right: -10px; background: none; border: none; font-size: 1.5rem; color: var(--text-color); cursor: pointer; padding: 0; width: 30px; height: 30px;">&times;</button>
+                <p><span class="label">Identity:</span> ${displayIdentity}</p>
+                <p><span class="label">Address:</span> 
+                    <span style="font-size: 11px; word-break: break-all;">${address}</span>
+                </p>
+                <p><span class="label">Type:</span> ${nodeType}</p>
+                <p><span class="label">Balance:</span> ${balance}</p>
+                <p><span class="label">Connections:</span> ${connections}</p>
+                
+                <div style="margin-top: 15px;">
+                    <button class="btn-primary investigate-node-btn" data-address="${address}">
+                        Investigate
+                    </button>
+                    <button class="btn-secondary expand-node-btn" data-address="${address}">
+                        Expand
+                    </button>
+                </div>
             </div>
         `;
         
         // Add event listeners for the buttons
         const investigateBtn = nodeInfoContainer.querySelector('.investigate-node-btn');
         const expandBtn = nodeInfoContainer.querySelector('.expand-node-btn');
+        const closeBtn = nodeInfoContainer.querySelector('.node-details-close');
+        
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                nodeDetailsPanel.style.display = 'none';
+                // Clear selected nodes
+                if (this.graph) {
+                    this.graph.clearSelection();
+                }
+            });
+        }
         
         if (investigateBtn) {
             investigateBtn.addEventListener('click', () => {

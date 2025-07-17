@@ -227,8 +227,9 @@ class PolkadotGraphVisualization {
         this.zoom = d3.zoom()
             .scaleExtent([0.1, 10])
             .filter((event) => {
-                // Allow zoom only on specific conditions to avoid conflicts with drag
-                return !event.ctrlKey && !event.button;
+                // Allow wheel events (trackpad/mouse wheel) and regular mouse events
+                // Block only right-click and ctrl+click
+                return event.type === 'wheel' || (!event.ctrlKey && !event.button);
             })
             .on('zoom', (event) => {
                 // Use arrow function to preserve 'this' context
