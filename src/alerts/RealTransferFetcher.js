@@ -92,7 +92,7 @@ class RealTransferFetcher {
       alertType = 'large_transfer';
       severity = 'high';
       title = 'Large Transfer Detected';
-      description = `${amount.toLocaleString()} DOT transferred`;
+      description = `${Math.round(amount).toLocaleString()} DOT transferred`;
       
       // Check if it's from/to an exchange
       if (account.accountType === 'exchange') {
@@ -104,14 +104,14 @@ class RealTransferFetcher {
       alertType = 'exchange_activity';
       severity = 'low';
       title = 'Exchange Activity';
-      description = `${amount.toLocaleString()} DOT ${transfer.to === account.address ? 'deposited to' : 'withdrawn from'} ${account.identity || 'Exchange'}`;
+      description = `${Math.round(amount).toLocaleString()} DOT ${transfer.to === account.address ? 'deposited to' : 'withdrawn from'} ${account.identity || 'Exchange'}`;
     }
     // Regular whale movement
     else if (amount > 50000) {
       alertType = 'whale_movement';
       severity = 'medium';
       title = 'Whale Movement';
-      description = `${account.identity || 'Whale'} moved ${amount.toLocaleString()} DOT`;
+      description = `${account.identity || 'Whale'} moved ${Math.round(amount).toLocaleString()} DOT`;
     } else {
       return null; // Skip smaller transfers
     }

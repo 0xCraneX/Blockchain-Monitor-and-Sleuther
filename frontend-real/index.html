@@ -633,8 +633,11 @@
                         
                         // Update DOT movement (format as millions)
                         const movement = data.stats.dotMovement || 0;
-                        const movementM = (movement / 1000000).toFixed(1);
-                        document.getElementById('dot-movement').textContent = `${movementM}M DOT`;
+                        const movementM = Math.round(movement / 1000000);
+                        const volumeElement = document.getElementById('total-volume');
+                        if (volumeElement) {
+                            volumeElement.textContent = `${movementM}M`;
+                        }
                         
                         // Update top movers
                         if (data.stats.topMovers) {
@@ -656,7 +659,7 @@
                         element.textContent = mover.address.slice(0, 8) + '...';
                         const amountElement = element.nextElementSibling;
                         if (amountElement) {
-                            const amount = Math.abs(mover.net / 1000).toFixed(0);
+                            const amount = Math.round(Math.abs(mover.net / 1000));
                             amountElement.textContent = `↑ ${amount}K DOT`;
                             amountElement.className = 'text-xs text-green-400';
                         }
@@ -895,8 +898,8 @@
         }
         
         function formatVolume(volume) {
-            if (volume >= 1e6) return (volume / 1e6).toFixed(1) + 'M';
-            if (volume >= 1e3) return (volume / 1e3).toFixed(1) + 'K';
+            if (volume >= 1e6) return Math.round(volume / 1e6) + 'M';
+            if (volume >= 1e3) return Math.round(volume / 1e3) + 'K';
             return volume.toString();
         }
         
