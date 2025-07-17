@@ -399,6 +399,12 @@ export class GraphController {
         hasClusters: !!d3Graph?.clusters
       });
 
+      // Validate graph data before sending to frontend
+      const isValid = this._validateGraphData(d3Graph);
+      if (!isValid && process.env.NODE_ENV === 'development') {
+        controllerLogger.warn('Graph data validation failed, but continuing in development mode');
+      }
+
       // Add layout parameters
       d3Graph.layout = this._generateLayoutParameters(layout, d3Graph.nodes.length);
 
@@ -1011,7 +1017,8 @@ export class GraphController {
     // Transform nodes
     const d3Nodes = await Promise.all(graphData.nodes.map(async (node) => {
       const d3Node = {
-        // Core properties
+        // Core properties - D3.js requires id field
+        id: node.address,
         address: node.address,
 
         // Identity data
@@ -1021,14 +1028,12 @@ export class GraphController {
           isInvalid: false
         } : null,
 
-        // Balance information
+        // Balance information - ensure all balance fields are strings
         balance: node.balance ? {
-          free: (typeof node.balance === 'object' && node.balance.free) ?
-            (typeof node.balance.free === 'object' ? node.balance.free.free : node.balance.free) :
-            node.balance,
-          reserved: (typeof node.balance === 'object' && node.balance.reserved) ? node.balance.reserved : '0',
-          frozen: (typeof node.balance === 'object' && node.balance.frozen) ? node.balance.frozen : '0'
-        } : null,
+          free: this._sanitizeBalanceField(node.balance.free) || '0',
+          reserved: this._sanitizeBalanceField(node.balance.reserved) || '0',
+          frozen: this._sanitizeBalanceField(node.balance.frozen) || '0'
+        } : { free: '0', reserved: '0', frozen: '0' },
 
         // Enhanced properties
         nodeType: node.nodeType || 'regular',
@@ -1675,5 +1680,148 @@ export class GraphController {
     const recencyScore = Math.max(0, 20 - ((Date.now() / 1000 - relationship.last_interaction) / (24 * 3600)));
 
     return Math.max(1, Math.round(volumeScore + frequencyScore + recencyScore));
+  }
+
+  /**
+   * Sanitize balance field to ensure it's a valid string
+   * @private
+   */
+  _sanitizeBalanceField(value) {
+    if (value === null || value === undefined) {
+      return '0';
+    }
+    if (typeof value === 'string') {
+      return value;
+    }
+    if (typeof value === 'number') {
+      return value.toString();
+    }
+    if (typeof value === 'object') {
+      // Handle nested balance objects
+      if (value.free !== undefined) {
+        return this._sanitizeBalanceField(value.free);
+      }
+      // If it's an empty object or other invalid object, return '0'
+      return '0';
+    }
+    // For any other type, convert to string or default to '0'
+    try {
+      return String(value);
+    } catch (error) {
+      controllerLogger.warn('Failed to sanitize balance field, using default', { value, error: error.message });
+      return '0';
+    }
+  }
+
+  /**
+   * Validate graph data structure before sending to frontend
+   * @private
+   */
+  _validateGraphData(graphData) {
+    const issues = [];
+
+    // Validate nodes
+    if (!Array.isArray(graphData.nodes)) {
+      issues.push('nodes must be an array');
+    } else {
+      const nodeIds = new Set();
+      graphData.nodes.forEach((node, index) => {
+        if (!node.id) {
+          issues.push(`node[${index}] missing required 'id' field`);
+        } else {
+          nodeIds.add(node.id);
+        }
+        if (!node.address) {
+          issues.push(`node[${index}] missing required 'address' field`);
+        }
+        if (node.id !== node.address) {
+          issues.push(`node[${index}] id (${node.id}) does not match address (${node.address})`);
+        }
+        
+        // Validate required node properties
+        if (node.nodeType === undefined) {
+          issues.push(`node[${index}] missing required 'nodeType' field`);
+        }
+        if (node.suggestedSize === undefined || typeof node.suggestedSize !== 'number') {
+          issues.push(`node[${index}] missing or invalid 'suggestedSize' field`);
+        }
+        if (!node.suggestedColor) {
+          issues.push(`node[${index}] missing required 'suggestedColor' field`);
+        }
+        
+        // Validate balance structure
+        if (node.balance) {
+          if (typeof node.balance.free !== 'string') {
+            issues.push(`node[${index}] balance.free must be a string, got ${typeof node.balance.free}`);
+          }
+          if (typeof node.balance.reserved !== 'string') {
+            issues.push(`node[${index}] balance.reserved must be a string, got ${typeof node.balance.reserved}`);
+          }
+          if (typeof node.balance.frozen !== 'string') {
+            issues.push(`node[${index}] balance.frozen must be a string, got ${typeof node.balance.frozen}`);
+          }
+        }
+      });
+
+      // Validate edges reference valid nodes
+      if (Array.isArray(graphData.edges)) {
+        graphData.edges.forEach((edge, index) => {
+          if (!edge.source) {
+            issues.push(`edge[${index}] missing required 'source' field`);
+          } else if (!nodeIds.has(edge.source)) {
+            issues.push(`edge[${index}] source '${edge.source}' references non-existent node`);
+          }
+          if (!edge.target) {
+            issues.push(`edge[${index}] missing required 'target' field`);
+          } else if (!nodeIds.has(edge.target)) {
+            issues.push(`edge[${index}] target '${edge.target}' references non-existent node`);
+          }
+          
+          // Validate required edge properties
+          if (!edge.id) {
+            issues.push(`edge[${index}] missing required 'id' field`);
+          }
+          if (edge.volume === undefined) {
+            issues.push(`edge[${index}] missing required 'volume' field`);
+          }
+          if (edge.count === undefined) {
+            issues.push(`edge[${index}] missing required 'count' field`);
+          }
+          if (edge.suggestedWidth === undefined || typeof edge.suggestedWidth !== 'number') {
+            issues.push(`edge[${index}] missing or invalid 'suggestedWidth' field`);
+          }
+          if (!edge.suggestedColor) {
+            issues.push(`edge[${index}] missing required 'suggestedColor' field`);
+          }
+        });
+      }
+    }
+
+    // Validate edges
+    if (!Array.isArray(graphData.edges)) {
+      issues.push('edges must be an array');
+    }
+
+    // Log validation issues
+    if (issues.length > 0) {
+      controllerLogger.warn('Graph data validation issues found', {
+        issuesCount: issues.length,
+        issues: issues.slice(0, 10), // Log first 10 issues
+        nodeCount: graphData.nodes?.length || 0,
+        edgeCount: graphData.edges?.length || 0
+      });
+
+      // In development, we can be more strict
+      if (process.env.NODE_ENV === 'development') {
+        controllerLogger.error('Full validation issues list', { issues });
+      }
+    } else {
+      controllerLogger.debug('Graph data validation passed', {
+        nodeCount: graphData.nodes.length,
+        edgeCount: graphData.edges.length
+      });
+    }
+
+    return issues.length === 0;
   }
 }

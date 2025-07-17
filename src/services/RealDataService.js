@@ -315,7 +315,11 @@ export class RealDataService {
     nodes.set(centerAddress, {
       address: centerAddress,
       identity: centerAccount?.identity || {},
-      balance: centerAccount?.balance || {},
+      balance: {
+        free: this._sanitizeBalanceValue(centerAccount?.balance?.free) || '0',
+        reserved: this._sanitizeBalanceValue(centerAccount?.balance?.reserved) || '0',
+        frozen: this._sanitizeBalanceValue(centerAccount?.balance?.frozen) || '0'
+      },
       merkle: centerAccount?.merkle || null,
       nodeType: 'center',
       degree: 0,
@@ -386,10 +390,15 @@ export class RealDataService {
         // Add connected node if not exists
         if (!nodes.has(connectedAddress)) {
           // Use cached identity and merkle from relationship if available
+          const nodeBalance = rel.balance || {};
           nodes.set(connectedAddress, {
             address: connectedAddress,
             identity: rel.identity ? { display: rel.identity } : {},
-            balance: rel.balance || {}, // Use balance from enriched relationship data
+            balance: {
+              free: this._sanitizeBalanceValue(nodeBalance.free) || '0',
+              reserved: this._sanitizeBalanceValue(nodeBalance.reserved) || '0',
+              frozen: this._sanitizeBalanceValue(nodeBalance.frozen) || '0'
+            },
             merkle: rel.merkle || null,
             nodeType: 'regular',
             degree: 0,
@@ -883,6 +892,37 @@ export class RealDataService {
       previousSize,
       newSize: this.cache.size
     });
+  }
+
+  /**
+   * Sanitize balance value to ensure it's a valid string
+   * @private
+   */
+  _sanitizeBalanceValue(value) {
+    if (value === null || value === undefined) {
+      return '0';
+    }
+    if (typeof value === 'string') {
+      return value;
+    }
+    if (typeof value === 'number') {
+      return value.toString();
+    }
+    if (typeof value === 'object') {
+      // Handle nested balance objects
+      if (value.free !== undefined) {
+        return this._sanitizeBalanceValue(value.free);
+      }
+      // If it's an empty object or other invalid object, return '0'
+      return '0';
+    }
+    // For any other type, convert to string or default to '0'
+    try {
+      return String(value);
+    } catch (error) {
+      logger.warn('Failed to sanitize balance value in RealDataService', { value, error: error.message });
+      return '0';
+    }
   }
 }
 

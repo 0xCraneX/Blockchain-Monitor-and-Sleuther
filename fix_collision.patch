@@ -1,0 +1,30 @@
+--- a/public/js/graph.js
++++ b/public/js/graph.js
+@@ -737,9 +737,22 @@
+         this.simulation.force('link').distance(linkDistance);
+         
+         // Very aggressive collision detection with massive spacing
+-        const avgNodeSize = this.state.filteredData.nodes.reduce((sum, n) => 
+-            sum + this.getNodeRadius(n), 0) / nodeCount || 15;
+-        this.simulation.force('collision')
++        const avgNodeSize = this.state.filteredData.nodes.reduce((sum, n) => {
++            try {
++                const radius = this.getNodeRadius(n);
++                return sum + (isNaN(radius) ? 15 : radius);
++            } catch (error) {
++                console.warn('Error getting node radius:', error);
++                return sum + 15;
++            }
++        }, 0) / nodeCount || 15;
++        
++        // Initialize or update collision force
++        let collisionForce = this.simulation.force('collision');
++        if (\!collisionForce) {
++            collisionForce = d3.forceCollide();
++            this.simulation.force('collision', collisionForce);
++        }
++        collisionForce
+             .radius(function(d) { return self.getNodeRadius(d) + avgNodeSize * 2 + 60; })  // Massive spacing buffer
+             .strength(1.0)  // Maximum collision strength
+             .iterations(5); // More iterations for better separation
+EOF < /dev/null

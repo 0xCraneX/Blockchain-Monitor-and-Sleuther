@@ -189,7 +189,7 @@ const graphQuerySchema = z.object({
   maxNodes: z.coerce.number().min(1).max(1000).default(100),
   minVolume: z.string().default('0'),
   minBalance: z.string().default('0'),
-  direction: z.enum(['incoming', 'outgoing', 'both']).default('both'),
+  direction: z.enum(['incoming', 'outgoing', 'both', 'all']).default('both'),
   layout: z.enum(['force', 'hierarchical', 'circular']).default('force'),
   includeRiskScores: z.coerce.boolean().default(false),
   riskThreshold: z.coerce.number().min(0).max(100).optional(),

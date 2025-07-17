@@ -3,15 +3,10 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-lerna-debug.log*
 
-# Testing
-coverage/
-.nyc_output/
-*.lcov
-test-results/
-playwright-report/
-playwright/.cache/
+# Production build
+build/
+dist/
 
 # Environment files
 .env
@@ -20,107 +15,39 @@ playwright/.cache/
 .env.test.local
 .env.production.local
 
-# Database files
-data/*.db
-data/*.db-journal
-data/*.db-wal
-*.sqlite
-*.sqlite3
-!data/.gitkeep
-
-# Logs
-logs/
-*.log
-logs.json
-pino-pretty-transport*
-
-# OS files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# IDE files
+# IDE and editor files
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
-.project
-.classpath
-.c9/
-*.sublime-project
-*.sublime-workspace
+.DS_Store
 
-# Build output
-dist/
-build/
-out/
-.cache/
-.parcel-cache/
-.next/
-.nuxt/
-.vuepress/dist/
-.serverless/
-.fusebox/
-*.tsbuildinfo
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+data/
+
+# Logs
+logs/
+*.log
+
+# Testing
+coverage/
+.nyc_output/
 
 # Temporary files
 tmp/
 temp/
-.tmp/
 *.tmp
-*.temp
-*.bak
+
+# Blockchain monitoring tool (submodule)
+blockchain-monitoring-tool/
+
+# Server files
+server.log
+
+# Backup files
 *.backup
-*.old
-
-# Archive directory (for old files)
-.archive/
-
-# Reports (keep in reports/ directory, not root)
-/*_REPORT.md
-/*_report.md
-/test-*.html
-
-# External dependencies (should be in package.json)
-/followthedot-main/
-/Hydration-sdk-master/
-/subscan-OpenAPI-main/
-
-# Performance profiling
-*.cpuprofile
-*.heapsnapshot
-
-# Security
-*.pem
-*.key
-*.cert
-*.crt
-private/
-secrets/
-
-# Documentation build
-docs/_build/
-docs/.vuepress/dist/
-
-# Miscellaneous
-.npm/
-.eslintcache
-.stylelintcache
-.sass-cache/
-*.pid
-*.seed
-*.pid.lock
-
-# Electron
-out/
-electron-builder.yml
-
-# Lockfiles (uncomment if needed)
-# package-lock.json
-# yarn.lock
-# pnpm-lock.yaml
+*.backup2

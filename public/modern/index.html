@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Onchain Sleuther 4000 - Modern UI</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & Dependencies -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- D3.js -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    
+    <!-- Axios -->
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    
+    <!-- Socket.io -->
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+    
+    <!-- Custom Tailwind Config -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        polkadot: {
+                            primary: '#e6007a',
+                            secondary: '#552bbf',
+                            dark: '#0a0a0a',
+                            surface: '#1a1a1a'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        body {
+            margin: 0;
+            background-color: #0a0a0a;
+            color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #4a4a4a;
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #5a5a5a;
+        }
+        
+        /* Loading spinner */
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #e6007a;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Graph styles */
+        .node {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .node:hover {
+            filter: brightness(1.2);
+        }
+        
+        .link {
+            fill: none;
+            stroke-opacity: 0.6;
+            transition: all 0.3s ease;
+        }
+        
+        .link:hover {
+            stroke-opacity: 1;
+            stroke-width: 3;
+        }
+        
+        /* Toast notification */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            padding: 16px 24px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
+            animation: slideIn 0.3s ease;
+            z-index: 1000;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body class="dark">
+    <div id="root"></div>
+    
+    <script type="text/babel" data-type="module">
+        const { useState, useEffect, useRef, useCallback, useMemo } = React;
+        
+        // API Service
+        const api = {
+            baseURL: '/api',
+            
+            async searchAddresses(query) {
+                const response = await axios.get(`${this.baseURL}/addresses/search`, {
+                    params: { q: query, limit: 10 }
+                });
+                return response.data.results || [];
+            },
+            
+            async getGraph(address, filters = {}) {
+                const response = await axios.get(`${this.baseURL}/graph/${address}`, {
+                    params: {
+                        depth: filters.depth || 2,
+                        minVolume: filters.minVolume || '0',
+                        direction: filters.direction || 'both',
+                        maxNodes: 100
+                    }
+                });
+                return response.data;
+            },
+            
+            async getAddressDetails(address) {
+                const response = await axios.get(`${this.baseURL}/addresses/${address}`);
+                return response.data;
+            }
+        };
+        
+        // WebSocket Hook
+        function useWebSocket() {
+            const [isConnected, setIsConnected] = useState(false);
+            const socketRef = useRef(null);
+            
+            useEffect(() => {
+                socketRef.current = io(window.location.origin);
+                
+                socketRef.current.on('connect', () => {
+                    setIsConnected(true);
+                    console.log('WebSocket connected');
+                });
+                
+                socketRef.current.on('disconnect', () => {
+                    setIsConnected(false);
+                    console.log('WebSocket disconnected');
+                });
+                
+                return () => {
+                    socketRef.current.disconnect();
+                };
+            }, []);
+            
+            const subscribe = useCallback((event, handler) => {
+                socketRef.current.on(event, handler);
+                return () => socketRef.current.off(event, handler);
+            }, []);
+            
+            const emit = useCallback((event, data) => {
+                socketRef.current.emit(event, data);
+            }, []);
+            
+            return { isConnected, subscribe, emit };
+        }
+        
+        // Toast Component
+        function Toast({ message, type = 'info', onClose }) {
+            useEffect(() => {
+                const timer = setTimeout(onClose, 3000);
+                return () => clearTimeout(timer);
+            }, [onClose]);
+            
+            const bgColor = type === 'error' ? 'bg-red-500' : 
+                           type === 'success' ? 'bg-green-500' : 'bg-blue-500';
+            
+            return (
+                <div className="toast">
+                    <div className={`flex items-center space-x-3`}>
+                        <div className={`w-2 h-2 rounded-full ${bgColor}`}></div>
+                        <span>{message}</span>
+                        <button onClick={onClose} className="ml-4 text-gray-400 hover:text-white">×</button>
+                    </div>
+                </div>
+            );
+        }
+        
+        // Search Component
+        function AddressSearch({ onAddressSelect }) {
+            const [query, setQuery] = useState('');
+            const [suggestions, setSuggestions] = useState([]);
+            const [isLoading, setIsLoading] = useState(false);
+            const [showSuggestions, setShowSuggestions] = useState(false);
+            
+            const handleSearch = async () => {
+                if (query.length < 3) return;
+                
+                setIsLoading(true);
+                try {
+                    const results = await api.searchAddresses(query);
+                    setSuggestions(results);
+                    setShowSuggestions(true);
+                } catch (error) {
+                    console.error('Search error:', error);
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+            
+            const handleSelect = (address) => {
+                setQuery(address);
+                setShowSuggestions(false);
+                onAddressSelect(address);
+            };
+            
+            return (
+                <div className="relative">
+                    <div className="flex space-x-2">
+                        <input
+                            type="text"
+                            value={query}
+                            onChange={(e) => setQuery(e.target.value)}
+                            onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                            placeholder="Enter Polkadot address or identity..."
+                            className="flex-1 px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-polkadot-primary"
+                        />
+                        <button
+                            onClick={handleSearch}
+                            disabled={isLoading}
+                            className="px-6 py-2 bg-polkadot-primary hover:bg-pink-700 rounded-lg transition-colors disabled:opacity-50"
+                        >
+                            {isLoading ? 'Searching...' : 'Search'}
+                        </button>
+                    </div>
+                    
+                    {showSuggestions && suggestions.length > 0 && (
+                        <div className="absolute top-full mt-2 w-full bg-gray-800 border border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto z-10">
+                            {suggestions.map((suggestion, index) => (
+                                <div
+                                    key={index}
+                                    onClick={() => handleSelect(suggestion.address)}
+                                    className="px-4 py-3 hover:bg-gray-700 cursor-pointer border-b border-gray-700 last:border-b-0"
+                                >
+                                    <div className="font-mono text-sm">{suggestion.address}</div>
+                                    {suggestion.identity && (
+                                        <div className="text-gray-400 text-xs mt-1">{suggestion.identity}</div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            );
+        }
+        
+        // Filter Panel Component
+        function FilterPanel({ filters, onFilterChange }) {
+            return (
+                <div className="space-y-4">
+                    <h3 className="text-lg font-semibold">Filters</h3>
+                    
+                    <div>
+                        <label className="block text-sm font-medium mb-2">Connection Depth</label>
+                        <select
+                            value={filters.depth}
+                            onChange={(e) => onFilterChange({ depth: parseInt(e.target.value) })}
+                            className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg"
+                        >
+                            <option value="1">1 degree</option>
+                            <option value="2">2 degrees</option>
+                            <option value="3">3 degrees</option>
+                            <option value="4">4 degrees</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label className="block text-sm font-medium mb-2">Minimum Volume (DOT)</label>
+                        <input
+                            type="number"
+                            value={filters.minVolume}
+                            onChange={(e) => onFilterChange({ minVolume: e.target.value })}
+                            placeholder="0"
+                            className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg"
+                        />
+                    </div>
+                    
+                    <div>
+                        <label className="block text-sm font-medium mb-2">Direction</label>
+                        <select
+                            value={filters.direction}
+                            onChange={(e) => onFilterChange({ direction: e.target.value })}
+                            className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg"
+                        >
+                            <option value="both">All connections</option>
+                            <option value="incoming">Incoming only</option>
+                            <option value="outgoing">Outgoing only</option>
+                        </select>
+                    </div>
+                </div>
+            );
+        }
+        
+        // Graph Visualization Component
+        function GraphVisualization({ graphData, onNodeClick }) {
+            const svgRef = useRef(null);
+            const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
+            
+            useEffect(() => {
+                const handleResize = () => {
+                    if (svgRef.current) {
+                        const { width, height } = svgRef.current.parentElement.getBoundingClientRect();
+                        setDimensions({ width, height });
+                    }
+                };
+                
+                handleResize();
+                window.addEventListener('resize', handleResize);
+                return () => window.removeEventListener('resize', handleResize);
+            }, []);
+            
+            useEffect(() => {
+                if (!graphData || !svgRef.current) return;
+                
+                const svg = d3.select(svgRef.current);
+                svg.selectAll('*').remove();
+                
+                const { width, height } = dimensions;
+                
+                // Create container
+                const g = svg.append('g');
+                
+                // Create zoom behavior
+                const zoom = d3.zoom()
+                    .scaleExtent([0.1, 10])
+                    .on('zoom', (event) => {
+                        g.attr('transform', event.transform);
+                    });
+                
+                svg.call(zoom);
+                
+                // Process data
+                const nodes = graphData.nodes || [];
+                const links = graphData.edges || [];
+                
+                // Create force simulation
+                const simulation = d3.forceSimulation(nodes)
+                    .force('link', d3.forceLink(links).id(d => d.address).distance(100))
+                    .force('charge', d3.forceManyBody().strength(-300))
+                    .force('center', d3.forceCenter(width / 2, height / 2))
+                    .force('collision', d3.forceCollide().radius(30));
+                
+                // Create arrow markers
+                svg.append('defs').selectAll('marker')
+                    .data(['outgoing', 'incoming'])
+                    .join('marker')
+                    .attr('id', d => `arrow-${d}`)
+                    .attr('viewBox', '0 -5 10 10')
+                    .attr('refX', 25)
+                    .attr('refY', 0)
+                    .attr('markerWidth', 8)
+                    .attr('markerHeight', 8)
+                    .attr('orient', 'auto')
+                    .append('path')
+                    .attr('d', 'M0,-5L10,0L0,5')
+                    .attr('fill', d => d === 'outgoing' ? '#ff9800' : '#4caf50');
+                
+                // Create links
+                const link = g.append('g')
+                    .selectAll('line')
+                    .data(links)
+                    .join('line')
+                    .attr('class', 'link')
+                    .attr('stroke', d => d.direction === 'outgoing' ? '#ff9800' : '#4caf50')
+                    .attr('stroke-width', d => Math.sqrt(d.suggestedWidth || 2))
+                    .attr('marker-end', d => `url(#arrow-${d.direction})`);
+                
+                // Create nodes
+                const node = g.append('g')
+                    .selectAll('circle')
+                    .data(nodes)
+                    .join('circle')
+                    .attr('class', 'node')
+                    .attr('r', d => d.suggestedSize || 20)
+                    .attr('fill', d => {
+                        if (d.nodeType === 'center') return '#e6007a';
+                        if (d.identity && d.identity.display && d.identity.display.display) {
+                            if (d.identity.display.display.includes('Exchange')) return '#ff5722';
+                            if (d.identity.display.display.includes('Validator')) return '#2196f3';
+                        }
+                        return '#9e9e9e';
+                    })
+                    .on('click', (event, d) => onNodeClick(d))
+                    .call(d3.drag()
+                        .on('start', dragstarted)
+                        .on('drag', dragged)
+                        .on('end', dragended));
+                
+                // Add labels
+                const labels = g.append('g')
+                    .selectAll('text')
+                    .data(nodes)
+                    .join('text')
+                    .text(d => {
+                        if (d.identity && d.identity.display && d.identity.display.display) {
+                            return d.identity.display.display;
+                        }
+                        return d.address.slice(0, 8) + '...';
+                    })
+                    .attr('font-size', '10px')
+                    .attr('fill', '#ffffff')
+                    .attr('text-anchor', 'middle')
+                    .attr('dy', -25);
+                
+                // Add tooltips
+                node.append('title')
+                    .text(d => `${d.address}\nBalance: ${d.balance?.free || '0'} DOT`);
+                
+                // Update positions
+                simulation.on('tick', () => {
+                    link
+                        .attr('x1', d => d.source.x)
+                        .attr('y1', d => d.source.y)
+                        .attr('x2', d => d.target.x)
+                        .attr('y2', d => d.target.y);
+                    
+                    node
+                        .attr('cx', d => d.x)
+                        .attr('cy', d => d.y);
+                    
+                    labels
+                        .attr('x', d => d.x)
+                        .attr('y', d => d.y);
+                });
+                
+                // Drag functions
+                function dragstarted(event, d) {
+                    if (!event.active) simulation.alphaTarget(0.3).restart();
+                    d.fx = d.x;
+                    d.fy = d.y;
+                }
+                
+                function dragged(event, d) {
+                    d.fx = event.x;
+                    d.fy = event.y;
+                }
+                
+                function dragended(event, d) {
+                    if (!event.active) simulation.alphaTarget(0);
+                    d.fx = null;
+                    d.fy = null;
+                }
+                
+                // Fit to screen
+                const bounds = g.node().getBBox();
+                const fullWidth = bounds.width;
+                const fullHeight = bounds.height;
+                const midX = bounds.x + fullWidth / 2;
+                const midY = bounds.y + fullHeight / 2;
+                
+                const scale = 0.8 / Math.max(fullWidth / width, fullHeight / height);
+                const translate = [width / 2 - scale * midX, height / 2 - scale * midY];
+                
+                svg.call(zoom.transform, d3.zoomIdentity.translate(translate[0], translate[1]).scale(scale));
+                
+            }, [graphData, dimensions, onNodeClick]);
+            
+            return (
+                <svg ref={svgRef} width={dimensions.width} height={dimensions.height} className="w-full h-full" />
+            );
+        }
+        
+        // Node Details Component
+        function NodeDetails({ node, onClose }) {
+            if (!node) return null;
+            
+            return (
+                <div className="bg-gray-800 rounded-lg p-4 space-y-4">
+                    <div className="flex justify-between items-start">
+                        <h3 className="text-lg font-semibold">Node Details</h3>
+                        <button onClick={onClose} className="text-gray-400 hover:text-white">×</button>
+                    </div>
+                    
+                    <div className="space-y-2">
+                        <div>
+                            <div className="text-sm text-gray-400">Address</div>
+                            <div className="font-mono text-xs break-all">{node.address}</div>
+                        </div>
+                        
+                        {node.identity && node.identity.display && node.identity.display.display && (
+                            <div>
+                                <div className="text-sm text-gray-400">Identity</div>
+                                <div>{node.identity.display.display}</div>
+                            </div>
+                        )}
+                        
+                        <div>
+                            <div className="text-sm text-gray-400">Balance</div>
+                            <div>{node.balance?.free || '0'} DOT</div>
+                        </div>
+                        
+                        <div>
+                            <div className="text-sm text-gray-400">Node Type</div>
+                            <div className="capitalize">{node.nodeType || 'regular'}</div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+        
+        // Main App Component
+        function App() {
+            const [selectedAddress, setSelectedAddress] = useState('');
+            const [graphData, setGraphData] = useState(null);
+            const [selectedNode, setSelectedNode] = useState(null);
+            const [isLoading, setIsLoading] = useState(false);
+            const [toast, setToast] = useState(null);
+            const [filters, setFilters] = useState({
+                depth: 2,
+                minVolume: '0',
+                direction: 'both'
+            });
+            
+            const { isConnected, subscribe, emit } = useWebSocket();
+            
+            // Subscribe to real-time updates
+            useEffect(() => {
+                if (!isConnected || !selectedAddress) return;
+                
+                const unsubscribe = subscribe('graph:update', (data) => {
+                    if (data.address === selectedAddress) {
+                        setGraphData(prevData => ({
+                            ...prevData,
+                            ...data.updates
+                        }));
+                    }
+                });
+                
+                emit('subscribe:address', { address: selectedAddress });
+                
+                return () => {
+                    unsubscribe();
+                    emit('unsubscribe:address', { address: selectedAddress });
+                };
+            }, [isConnected, selectedAddress, subscribe, emit]);
+            
+            const loadGraph = async (address) => {
+                setIsLoading(true);
+                setSelectedAddress(address);
+                
+                try {
+                    const data = await api.getGraph(address, filters);
+                    setGraphData(data);
+                    setToast({ message: 'Graph loaded successfully', type: 'success' });
+                } catch (error) {
+                    console.error('Error loading graph:', error);
+                    setToast({ message: 'Failed to load graph', type: 'error' });
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+            
+            const handleFilterChange = (newFilters) => {
+                setFilters(prev => ({ ...prev, ...newFilters }));
+                if (selectedAddress) {
+                    loadGraph(selectedAddress);
+                }
+            };
+            
+            return (
+                <div className="min-h-screen bg-polkadot-dark">
+                    {/* Header */}
+                    <header className="bg-polkadot-surface border-b border-gray-800 px-6 py-4">
+                        <div className="flex items-center justify-between">
+                            <h1 className="text-2xl font-bold text-white">
+                                Onchain Sleuther 4000
+                                <span className="ml-2 text-sm text-polkadot-primary">Modern</span>
+                            </h1>
+                            <div className="flex items-center space-x-4">
+                                <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+                                <span className="text-sm text-gray-400">
+                                    {isConnected ? 'Connected' : 'Disconnected'}
+                                </span>
+                            </div>
+                        </div>
+                    </header>
+                    
+                    {/* Main Content */}
+                    <div className="flex h-[calc(100vh-73px)]">
+                        {/* Sidebar */}
+                        <aside className="w-80 bg-polkadot-surface border-r border-gray-800 overflow-y-auto">
+                            <div className="p-6 space-y-6">
+                                <AddressSearch onAddressSelect={loadGraph} />
+                                <FilterPanel filters={filters} onFilterChange={handleFilterChange} />
+                                {selectedNode && (
+                                    <NodeDetails 
+                                        node={selectedNode} 
+                                        onClose={() => setSelectedNode(null)} 
+                                    />
+                                )}
+                            </div>
+                        </aside>
+                        
+                        {/* Graph Area */}
+                        <main className="flex-1 relative bg-gray-900">
+                            {isLoading && (
+                                <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 z-10">
+                                    <div className="spinner"></div>
+                                </div>
+                            )}
+                            
+                            {graphData ? (
+                                <GraphVisualization 
+                                    graphData={graphData} 
+                                    onNodeClick={setSelectedNode}
+                                />
+                            ) : (
+                                <div className="flex items-center justify-center h-full text-gray-500">
+                                    <div className="text-center">
+                                        <svg className="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                        </svg>
+                                        <p>Search for an address to begin analysis</p>
+                                    </div>
+                                </div>
+                            )}
+                        </main>
+                    </div>
+                    
+                    {/* Toast Notifications */}
+                    {toast && (
+                        <Toast 
+                            message={toast.message} 
+                            type={toast.type} 
+                            onClose={() => setToast(null)} 
+                        />
+                    )}
+                </div>
+            );
+        }
+        
+        // Render the app
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

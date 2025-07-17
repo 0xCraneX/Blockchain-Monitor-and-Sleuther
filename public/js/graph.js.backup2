@@ -223,19 +223,21 @@ class PolkadotGraphVisualization {
             throw error;
         }
         
-        // Initialize zoom behavior
-        this.zoom = d3.zoom()
-            .scaleExtent([0.1, 10])
-            .filter((event) => {
-                // Allow zoom only on specific conditions to avoid conflicts with drag
-                return !event.ctrlKey && !event.button;
-            })
-            .on('zoom', (event) => {
-                // Use arrow function to preserve 'this' context
-                this.handleZoom(event);
-            });
+        // TEMPORARILY DISABLED: Zoom behavior to isolate context error
+        console.log('Zoom behavior temporarily disabled for debugging');
         
-        this.svg.call(this.zoom);
+        // this.zoom = d3.zoom()
+        //     .scaleExtent([0.1, 10])
+        //     .filter((event) => {
+        //         // Allow zoom only on specific conditions to avoid conflicts with drag
+        //         return !event.ctrlKey && !event.button;
+        //     })
+        //     .on('zoom', (event) => {
+        //         // Use arrow function to preserve 'this' context
+        //         this.handleZoom(event);
+        //     });
+        // 
+        // this.svg.call(this.zoom);
         
         // Create main group for zoomable content
         this.mainGroup = this.svg.append('g')
@@ -734,16 +736,10 @@ class PolkadotGraphVisualization {
         this.simulation.force('link').distance(linkDistance);
         
         // Very aggressive collision detection with massive spacing
-        const avgNodeSize = this.state.filteredData.nodes.reduce((sum, n) => { 
-            try { const radius = this.getNodeRadius(n); return sum + (isNaN(radius) ? 15 : radius); } catch(e) { return sum + 15; }}, 0) / nodeCount || 15;
-        // Initialize collision force if not exists
-        let collisionForce = this.simulation.force('collision');
-        if (!collisionForce) {
-            collisionForce = d3.forceCollide();
-            this.simulation.force('collision', collisionForce);
-        }
-        collisionForce
-            .radius(function(d) { try { const radius = self.getNodeRadius(d); return (isNaN(radius) ? 15 : radius) + avgNodeSize * 2 + 60; } catch(e) { return 15 + avgNodeSize * 2 + 60; } })  // Massive spacing buffer
+        const avgNodeSize = this.state.filteredData.nodes.reduce((sum, n) => 
+            sum + this.getNodeRadius(n), 0) / nodeCount || 15;
+        this.simulation.force('collision')
+            .radius(function(d) { return self.getNodeRadius(d) + avgNodeSize * 2 + 60; })  // Massive spacing buffer
             .strength(1.0)  // Maximum collision strength
             .iterations(5); // More iterations for better separation
         

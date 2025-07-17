@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import { logger } from './utils/logger.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { rateLimiter } from './middleware/rateLimiter.js';
+import { responseSanitizer } from './middleware/responseSanitizer.js';
 import apiRouter from './api/index.js';
 import { DatabaseService } from './services/DatabaseService.js';
 import { BlockchainService } from './services/BlockchainService.js';
@@ -96,6 +97,7 @@ app.use(express.static('public', {
   lastModified: false
 }));
 app.use(rateLimiter); // Legacy rate limiter (can be removed if not needed)
+app.use(responseSanitizer); // Response sanitization for graph data
 
 // API routes
 app.use('/api', apiRouter);

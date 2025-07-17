@@ -1,0 +1,154 @@
+{
+  "config": {
+    "configFile": "/workspace/polkadot-analysis-tool/playwright.config.js",
+    "rootDir": "/workspace/polkadot-analysis-tool/tests/e2e",
+    "forbidOnly": false,
+    "fullyParallel": true,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {},
+    "preserveOutput": "always",
+    "reporter": [
+      [
+        "html",
+        {
+          "outputFolder": "test-results/e2e-report"
+        }
+      ],
+      [
+        "json",
+        {
+          "outputFile": "test-results/e2e-results.json"
+        }
+      ],
+      [
+        "list",
+        null
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "quiet": false,
+    "projects": [
+      {
+        "outputDir": "/workspace/polkadot-analysis-tool/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {},
+        "id": "localhost",
+        "name": "localhost",
+        "testDir": "/workspace/polkadot-analysis-tool/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/workspace/polkadot-analysis-tool/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {},
+        "id": "127.0.0.1",
+        "name": "127.0.0.1",
+        "testDir": "/workspace/polkadot-analysis-tool/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/workspace/polkadot-analysis-tool/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {},
+        "id": "firefox",
+        "name": "firefox",
+        "testDir": "/workspace/polkadot-analysis-tool/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/workspace/polkadot-analysis-tool/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {},
+        "id": "webkit",
+        "name": "webkit",
+        "testDir": "/workspace/polkadot-analysis-tool/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "shard": null,
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.54.1",
+    "workers": 16,
+    "webServer": {
+      "command": "HOST=0.0.0.0 npm start",
+      "port": 3001,
+      "timeout": 120000,
+      "reuseExistingServer": true,
+      "env": {
+        "NODE_ENV": "test",
+        "LOG_LEVEL": "debug",
+        "SKIP_BLOCKCHAIN": "true"
+      }
+    }
+  },
+  "suites": [],
+  "errors": [
+    {
+      "message": "ReferenceError: require is not defined in ES module scope, you can use import instead\nThis file is being treated as an ES module because it has a '.js' file extension and '/workspace/polkadot-analysis-tool/package.json' contains \"type\": \"module\". To treat it as a CommonJS script, rename it to use the '.cjs' file extension.",
+      "stack": "ReferenceError: require is not defined in ES module scope, you can use import instead\nThis file is being treated as an ES module because it has a '.js' file extension and '/workspace/polkadot-analysis-tool/package.json' contains \"type\": \"module\". To treat it as a CommonJS script, rename it to use the '.cjs' file extension.\n    at /workspace/polkadot-analysis-tool/tests/e2e/application-lifecycle.spec.js:8:26",
+      "location": {
+        "file": "/workspace/polkadot-analysis-tool/tests/e2e/application-lifecycle.spec.js",
+        "column": 26,
+        "line": 8
+      },
+      "snippet": "\u001b[90m   at \u001b[39mapplication-lifecycle.spec.js:8\n\n\u001b[0m \u001b[90m  6 |\u001b[39m \u001b[90m */\u001b[39m\n \u001b[90m  7 |\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m  8 |\u001b[39m \u001b[36mconst\u001b[39m { test\u001b[33m,\u001b[39m expect } \u001b[33m=\u001b[39m require(\u001b[32m'@playwright/test'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                          \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m  9 |\u001b[39m\n \u001b[90m 10 |\u001b[39m test\u001b[33m.\u001b[39mdescribe(\u001b[32m'Application Lifecycle'\u001b[39m\u001b[33m,\u001b[39m () \u001b[33m=>\u001b[39m {\n \u001b[90m 11 |\u001b[39m   \u001b[0m"
+    },
+    {
+      "message": "ReferenceError: require is not defined in ES module scope, you can use import instead\nThis file is being treated as an ES module because it has a '.js' file extension and '/workspace/polkadot-analysis-tool/package.json' contains \"type\": \"module\". To treat it as a CommonJS script, rename it to use the '.cjs' file extension.",
+      "stack": "ReferenceError: require is not defined in ES module scope, you can use import instead\nThis file is being treated as an ES module because it has a '.js' file extension and '/workspace/polkadot-analysis-tool/package.json' contains \"type\": \"module\". To treat it as a CommonJS script, rename it to use the '.cjs' file extension.\n    at /workspace/polkadot-analysis-tool/tests/e2e/complete-workflow-test.spec.js:8:26",
+      "location": {
+        "file": "/workspace/polkadot-analysis-tool/tests/e2e/complete-workflow-test.spec.js",
+        "column": 26,
+        "line": 8
+      },
+      "snippet": "\u001b[90m   at \u001b[39mcomplete-workflow-test.spec.js:8\n\n\u001b[0m \u001b[90m  6 |\u001b[39m \u001b[90m */\u001b[39m\n \u001b[90m  7 |\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m  8 |\u001b[39m \u001b[36mconst\u001b[39m { test\u001b[33m,\u001b[39m expect } \u001b[33m=\u001b[39m require(\u001b[32m'@playwright/test'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                          \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m  9 |\u001b[39m \u001b[36mconst\u001b[39m path \u001b[33m=\u001b[39m require(\u001b[32m'path'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 10 |\u001b[39m \u001b[36mconst\u001b[39m fs \u001b[33m=\u001b[39m require(\u001b[32m'fs/promises'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 11 |\u001b[39m\u001b[0m"
+    },
+    {
+      "message": "ReferenceError: require is not defined in ES module scope, you can use import instead\nThis file is being treated as an ES module because it has a '.js' file extension and '/workspace/polkadot-analysis-tool/package.json' contains \"type\": \"module\". To treat it as a CommonJS script, rename it to use the '.cjs' file extension.",
+      "stack": "ReferenceError: require is not defined in ES module scope, you can use import instead\nThis file is being treated as an ES module because it has a '.js' file extension and '/workspace/polkadot-analysis-tool/package.json' contains \"type\": \"module\". To treat it as a CommonJS script, rename it to use the '.cjs' file extension.\n    at /workspace/polkadot-analysis-tool/tests/e2e/user-workflow.spec.js:8:26",
+      "location": {
+        "file": "/workspace/polkadot-analysis-tool/tests/e2e/user-workflow.spec.js",
+        "column": 26,
+        "line": 8
+      },
+      "snippet": "\u001b[90m   at \u001b[39muser-workflow.spec.js:8\n\n\u001b[0m \u001b[90m  6 |\u001b[39m \u001b[90m */\u001b[39m\n \u001b[90m  7 |\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m  8 |\u001b[39m \u001b[36mconst\u001b[39m { test\u001b[33m,\u001b[39m expect } \u001b[33m=\u001b[39m require(\u001b[32m'@playwright/test'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                          \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m  9 |\u001b[39m\n \u001b[90m 10 |\u001b[39m test\u001b[33m.\u001b[39mdescribe(\u001b[32m'Complete User Workflows'\u001b[39m\u001b[33m,\u001b[39m () \u001b[33m=>\u001b[39m {\n \u001b[90m 11 |\u001b[39m   \u001b[0m"
+    }
+  ],
+  "stats": {
+    "startTime": "2025-07-12T07:53:05.705Z",
+    "duration": 423.5610000000006,
+    "expected": 0,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}
