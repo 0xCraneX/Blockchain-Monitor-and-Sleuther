@@ -54,40 +54,47 @@ app.get('/api/current', (req, res) => {
 // API endpoint to get real alerts
 app.get('/api/alerts', (req, res) => {
     try {
-        const today = new Date().toISOString().split('T')[0];
-        const alertsPath = path.join(__dirname, `data/alerts/${today}.json`);
+        // Get days parameter from query (default 30 days for a month)
+        const days = parseInt(req.query.days) || 30;
+        const allAlerts = [];
         
-        if (fs.existsSync(alertsPath)) {
-            const rawAlerts = fs.readFileSync(alertsPath, 'utf8');
-            const alerts = JSON.parse(rawAlerts);
+        // Load alerts for multiple days
+        for (let i = 0; i < days; i++) {
+            const date = new Date();
+            date.setDate(date.getDate() - i);
+            const dateStr = date.toISOString().split('T')[0];
+            const alertsPath = path.join(__dirname, `data/alerts/${dateStr}.json`);
             
-            // Process and format alerts for frontend
-            const formattedAlerts = alerts.map(alert => ({
-                id: alert.id || Math.random().toString(36),
-                severity: determineSeverity(alert),
-                title: formatAlertTitle(alert),
-                description: alert.description || alert.message,
-                timestamp: alert.timestamp,
-                address: alert.address,
-                amount: alert.amount,
-                type: alert.type || alert.pattern,
-                timeAgo: getTimeAgo(alert.timestamp)
-            }));
-            
-            res.json({
-                success: true,
-                alerts: formattedAlerts.slice(0, 20), // Latest 20 alerts
-                count: formattedAlerts.length,
-                source: 'real_alert_data'
-            });
-        } else {
-            res.json({
-                success: true,
-                alerts: [],
-                count: 0,
-                message: `No alerts found for ${today}. Monitor may not have detected any patterns yet.`
-            });
+            if (fs.existsSync(alertsPath)) {
+                const rawAlerts = fs.readFileSync(alertsPath, 'utf8');
+                const dayAlerts = JSON.parse(rawAlerts);
+                allAlerts.push(...dayAlerts);
+            }
         }
+        
+        // Sort by timestamp (newest first)
+        allAlerts.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        
+        // Process and format alerts for frontend
+        const formattedAlerts = allAlerts.map(alert => ({
+            id: alert.id || Math.random().toString(36),
+            severity: determineSeverity(alert),
+            title: formatAlertTitle(alert),
+            description: alert.description || alert.message,
+            timestamp: alert.timestamp,
+            address: alert.address,
+            amount: alert.amount,
+            type: alert.type || alert.pattern,
+            timeAgo: getTimeAgo(alert.timestamp)
+        }));
+        
+        res.json({
+            success: true,
+            alerts: formattedAlerts,
+            count: formattedAlerts.length,
+            daysLoaded: days,
+            source: 'real_alert_data'
+        });
     } catch (error) {
         console.error('Error reading alerts:', error);
         res.status(500).json({

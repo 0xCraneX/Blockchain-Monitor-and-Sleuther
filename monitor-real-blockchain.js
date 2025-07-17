@@ -6,6 +6,7 @@ const AlertManager = require('./src/alerts/AlertManager');
 const RealTransferFetcher = require('./src/alerts/RealTransferFetcher');
 const BalanceChangeMonitor = require('./src/alerts/BalanceChangeMonitor');
 const RealtimeMonitor = require('./src/monitor/RealtimeMonitor');
+const NoiseFilter = require('./src/analysis/NoiseFilter');
 const { monitorLogger } = require('./src/utils/simple-logger');
 
 require('dotenv').config();
@@ -28,7 +29,7 @@ class RealBlockchainMonitor {
     this.transferFetcher = new RealTransferFetcher({
       subscanApiKey: this.config.subscanApiKey,
       dataPath: this.config.dataPath,
-      lookbackHours: 168, // 7 days
+      lookbackHours: 720, // 30 days
       minTransferAmount: 10000
     });
     
@@ -44,6 +45,14 @@ class RealBlockchainMonitor {
         onAlert: (alert) => this.handleRealtimeAlert(alert)
       });
     }
+    
+    this.noiseFilter = new NoiseFilter({
+      dataPath: this.config.dataPath,
+      noiseThreshold: 0.2, // 20% threshold based on testing
+      exchangeActivityWeight: 0.7,
+      temporalWeight: 0.2,
+      volumeWeight: 0.1
+    });
     
     this.isRunning = false;
   }
@@ -121,22 +130,67 @@ class RealBlockchainMonitor {
       
       await this.transferFetcher.saveProcessedTransfers();
       
-      // 5. Process all alerts
+      // 5. Apply noise filtering
       if (allAlerts.length > 0) {
-        monitorLogger.section('Processing Real Blockchain Alerts');
-        await this.alertManager.processAlerts(allAlerts);
+        monitorLogger.section('Applying Noise Filtering');
         
-        // Log summary
-        const criticalCount = allAlerts.filter(a => a.severity === 'critical').length;
-        const highCount = allAlerts.filter(a => a.severity === 'high').length;
-        
-        monitorLogger.success(`Processed ${allAlerts.length} real alerts`, {
-          critical: criticalCount,
-          high: highCount,
-          medium: allAlerts.length - criticalCount - highCount
-        });
+        try {
+          const filterResults = await this.noiseFilter.filterAlerts(allAlerts);
+          const signalAlerts = filterResults.signal;
+          const noiseAlerts = filterResults.noise;
+          
+          monitorLogger.info(`Filtered ${allAlerts.length} alerts: ${signalAlerts.length} signal, ${noiseAlerts.length} noise`, {
+            signalPercentage: filterResults.stats.signalPercentage,
+            noisePercentage: filterResults.stats.noisePercentage
+          });
+          
+          // Process only signal alerts
+          if (signalAlerts.length > 0) {
+            monitorLogger.section('Processing Signal Alerts');
+            await this.alertManager.processAlerts(signalAlerts);
+            
+            // Log summary of processed signals
+            const criticalCount = signalAlerts.filter(a => a.severity === 'critical').length;
+            const highCount = signalAlerts.filter(a => a.severity === 'high').length;
+            
+            monitorLogger.success(`Processed ${signalAlerts.length} signal alerts`, {
+              critical: criticalCount,
+              high: highCount,
+              medium: signalAlerts.length - criticalCount - highCount,
+              filtered: noiseAlerts.length
+            });
+          } else {
+            monitorLogger.info('No significant signals detected after filtering');
+          }
+          
+          // Optional: Log noise summary for debugging
+          if (noiseAlerts.length > 0) {
+            const noiseByType = {};
+            noiseAlerts.forEach(alert => {
+              const type = alert.type || 'unknown';
+              noiseByType[type] = (noiseByType[type] || 0) + 1;
+            });
+            
+            monitorLogger.debug('Filtered noise breakdown', noiseByType);
+          }
+          
+        } catch (filterError) {
+          monitorLogger.error('Noise filtering failed, processing all alerts', filterError);
+          
+          // Fallback: process all alerts if filtering fails
+          await this.alertManager.processAlerts(allAlerts);
+          
+          const criticalCount = allAlerts.filter(a => a.severity === 'critical').length;
+          const highCount = allAlerts.filter(a => a.severity === 'high').length;
+          
+          monitorLogger.success(`Processed ${allAlerts.length} alerts (unfiltered)`, {
+            critical: criticalCount,
+            high: highCount,
+            medium: allAlerts.length - criticalCount - highCount
+          });
+        }
       } else {
-        monitorLogger.info('No significant blockchain activity detected');
+        monitorLogger.info('No blockchain activity detected');
       }
       
       // 6. Log cycle completion
@@ -179,6 +233,9 @@ class RealBlockchainMonitor {
     monitorLogger.section('Starting Real Blockchain Monitor');
     
     try {
+      // Initialize noise filter
+      await this.noiseFilter.initialize();
+      
       // Run initial cycle
       const accounts = await this.fetchCurrentAccounts();
       await this.runMonitoringCycle();
