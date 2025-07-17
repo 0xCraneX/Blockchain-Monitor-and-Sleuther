@@ -76,17 +76,23 @@ app.get('/api/alerts', (req, res) => {
         allAlerts.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
         
         // Process and format alerts for frontend
-        const formattedAlerts = allAlerts.map(alert => ({
-            id: alert.id || Math.random().toString(36),
-            severity: determineSeverity(alert),
-            title: formatAlertTitle(alert),
-            description: alert.description || alert.message,
-            timestamp: alert.timestamp,
-            address: alert.address,
-            amount: alert.amount,
-            type: alert.type || alert.pattern,
-            timeAgo: getTimeAgo(alert.timestamp)
-        }));
+        const formattedAlerts = allAlerts.map(alert => {
+            const alertType = alert.type || alert.pattern || 'unknown';
+            const title = formatAlertTitle(alert) || 'Blockchain Activity';
+            const severity = determineSeverity(alert) || 'low';
+            
+            return {
+                id: alert.id || Math.random().toString(36),
+                severity: severity,
+                title: title,
+                description: alert.description || alert.message || 'Unknown activity detected',
+                timestamp: alert.timestamp,
+                address: alert.address,
+                amount: alert.amount,
+                type: alertType,
+                timeAgo: getTimeAgo(alert.timestamp) || 'Unknown'
+            };
+        });
         
         res.json({
             success: true,
@@ -219,7 +225,9 @@ function determineSeverity(alert) {
 }
 
 function formatAlertTitle(alert) {
-    switch (alert.type || alert.pattern) {
+    const type = alert.type || alert.pattern || '';
+    
+    switch (type.toLowerCase()) {
         case 'dormant_awakening':
             return 'Dormant Whale Awakening';
         case 'large_transfer':
@@ -228,8 +236,20 @@ function formatAlertTitle(alert) {
             return 'Coordinated Movement Pattern';
         case 'exchange_activity':
             return 'Exchange Activity';
+        case 'whale_movement':
+            return 'Whale Movement';
+        case 'new_whale':
+            return 'New Whale Detected';
+        case 'large_movement':
+            return 'Large Movement';
+        case '':
+        case 'unknown':
+            return 'Blockchain Activity';
         default:
-            return alert.title || 'Blockchain Activity';
+            // Try to format the type into a readable title
+            return alert.title || type.split('_').map(word => 
+                word.charAt(0).toUpperCase() + word.slice(1)
+            ).join(' ');
     }
 }
 
