@@ -278,12 +278,22 @@ export class RealDataService {
    * Build graph data for visualization
    */
   async buildGraphData(centerAddress, depth = 2, options = {}) {
-    const {
+    let {
       maxNodes = 50, // Reduced from 100 to avoid rate limiting
       minVolume = '0',
       progressive = false,
       onProgress = null
     } = options;
+    
+    // Limit depth to prevent exponential API calls
+    if (depth > 3 && maxNodes > 200) {
+      logger.warn('Large depth with high node limit detected, reducing maxNodes', {
+        requestedDepth: depth,
+        requestedMaxNodes: maxNodes,
+        adjustedMaxNodes: 200
+      });
+      maxNodes = 200;
+    }
 
     logger.info('[METHOD] buildGraphData called', {
       centerAddress,
@@ -333,14 +343,23 @@ export class RealDataService {
     });
 
     let iteration = 0;
+    const startTime = Date.now();
+    
     while (queue.length > 0 && nodes.size < maxNodes) {
       iteration++;
-      logger.debug('Graph building iteration', {
-        iteration,
-        queueLength: queue.length,
-        nodesCount: nodes.size,
-        visitedCount: visited.size
-      });
+      
+      // Log progress every 10 iterations or every 5 seconds
+      if (iteration % 10 === 0 || Date.now() - startTime > 5000) {
+        logger.info('Graph building progress', {
+          iteration,
+          queueLength: queue.length,
+          nodesCount: nodes.size,
+          visitedCount: visited.size,
+          elapsedSeconds: Math.round((Date.now() - startTime) / 1000),
+          depth: depth,
+          maxNodes: maxNodes
+        });
+      }
       const { address, currentDepth } = queue.shift();
 
       logger.debug('Processing node', {
