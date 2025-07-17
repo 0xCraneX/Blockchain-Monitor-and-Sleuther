@@ -5,7 +5,7 @@ const { monitorLogger } = require('../utils/simple-logger');
 class RealTransferFetcher {
   constructor(config = {}) {
     this.config = {
-      lookbackHours: config.lookbackHours || 24,
+      lookbackHours: config.lookbackHours || 168, // 7 days = 168 hours
       minTransferAmount: config.minTransferAmount || 10000, // 10k DOT minimum
       batchSize: config.batchSize || 10, // Process accounts in batches
       ...config

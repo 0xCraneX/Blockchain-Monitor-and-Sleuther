@@ -28,7 +28,7 @@ class RealBlockchainMonitor {
     this.transferFetcher = new RealTransferFetcher({
       subscanApiKey: this.config.subscanApiKey,
       dataPath: this.config.dataPath,
-      lookbackHours: 24,
+      lookbackHours: 168, // 7 days
       minTransferAmount: 10000
     });
     
