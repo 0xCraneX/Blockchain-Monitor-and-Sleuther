@@ -244,9 +244,22 @@ class FileStorage {
         alerts = JSON.parse(data);
       }
       
-      alerts.push({
-        ...alert,
-        savedAt: new Date().toISOString()
+      // Handle both single alert and array of alerts
+      const alertsToAdd = Array.isArray(alert) ? alert : [alert];
+      const timestamp = new Date().toISOString();
+      
+      // Create a Set of existing IDs to prevent duplicates
+      const existingIds = new Set(alerts.map(a => a.id).filter(id => id));
+      
+      // Add each alert individually with duplicate check
+      alertsToAdd.forEach(a => {
+        if (a.id && !existingIds.has(a.id)) {
+          alerts.push({
+            ...a,
+            savedAt: timestamp
+          });
+          existingIds.add(a.id);
+        }
       });
       
       fs.writeFileSync(alertFile, JSON.stringify(alerts, null, 2));

@@ -651,20 +651,56 @@
         }
         
         function updateTopMoversFromStats(topMovers) {
-            // Update gainers
+            // Combine gainers and losers for display
+            const allMovers = [];
+            
             if (topMovers.gainers && topMovers.gainers.length > 0) {
-                topMovers.gainers.slice(0, 3).forEach((mover, index) => {
-                    const element = document.getElementById(`top-mover-${index + 1}`);
-                    if (element) {
-                        element.textContent = mover.address.slice(0, 8) + '...';
-                        const amountElement = element.nextElementSibling;
-                        if (amountElement) {
-                            const amount = Math.round(Math.abs(mover.net / 1000));
-                            amountElement.textContent = `↑ ${amount}K DOT`;
-                            amountElement.className = 'text-xs text-green-400';
-                        }
+                allMovers.push(...topMovers.gainers.map(m => ({...m, direction: 'up'})));
+            }
+            
+            if (topMovers.losers && topMovers.losers.length > 0) {
+                allMovers.push(...topMovers.losers.map(m => ({...m, direction: 'down'})));
+            }
+            
+            // Sort by absolute movement amount and take top 3
+            allMovers.sort((a, b) => Math.abs(b.net) - Math.abs(a.net));
+            const top3 = allMovers.slice(0, 3);
+            
+            // Update each mover
+            for (let i = 0; i < 3; i++) {
+                const addressElement = document.getElementById(`top-mover-${i + 1}`);
+                const containerElement = addressElement?.closest('.flex.items-center.justify-between');
+                
+                if (containerElement && top3[i]) {
+                    const mover = top3[i];
+                    
+                    // Update address
+                    addressElement.textContent = mover.address.slice(0, 8) + '...';
+                    
+                    // Update amount and direction
+                    const amountElement = addressElement.nextElementSibling;
+                    if (amountElement) {
+                        const amount = Math.round(Math.abs(mover.net) / 1000);
+                        const direction = mover.net > 0 ? '↑' : '↓';
+                        const color = mover.net > 0 ? 'text-green-400' : 'text-red-400';
+                        
+                        amountElement.textContent = `${direction} ${amount}K DOT`;
+                        amountElement.className = `text-xs ${color}`;
                     }
-                });
+                    
+                    // Update account type
+                    const typeElement = containerElement.querySelector('.text-gray-400');
+                    if (typeElement) {
+                        typeElement.textContent = mover.type || 'Unknown';
+                    }
+                } else if (containerElement) {
+                    // No data available, show placeholder
+                    addressElement.textContent = 'No data';
+                    const amountElement = addressElement.nextElementSibling;
+                    if (amountElement) {
+                        amountElement.textContent = '';
+                    }
+                }
             }
         }
         

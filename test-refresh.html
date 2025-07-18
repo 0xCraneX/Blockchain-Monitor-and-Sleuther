@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Refresh Button</title>
+</head>
+<body>
+    <h1>Testing Refresh Functionality</h1>
+    <div id="status"></div>
+    <button onclick="testRefresh()">Test Refresh</button>
+    <pre id="results"></pre>
+    
+    <script>
+        async function testRefresh() {
+            const status = document.getElementById('status');
+            const results = document.getElementById('results');
+            
+            status.textContent = 'Testing refresh functionality...';
+            
+            try {
+                // Test /api/current
+                const currentResponse = await fetch('http://localhost:3003/api/current');
+                const currentData = await currentResponse.json();
+                
+                // Test /api/alerts
+                const alertsResponse = await fetch('http://localhost:3003/api/alerts');
+                const alertsData = await alertsResponse.json();
+                
+                // Test /api/monitoring-stats
+                const statsResponse = await fetch('http://localhost:3003/api/monitoring-stats?days=1');
+                const statsData = await statsResponse.json();
+                
+                results.textContent = JSON.stringify({
+                    current: {
+                        success: currentData.success,
+                        accountsMonitored: currentData.data?.accountsMonitored,
+                        alertsToday: currentData.data?.alertsToday
+                    },
+                    alerts: {
+                        success: alertsData.success,
+                        count: alertsData.alerts?.length,
+                        latestAlert: alertsData.alerts?.[0]?.title
+                    },
+                    stats: {
+                        success: statsData.success,
+                        activePatterns: statsData.stats?.activePatterns
+                    }
+                }, null, 2);
+                
+                status.textContent = '✅ All endpoints working!';
+                
+            } catch (error) {
+                status.textContent = '❌ Error: ' + error.message;
+                results.textContent = error.stack;
+            }
+        }
+        
+        // Auto-test on load
+        testRefresh();
+    </script>
+</body>
+</html>

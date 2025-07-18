@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Refresh</title>
+</head>
+<body>
+    <h1>Debug Test</h1>
+    <div id="total-volume">Loading...</div>
+    <button onclick="testRefresh()">Test Refresh</button>
+    <div id="output"></div>
+    
+    <script>
+        async function testRefresh() {
+            console.log('1. Testing refresh...');
+            
+            try {
+                // Test /api/current
+                console.log('2. Fetching /api/current...');
+                const currentResponse = await fetch('http://localhost:3003/api/current');
+                const currentData = await currentResponse.json();
+                console.log('3. Current data:', currentData);
+                
+                // Test /api/monitoring-stats
+                console.log('4. Fetching /api/monitoring-stats...');
+                const statsResponse = await fetch('http://localhost:3003/api/monitoring-stats?days=1');
+                const statsData = await statsResponse.json();
+                console.log('5. Stats data:', statsData);
+                
+                // Test the math
+                const movement = statsData.stats.dotMovement || 0;
+                const movementM = Math.round(movement / 1000000);
+                console.log('6. Movement calc:', movement, '->', movementM + 'M');
+                
+                // Test DOM update
+                const volumeElement = document.getElementById('total-volume');
+                if (volumeElement) {
+                    volumeElement.textContent = movementM + 'M';
+                    console.log('7. Updated DOM element');
+                } else {
+                    console.log('7. ERROR: total-volume element not found');
+                }
+                
+                document.getElementById('output').innerHTML = `
+                    <p>API Working: ${currentData.success}</p>
+                    <p>Stats Working: ${statsData.success}</p>
+                    <p>Movement: ${movement} -> ${movementM}M</p>
+                    <p>DOM Updated: ${volumeElement ? 'Yes' : 'No'}</p>
+                `;
+                
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('output').innerHTML = `<p>Error: ${error.message}</p>`;
+            }
+        }
+        
+        // Auto-run test
+        testRefresh();
+    </script>
+</body>
+</html>

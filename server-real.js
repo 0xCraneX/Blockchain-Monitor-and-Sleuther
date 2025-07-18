@@ -132,14 +132,22 @@ app.get('/api/monitoring-stats', async (req, res) => {
         }
         
         // Calculate statistics
+        let topMovers = { gainers: [], losers: [] };
+        try {
+            topMovers = getTopMoversFromAlerts(allAlerts);
+        } catch (error) {
+            console.error('Error calculating top movers:', error);
+        }
+        
         const stats = {
             alertsToday: getTodaysAlerts().length,
             activePatterns: countUniquePatterns(allAlerts),
             dotMovement: calculateTotalMovement(allAlerts),
-            topMovers: getTopMovers(allAlerts),
+            topMovers: topMovers,
             severityBreakdown: getSeverityBreakdown(allAlerts),
             typeBreakdown: getTypeBreakdown(allAlerts)
         };
+        
         
         res.json({
             success: true,
@@ -172,43 +180,77 @@ function calculateTotalMovement(alerts) {
     }, 0);
 }
 
-function getTopMovers(alerts) {
-    // Group by address and calculate net movement
+function getTopMoversFromAlerts(alerts) {
+    // Group by address and calculate movement
     const movements = {};
     
     alerts.forEach(alert => {
         if (!alert.address || !alert.amount) return;
         
+        const amount = parseFloat(alert.amount);
+        if (isNaN(amount)) return;
+        
         if (!movements[alert.address]) {
             movements[alert.address] = {
                 address: alert.address,
-                in: 0,
-                out: 0,
+                totalMovement: 0,
                 net: 0,
-                type: alert.metadata?.identity || 'Unknown'
+                type: getAccountType(alert),
+                transactionCount: 0
             };
         }
         
-        // Determine if it's incoming or outgoing based on metadata
+        // Add to total movement (absolute value for ranking)
+        movements[alert.address].totalMovement += amount;
+        movements[alert.address].transactionCount += 1;
+        
+        // For net calculation, determine direction based on transaction metadata
         if (alert.metadata && alert.metadata.to === alert.address) {
-            movements[alert.address].in += parseFloat(alert.amount);
+            // Incoming to this address
+            movements[alert.address].net += amount;
+        } else if (alert.metadata && alert.metadata.from === alert.address) {
+            // Outgoing from this address  
+            movements[alert.address].net -= amount;
         } else {
-            movements[alert.address].out += parseFloat(alert.amount);
+            // Default: treat as outgoing for the monitored address
+            movements[alert.address].net += amount;
         }
     });
     
-    // Calculate net movement and sort
-    const movers = Object.values(movements).map(m => {
-        m.net = m.in - m.out;
-        return m;
-    });
+    // Convert to array and sort by total movement
+    const movers = Object.values(movements)
+        .filter(m => m.totalMovement > 0)
+        .sort((a, b) => b.totalMovement - a.totalMovement);
     
-    // Get top gainers and losers
-    const sorted = movers.sort((a, b) => Math.abs(b.net) - Math.abs(a.net));
-    const topGainers = sorted.filter(m => m.net > 0).slice(0, 3);
-    const topLosers = sorted.filter(m => m.net < 0).slice(0, 3);
+    // Get top 6 movers and separate into gainers/losers
+    const top6 = movers.slice(0, 6);
+    const topGainers = top6.filter(m => m.net > 0).slice(0, 3);
+    const topLosers = top6.filter(m => m.net < 0).slice(0, 3);
     
     return { gainers: topGainers, losers: topLosers };
+}
+
+function getAccountType(alert) {
+    // Try to determine account type from description or other fields
+    const desc = (alert.description || '').toLowerCase();
+    
+    if (desc.includes('binance') || desc.includes('bybit') || desc.includes('exchange')) {
+        return 'Exchange';
+    }
+    
+    if (desc.includes('validator')) {
+        return 'Validator';
+    }
+    
+    // Default based on amount thresholds
+    const amount = parseFloat(alert.amount) || 0;
+    if (amount > 100000) {
+        return 'Whale';
+    } else if (amount > 10000) {
+        return 'Large Account';
+    }
+    
+    return 'Unknown';
 }
 
 function getSeverityBreakdown(alerts) {
@@ -328,12 +370,12 @@ function getTodaysAlerts() {
         
         if (fs.existsSync(alertsPath)) {
             const alerts = JSON.parse(fs.readFileSync(alertsPath, 'utf8'));
-            return alerts.length;
+            return alerts;
         }
     } catch (error) {
-        console.error('Error counting alerts:', error);
+        console.error('Error loading todays alerts:', error);
     }
-    return 0;
+    return [];
 }
 
 function calculateTotalVolume(data) {
