@@ -13,7 +13,7 @@ class PolkadotAnalysisApp {
             graphData: null,
             selectedNodes: new Set(),
             filters: {
-                depth: 2,  // Changed from 1 to 2 to show two levels of connections
+                depth: 1,  // Default depth set to 1 to avoid showing too many connections
                 maxNodes: 1000,  // Increased from 100 to 1000 to show more connections
                 minVolume: '0',
                 minBalance: '0',
@@ -716,7 +716,7 @@ class PolkadotAnalysisApp {
      */
     resetFilters() {
         this.state.filters = {
-            depth: 2,
+            depth: 1,
             maxNodes: 1000,  // Increased from 100 to 1000
             minVolume: '0',
             minBalance: '0',
