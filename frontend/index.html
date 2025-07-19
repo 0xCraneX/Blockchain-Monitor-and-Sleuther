@@ -2013,6 +2013,7 @@
                         
                         // Load data for specific tabs
                         if (tabId === 'whale-registry-tab') {
+                            console.log('Whale registry tab activated, loading data...');
                             loadWhaleRegistry();
                         }
                     }
@@ -2023,11 +2024,14 @@
         // Whale Registry Functions
         
         function loadWhaleRegistry() {
+            console.log('Loading whale registry...');
             // Load whale data from the current snapshot
             fetch('/api/current')
                 .then(response => response.json())
                 .then(data => {
+                    console.log('API Response:', data);
                     if (data.success && data.data && data.data.topAccounts) {
+                        console.log('Processing', data.data.topAccounts.length, 'accounts');
                         registryWhaleData = data.data.topAccounts.map((account, index) => ({
                             rank: index + 1,
                             address: account.address,
@@ -2043,9 +2047,12 @@
                             anomalyScore: simulateAnomalyScore(account, index)
                         }));
                         
+                        console.log('Mapped whale data:', registryWhaleData.length, 'items');
                         updateRegistryStats();
                         filterAndSortWhales();
                         displayWhales();
+                    } else {
+                        console.error('Invalid data structure:', data);
                     }
                 })
                 .catch(error => {
@@ -2186,12 +2193,17 @@
         }
         
         function displayWhales() {
+            console.log('displayWhales called with', registryFilteredWhales.length, 'filtered whales');
             const startIndex = (registryCurrentPage - 1) * registryPageSize;
             const endIndex = startIndex + registryPageSize;
             const pageWhales = registryFilteredWhales.slice(startIndex, endIndex);
+            console.log('Displaying', pageWhales.length, 'whales on page', registryCurrentPage);
             
             const tbody = document.getElementById('whale-table-body');
-            if (!tbody) return;
+            if (!tbody) {
+                console.error('whale-table-body element not found!');
+                return;
+            }
             
             tbody.innerHTML = pageWhales.map(whale => `
                 <tr class="whale-row">
