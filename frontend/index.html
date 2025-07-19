@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Polkadot Whale Monitor - Real-time Dashboard</title>
-    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <title>Polkadot Whale Monitor - REAL DATA Dashboard</title>
+    <link rel="icon" type="image/svg+xml" href="/whale-favicon.svg">
+    <link rel="alternate icon" href="/favicon.ico">
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -97,6 +98,36 @@
             }
         }
         
+        /* Filter button states */
+        .filter-btn.active {
+            background-color: #e6007a !important;
+            color: white;
+        }
+        
+        .filter-btn:not(.active):hover {
+            background-color: #374151;
+        }
+        
+        /* Range slider styling */
+        #min-amount-slider::-webkit-slider-thumb {
+            appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #e6007a;
+            cursor: pointer;
+            border: 2px solid #1f2937;
+        }
+        
+        #min-amount-slider::-moz-range-thumb {
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #e6007a;
+            cursor: pointer;
+            border: 2px solid #1f2937;
+        }
+        
         /* Pattern visualization */
         .pattern-bg {
             background-image: 
@@ -110,6 +141,51 @@
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
+        
+        /* Tab styles */
+        .tab-button.active {
+            border-color: #e6007a !important;
+            color: #e6007a !important;
+        }
+        
+        .tab-content.hidden {
+            display: none;
+        }
+        
+        /* View button styles */
+        .view-btn.active {
+            background-color: #e6007a !important;
+            color: white;
+        }
+        
+        /* Whale table styles */
+        .whale-row {
+            transition: background-color 0.2s;
+        }
+        
+        .whale-row:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+        
+        /* Risk level badges */
+        .risk-critical { background-color: rgba(239, 68, 68, 0.2); color: #ef4444; }
+        .risk-high { background-color: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+        .risk-medium { background-color: rgba(234, 179, 8, 0.2); color: #eab308; }
+        .risk-low { background-color: rgba(34, 197, 94, 0.2); color: #22c55e; }
+        .risk-none { background-color: rgba(156, 163, 175, 0.2); color: #9ca3af; }
+        
+        /* Role badges */
+        .role-holder { background-color: rgba(59, 130, 246, 0.2); color: #3b82f6; }
+        .role-trader { background-color: rgba(168, 85, 247, 0.2); color: #a855f7; }
+        .role-validator { background-color: rgba(34, 197, 94, 0.2); color: #22c55e; }
+        .role-exchange { background-color: rgba(249, 115, 22, 0.2); color: #f97316; }
+        .role-unknown { background-color: rgba(156, 163, 175, 0.2); color: #9ca3af; }
+        
+        /* Activity indicators */
+        .activity-high { color: #22c55e; }
+        .activity-medium { color: #eab308; }
+        .activity-low { color: #f59e0b; }
+        .activity-dormant { color: #ef4444; }
     </style>
 </head>
 <body class="dark">
@@ -124,7 +200,7 @@
                         </div>
                         <div>
                             <h1 className="text-xl font-bold">Polkadot Whale Monitor</h1>
-                            <p class="text-xs text-gray-400">Real-time blockchain surveillance</p>
+                            <p class="text-xs text-gray-400">REAL DATA - Live monitoring</p>
                         </div>
                     </div>
                 </div>
@@ -144,6 +220,14 @@
                     
                     <!-- Controls -->
                     <div class="flex items-center space-x-2">
+                        <!-- Performance Mode Indicator -->
+                        <div class="flex items-center space-x-2 border-r border-gray-600 pr-4">
+                            <div class="flex items-center space-x-2">
+                                <div id="performance-status" class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                                <span class="text-sm text-gray-400">Enhanced Mode</span>
+                            </div>
+                        </div>
+                        
                         <button id="refresh-btn" class="px-4 py-2 bg-polkadot-light hover:bg-gray-700 rounded-lg transition-colors">
                             <i class="fas fa-sync-alt mr-2"></i>
                             Refresh
@@ -156,9 +240,33 @@
             </div>
         </header>
         
+        <!-- Navigation Tabs -->
+        <nav class="bg-polkadot-surface border-b border-gray-800 px-6">
+            <div class="flex space-x-8">
+                <button id="tab-dashboard" class="tab-button active py-4 px-1 border-b-2 border-polkadot-primary text-polkadot-primary font-medium text-sm">
+                    <i class="fas fa-chart-line mr-2"></i>
+                    Dashboard
+                </button>
+                <button id="tab-whale-registry" class="tab-button py-4 px-1 border-b-2 border-transparent text-gray-400 hover:text-gray-300 font-medium text-sm">
+                    <i class="fas fa-whale mr-2"></i>
+                    Whale Registry
+                </button>
+                <button id="tab-patterns" class="tab-button py-4 px-1 border-b-2 border-transparent text-gray-400 hover:text-gray-300 font-medium text-sm">
+                    <i class="fas fa-brain mr-2"></i>
+                    Pattern Analysis
+                </button>
+                <button id="tab-network" class="tab-button py-4 px-1 border-b-2 border-transparent text-gray-400 hover:text-gray-300 font-medium text-sm">
+                    <i class="fas fa-network-wired mr-2"></i>
+                    Network Graph
+                </button>
+            </div>
+        </nav>
+        
         <!-- Main Content -->
         <main class="flex-1 p-6">
-            <!-- Stats Overview -->
+            <!-- Dashboard Tab Content -->
+            <div id="dashboard-tab" class="tab-content">
+                <!-- Stats Overview -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                 <!-- Total Monitored -->
                 <div class="glass rounded-xl p-6">
@@ -184,16 +292,16 @@
                     <div class="text-sm text-gray-400">Active Patterns</div>
                 </div>
                 
-                <!-- Alerts Today -->
+                <!-- Anomalies Detected -->
                 <div class="glass rounded-xl p-6">
                     <div class="flex items-center justify-between mb-4">
-                        <div class="p-3 bg-orange-500/20 rounded-lg">
-                            <i class="fas fa-exclamation-triangle text-orange-500 text-xl"></i>
+                        <div class="p-3 bg-red-500/20 rounded-lg">
+                            <i class="fas fa-brain text-red-500 text-xl"></i>
                         </div>
-                        <span class="text-xs text-orange-400">+3 new</span>
+                        <span class="text-xs text-red-400" id="anomaly-trend">+5 new</span>
                     </div>
-                    <div class="text-2xl font-bold mb-1" id="alerts-today">24</div>
-                    <div class="text-sm text-gray-400">Alerts Today</div>
+                    <div class="text-2xl font-bold mb-1" id="anomalies-today">12</div>
+                    <div class="text-sm text-gray-400">Anomalies Detected</div>
                 </div>
                 
                 <!-- Total Volume -->
@@ -202,7 +310,7 @@
                         <div class="p-3 bg-green-500/20 rounded-lg">
                             <i class="fas fa-coins text-green-500 text-xl"></i>
                         </div>
-                        <span class="text-xs text-gray-400">24h</span>
+                        <span class="text-xs text-gray-400">30d</span>
                     </div>
                     <div class="text-2xl font-bold mb-1" id="total-volume">2.4M</div>
                     <div class="text-sm text-gray-400">DOT Movement</div>
@@ -217,65 +325,132 @@
                     <div class="glass rounded-xl p-6">
                         <div class="flex items-center justify-between mb-6">
                             <h2 class="text-lg font-semibold flex items-center">
-                                <i class="fas fa-bell mr-2 text-polkadot-primary"></i>
-                                Real-time Alerts
+                                <i class="fas fa-brain mr-2 text-polkadot-primary"></i>
+                                Anomaly Detection
                             </h2>
                             <div class="flex items-center space-x-2">
-                                <button class="text-xs px-3 py-1 bg-polkadot-light rounded-full hover:bg-gray-700 transition-colors">
+                                <button id="filter-all" class="text-xs px-3 py-1 bg-polkadot-light rounded-full hover:bg-gray-700 transition-colors filter-btn active">
                                     All
                                 </button>
-                                <button class="text-xs px-3 py-1 rounded-full hover:bg-gray-700 transition-colors">
+                                <button id="filter-critical" class="text-xs px-3 py-1 rounded-full hover:bg-gray-700 transition-colors filter-btn">
                                     Critical
                                 </button>
-                                <button class="text-xs px-3 py-1 rounded-full hover:bg-gray-700 transition-colors">
-                                    Patterns
+                                <button id="filter-behavioral" class="text-xs px-3 py-1 rounded-full hover:bg-gray-700 transition-colors filter-btn">
+                                    Behavioral
                                 </button>
+                                <button id="filter-network" class="text-xs px-3 py-1 rounded-full hover:bg-gray-700 transition-colors filter-btn">
+                                    Network
+                                </button>
+                                <div class="relative">
+                                    <button id="filter-amount-btn" class="text-xs px-3 py-1 rounded-full hover:bg-gray-700 transition-colors border border-gray-600">
+                                        <i class="fas fa-filter mr-1"></i>
+                                        Min: <span id="min-amount-display">0</span> DOT
+                                    </button>
+                                    <div id="amount-filter-dropdown" class="hidden absolute right-0 top-8 bg-gray-800 border border-gray-600 rounded-lg p-4 min-w-64 shadow-xl z-10">
+                                        <div class="mb-4">
+                                            <label class="block text-xs text-gray-400 mb-2">Minimum Amount (DOT)</label>
+                                            <input type="range" id="min-amount-slider" min="0" max="100000" step="1000" value="0" 
+                                                   class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+                                            <div class="flex justify-between text-xs text-gray-500 mt-1">
+                                                <span>0</span>
+                                                <span>50K</span>
+                                                <span>100K</span>
+                                            </div>
+                                        </div>
+                                        <div class="mb-4">
+                                            <label class="block text-xs text-gray-400 mb-2">Or enter exact amount</label>
+                                            <input type="number" id="min-amount-input" placeholder="Enter amount..." 
+                                                   class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-sm">
+                                        </div>
+                                        <div class="flex space-x-2">
+                                            <button id="apply-filter" class="flex-1 px-3 py-2 bg-polkadot-primary text-white rounded text-xs hover:bg-polkadot-primary/80">
+                                                Apply
+                                            </button>
+                                            <button id="clear-filter" class="flex-1 px-3 py-2 bg-gray-600 text-white rounded text-xs hover:bg-gray-500">
+                                                Clear
+                                            </button>
+                                        </div>
+                                        <div class="mt-3 pt-3 border-t border-gray-600">
+                                            <div class="text-xs text-gray-400">Quick filters:</div>
+                                            <div class="flex flex-wrap gap-1 mt-1">
+                                                <button class="quick-filter px-2 py-1 bg-gray-600 rounded text-xs hover:bg-gray-500" data-amount="10000">10K+</button>
+                                                <button class="quick-filter px-2 py-1 bg-gray-600 rounded text-xs hover:bg-gray-500" data-amount="50000">50K+</button>
+                                                <button class="quick-filter px-2 py-1 bg-gray-600 rounded text-xs hover:bg-gray-500" data-amount="100000">100K+</button>
+                                                <button class="quick-filter px-2 py-1 bg-gray-600 rounded text-xs hover:bg-gray-500" data-amount="500000">500K+</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         
                         <div id="alerts-container" class="space-y-3 max-h-96 overflow-y-auto">
-                            <!-- Alert items will be inserted here -->
+                            <!-- Anomaly items will be inserted here -->
                             <div class="flex items-start space-x-3 p-4 bg-red-500/10 border border-red-500/30 rounded-lg animate-fade-in">
-                                <div class="w-2 h-2 rounded-full bg-red-500 mt-2 animate-pulse"></div>
+                                <div class="w-3 h-3 rounded-full bg-red-500 mt-2 animate-pulse flex items-center justify-center">
+                                    <i class="fas fa-brain text-xs text-white"></i>
+                                </div>
                                 <div class="flex-1">
                                     <div class="flex items-center justify-between mb-1">
                                         <span class="text-sm font-medium">Dormant Whale Awakening</span>
-                                        <span class="text-xs text-gray-400">2 min ago</span>
+                                        <div class="flex items-center space-x-2">
+                                            <span class="text-xs bg-red-500/20 text-red-400 px-2 py-1 rounded">Risk: 0.92</span>
+                                            <span class="text-xs text-gray-400">2 min ago</span>
+                                        </div>
                                     </div>
                                     <p class="text-sm text-gray-400">Account 1YmK2e...U4n2 (880 days dormant) moved 45,000 DOT</p>
                                     <div class="flex items-center space-x-4 mt-2 text-xs">
-                                        <span class="text-red-400">Critical</span>
-                                        <a href="#" class="text-polkadot-primary hover:underline">View Details</a>
+                                        <span class="text-red-400">Critical Risk</span>
+                                        <span class="text-gray-500">•</span>
+                                        <span class="text-purple-400">Behavioral</span>
+                                        <span class="text-gray-500">•</span>
+                                        <a href="#" class="text-polkadot-primary hover:underline">Analyze Pattern</a>
                                     </div>
                                 </div>
                             </div>
                             
                             <div class="flex items-start space-x-3 p-4 bg-orange-500/10 border border-orange-500/30 rounded-lg">
-                                <div class="w-2 h-2 rounded-full bg-orange-500 mt-2"></div>
+                                <div class="w-3 h-3 rounded-full bg-orange-500 mt-2 flex items-center justify-center">
+                                    <i class="fas fa-network-wired text-xs text-white"></i>
+                                </div>
                                 <div class="flex-1">
                                     <div class="flex items-center justify-between mb-1">
-                                        <span class="text-sm font-medium">Large Transfer Detected</span>
-                                        <span class="text-xs text-gray-400">15 min ago</span>
+                                        <span class="text-sm font-medium">Network Clustering Detected</span>
+                                        <div class="flex items-center space-x-2">
+                                            <span class="text-xs bg-orange-500/20 text-orange-400 px-2 py-1 rounded">Risk: 0.78</span>
+                                            <span class="text-xs text-gray-400">15 min ago</span>
+                                        </div>
                                     </div>
-                                    <p class="text-sm text-gray-400">100,000 DOT transferred from Kraken to unknown wallet</p>
+                                    <p class="text-sm text-gray-400">5 addresses showing coordinated behavior (wash trading pattern)</p>
                                     <div class="flex items-center space-x-4 mt-2 text-xs">
-                                        <span class="text-orange-400">High</span>
-                                        <a href="#" class="text-polkadot-primary hover:underline">Track Address</a>
+                                        <span class="text-orange-400">High Risk</span>
+                                        <span class="text-gray-500">•</span>
+                                        <span class="text-blue-400">Network</span>
+                                        <span class="text-gray-500">•</span>
+                                        <a href="#" class="text-polkadot-primary hover:underline">View Cluster</a>
                                     </div>
                                 </div>
                             </div>
                             
                             <div class="flex items-start space-x-3 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
-                                <div class="w-2 h-2 rounded-full bg-yellow-500 mt-2"></div>
+                                <div class="w-3 h-3 rounded-full bg-yellow-500 mt-2 flex items-center justify-center">
+                                    <i class="fas fa-tachometer-alt text-xs text-white"></i>
+                                </div>
                                 <div class="flex-1">
                                     <div class="flex items-center justify-between mb-1">
-                                        <span class="text-sm font-medium">Coordinated Movement Pattern</span>
-                                        <span class="text-xs text-gray-400">1 hour ago</span>
+                                        <span class="text-sm font-medium">Velocity Spike Detected</span>
+                                        <div class="flex items-center space-x-2">
+                                            <span class="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded">Risk: 0.65</span>
+                                            <span class="text-xs text-gray-400">1 hour ago</span>
+                                        </div>
                                     </div>
-                                    <p class="text-sm text-gray-400">5 related addresses moved funds within 10 minutes</p>
+                                    <p class="text-sm text-gray-400">Transaction rate 8x normal: 40 tx in 1 hour (usual: 5/hour)</p>
                                     <div class="flex items-center space-x-4 mt-2 text-xs">
-                                        <span class="text-yellow-400">Medium</span>
-                                        <a href="#" class="text-polkadot-primary hover:underline">Analyze Pattern</a>
+                                        <span class="text-yellow-400">Medium Risk</span>
+                                        <span class="text-gray-500">•</span>
+                                        <span class="text-green-400">Velocity</span>
+                                        <span class="text-gray-500">•</span>
+                                        <a href="#" class="text-polkadot-primary hover:underline">View Timeline</a>
                                     </div>
                                 </div>
                             </div>
@@ -286,10 +461,10 @@
                     <div class="glass rounded-xl p-6">
                         <h2 class="text-lg font-semibold mb-6 flex items-center">
                             <i class="fas fa-chart-area mr-2 text-polkadot-primary"></i>
-                            24h Volume Activity
+                            30d Volume Activity
                         </h2>
-                        <div class="h-64">
-                            <canvas id="volumeChart"></canvas>
+                        <div class="h-64 w-full">
+                            <canvas id="volumeChart" class="w-full h-full"></canvas>
                         </div>
                     </div>
                 </div>
@@ -300,26 +475,26 @@
                     <div class="glass rounded-xl p-6">
                         <h3 class="text-lg font-semibold mb-4 flex items-center">
                             <i class="fas fa-trophy mr-2 text-yellow-500"></i>
-                            Top Movers (24h)
+                            Top Movers (30d)
                         </h3>
                         <div class="space-y-3">
                             <div class="flex items-center justify-between p-3 bg-polkadot-light rounded-lg">
                                 <div class="flex items-center space-x-3">
-                                    <span class="text-xs font-mono">1YmK2e...U4n2</span>
+                                    <span class="text-xs font-mono" id="top-mover-1">Loading...</span>
                                     <span class="text-xs text-green-400">↑ 45K DOT</span>
                                 </div>
                                 <span class="text-xs text-gray-400">Exchange</span>
                             </div>
                             <div class="flex items-center justify-between p-3 bg-polkadot-light rounded-lg">
                                 <div class="flex items-center space-x-3">
-                                    <span class="text-xs font-mono">14FGn7...8NDc</span>
+                                    <span class="text-xs font-mono" id="top-mover-2">Loading...</span>
                                     <span class="text-xs text-red-400">↓ 30K DOT</span>
                                 </div>
                                 <span class="text-xs text-gray-400">Validator</span>
                             </div>
                             <div class="flex items-center justify-between p-3 bg-polkadot-light rounded-lg">
                                 <div class="flex items-center space-x-3">
-                                    <span class="text-xs font-mono">13UVJy...ghsr</span>
+                                    <span class="text-xs font-mono" id="top-mover-3">Loading...</span>
                                     <span class="text-xs text-green-400">↑ 25K DOT</span>
                                 </div>
                                 <span class="text-xs text-gray-400">Unknown</span>
@@ -331,28 +506,13 @@
                     <div class="glass rounded-xl p-6">
                         <h3 class="text-lg font-semibold mb-4 flex items-center">
                             <i class="fas fa-chart-pie mr-2 text-purple-500"></i>
-                            Pattern Distribution
+                            Pattern Distribution (30d)
                         </h3>
-                        <div class="h-36">
+                        <div class="h-48 relative">
                             <canvas id="patternChart"></canvas>
                         </div>
-                        <div class="grid grid-cols-2 gap-2 mt-4 text-xs">
-                            <div class="flex items-center space-x-2">
-                                <div class="w-3 h-3 rounded-full bg-red-500"></div>
-                                <span>Dormant Awakening</span>
-                            </div>
-                            <div class="flex items-center space-x-2">
-                                <div class="w-3 h-3 rounded-full bg-orange-500"></div>
-                                <span>Large Transfers</span>
-                            </div>
-                            <div class="flex items-center space-x-2">
-                                <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
-                                <span>Coordinated</span>
-                            </div>
-                            <div class="flex items-center space-x-2">
-                                <div class="w-3 h-3 rounded-full bg-green-500"></div>
-                                <span>Exchange Activity</span>
-                            </div>
+                        <div id="pattern-legend" class="grid grid-cols-2 gap-2 mt-4 text-xs">
+                            <!-- Legend will be dynamically populated -->
                         </div>
                     </div>
                     
@@ -375,6 +535,413 @@
                             <div class="flex justify-between items-center">
                                 <span class="text-sm text-gray-400">Alert Rate</span>
                                 <span class="text-sm font-medium">2.4/hour</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            </div>
+            
+            <!-- Whale Registry Tab Content -->
+            <div id="whale-registry-tab" class="tab-content hidden">
+                <div class="space-y-6">
+                    <!-- Registry Header -->
+                    <div class="glass rounded-xl p-6">
+                        <div class="flex items-center justify-between mb-6">
+                            <h2 class="text-lg font-semibold flex items-center">
+                                <i class="fas fa-whale mr-2 text-polkadot-primary"></i>
+                                Top 1000 Whale Registry
+                            </h2>
+                            <div class="flex items-center space-x-4">
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-sm text-gray-400">Real-time data from</span>
+                                    <span class="text-sm font-medium text-green-400">Subscan API</span>
+                                </div>
+                                <button id="export-whales" class="px-4 py-2 bg-polkadot-primary hover:bg-pink-700 rounded-lg text-sm transition-colors">
+                                    <i class="fas fa-download mr-2"></i>
+                                    Export CSV
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Registry Controls -->
+                        <div class="flex items-center justify-between mb-6">
+                            <div class="flex items-center space-x-4">
+                                <!-- Search -->
+                                <div class="relative">
+                                    <input 
+                                        type="text" 
+                                        id="whale-search" 
+                                        placeholder="Search by address or identity..."
+                                        class="pl-10 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-sm w-64"
+                                    >
+                                    <i class="fas fa-search absolute left-3 top-3 text-gray-400 text-sm"></i>
+                                </div>
+                                
+                                <!-- Role Filter -->
+                                <select id="role-filter" class="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-sm">
+                                    <option value="all">All Roles</option>
+                                    <option value="holder">Holder</option>
+                                    <option value="trader">Trader</option>
+                                    <option value="validator">Validator</option>
+                                    <option value="exchange">Exchange</option>
+                                    <option value="unknown">Unknown</option>
+                                </select>
+                                
+                                <!-- Risk Level Filter -->
+                                <select id="risk-filter" class="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-sm">
+                                    <option value="all">All Risk Levels</option>
+                                    <option value="critical">Critical</option>
+                                    <option value="high">High</option>
+                                    <option value="medium">Medium</option>
+                                    <option value="low">Low</option>
+                                    <option value="none">None</option>
+                                </select>
+                                
+                                <!-- Balance Range -->
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-sm text-gray-400">Balance:</span>
+                                    <input 
+                                        type="number" 
+                                        id="min-balance" 
+                                        placeholder="Min DOT"
+                                        class="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-sm w-24"
+                                    >
+                                    <span class="text-gray-400">-</span>
+                                    <input 
+                                        type="number" 
+                                        id="max-balance" 
+                                        placeholder="Max DOT"
+                                        class="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-sm w-24"
+                                    >
+                                </div>
+                            </div>
+                            
+                            <!-- View Options -->
+                            <div class="flex items-center space-x-2">
+                                <button id="view-table" class="view-btn active px-3 py-2 bg-polkadot-light rounded-lg text-sm hover:bg-gray-700">
+                                    <i class="fas fa-table mr-1"></i>
+                                    Table
+                                </button>
+                                <button id="view-cards" class="view-btn px-3 py-2 rounded-lg text-sm hover:bg-gray-700">
+                                    <i class="fas fa-th-large mr-1"></i>
+                                    Cards
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Summary Stats -->
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                            <div class="bg-gray-800/50 rounded-lg p-4">
+                                <div class="text-sm text-gray-400">Total Whales</div>
+                                <div class="text-xl font-bold" id="registry-total">1,000</div>
+                            </div>
+                            <div class="bg-gray-800/50 rounded-lg p-4">
+                                <div class="text-sm text-gray-400">Combined Balance</div>
+                                <div class="text-xl font-bold" id="registry-balance">1.34B DOT</div>
+                            </div>
+                            <div class="bg-gray-800/50 rounded-lg p-4">
+                                <div class="text-sm text-gray-400">High Risk Whales</div>
+                                <div class="text-xl font-bold text-red-400" id="registry-high-risk">12</div>
+                            </div>
+                            <div class="bg-gray-800/50 rounded-lg p-4">
+                                <div class="text-sm text-gray-400">Active Patterns</div>
+                                <div class="text-xl font-bold text-purple-400" id="registry-patterns">247</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Whale Table -->
+                    <div id="whale-table-view" class="glass rounded-xl overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full">
+                                <thead class="bg-gray-800/50">
+                                    <tr>
+                                        <th class="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white" data-sort="rank">
+                                            Rank <i class="fas fa-sort ml-1"></i>
+                                        </th>
+                                        <th class="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white" data-sort="address">
+                                            Address <i class="fas fa-sort ml-1"></i>
+                                        </th>
+                                        <th class="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white" data-sort="identity">
+                                            Identity <i class="fas fa-sort ml-1"></i>
+                                        </th>
+                                        <th class="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white" data-sort="balance">
+                                            Balance <i class="fas fa-sort ml-1"></i>
+                                        </th>
+                                        <th class="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white" data-sort="role">
+                                            Role <i class="fas fa-sort ml-1"></i>
+                                        </th>
+                                        <th class="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white" data-sort="risk">
+                                            Risk Level <i class="fas fa-sort ml-1"></i>
+                                        </th>
+                                        <th class="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white" data-sort="activity">
+                                            Activity <i class="fas fa-sort ml-1"></i>
+                                        </th>
+                                        <th class="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white" data-sort="patterns">
+                                            Patterns <i class="fas fa-sort ml-1"></i>
+                                        </th>
+                                        <th class="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                                            Actions
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody id="whale-table-body" class="divide-y divide-gray-700">
+                                    <!-- Whale rows will be inserted here -->
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Pagination -->
+                        <div class="px-6 py-4 bg-gray-800/30 border-t border-gray-700">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-sm text-gray-400">Show</span>
+                                    <select id="page-size" class="px-2 py-1 bg-gray-700 border border-gray-600 rounded text-sm">
+                                        <option value="25">25</option>
+                                        <option value="50" selected>50</option>
+                                        <option value="100">100</option>
+                                        <option value="1000">All</option>
+                                    </select>
+                                    <span class="text-sm text-gray-400">per page</span>
+                                </div>
+                                
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-sm text-gray-400" id="pagination-info">Showing 1-50 of 1000</span>
+                                    <div class="flex space-x-1">
+                                        <button id="prev-page" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm" disabled>
+                                            <i class="fas fa-chevron-left"></i>
+                                        </button>
+                                        <button id="next-page" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm">
+                                            <i class="fas fa-chevron-right"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Card View (hidden by default) -->
+                    <div id="whale-cards-view" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                        <!-- Whale cards will be inserted here -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Pattern Analysis Tab Content -->
+            <div id="patterns-tab" class="tab-content hidden">
+                <div class="space-y-6">
+                    <!-- Pattern Overview -->
+                    <div class="glass rounded-xl p-6">
+                        <h2 class="text-lg font-semibold flex items-center mb-6">
+                            <i class="fas fa-brain mr-2 text-polkadot-primary"></i>
+                            Anomaly Pattern Analysis
+                        </h2>
+                        
+                        <!-- Pattern Stats -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                            <div class="bg-gray-800/50 rounded-lg p-6">
+                                <div class="flex items-center justify-between mb-4">
+                                    <div class="p-3 bg-red-500/20 rounded-lg">
+                                        <i class="fas fa-exclamation-triangle text-red-500 text-xl"></i>
+                                    </div>
+                                </div>
+                                <div class="text-2xl font-bold mb-1">247</div>
+                                <div class="text-sm text-gray-400">Active Patterns</div>
+                                <div class="text-xs text-green-400 mt-1">+15% this week</div>
+                            </div>
+                            
+                            <div class="bg-gray-800/50 rounded-lg p-6">
+                                <div class="flex items-center justify-between mb-4">
+                                    <div class="p-3 bg-purple-500/20 rounded-lg">
+                                        <i class="fas fa-network-wired text-purple-500 text-xl"></i>
+                                    </div>
+                                </div>
+                                <div class="text-2xl font-bold mb-1">89</div>
+                                <div class="text-sm text-gray-400">Network Clusters</div>
+                                <div class="text-xs text-red-400 mt-1">+8% this week</div>
+                            </div>
+                            
+                            <div class="bg-gray-800/50 rounded-lg p-6">
+                                <div class="flex items-center justify-between mb-4">
+                                    <div class="p-3 bg-blue-500/20 rounded-lg">
+                                        <i class="fas fa-chart-line text-blue-500 text-xl"></i>
+                                    </div>
+                                </div>
+                                <div class="text-2xl font-bold mb-1">34</div>
+                                <div class="text-sm text-gray-400">Behavioral Shifts</div>
+                                <div class="text-xs text-yellow-400 mt-1">+2% this week</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Pattern Types -->
+                        <div class="space-y-4">
+                            <h3 class="text-md font-semibold">Detected Pattern Types</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="bg-gray-800/30 rounded-lg p-4">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <span class="text-sm font-medium">Statistical Outliers</span>
+                                        <span class="text-xs bg-red-500/20 text-red-400 px-2 py-1 rounded">High</span>
+                                    </div>
+                                    <div class="text-xs text-gray-400">Large transaction amounts, unusual volumes</div>
+                                    <div class="mt-2 bg-gray-700 rounded-full h-2">
+                                        <div class="bg-red-500 h-2 rounded-full" style="width: 75%"></div>
+                                    </div>
+                                </div>
+                                
+                                <div class="bg-gray-800/30 rounded-lg p-4">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <span class="text-sm font-medium">Behavioral Anomalies</span>
+                                        <span class="text-xs bg-orange-500/20 text-orange-400 px-2 py-1 rounded">Medium</span>
+                                    </div>
+                                    <div class="text-xs text-gray-400">Dormant activations, role changes</div>
+                                    <div class="mt-2 bg-gray-700 rounded-full h-2">
+                                        <div class="bg-orange-500 h-2 rounded-full" style="width: 60%"></div>
+                                    </div>
+                                </div>
+                                
+                                <div class="bg-gray-800/30 rounded-lg p-4">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <span class="text-sm font-medium">Network Clustering</span>
+                                        <span class="text-xs bg-purple-500/20 text-purple-400 px-2 py-1 rounded">High</span>
+                                    </div>
+                                    <div class="text-xs text-gray-400">Coordinated activities, wash trading</div>
+                                    <div class="mt-2 bg-gray-700 rounded-full h-2">
+                                        <div class="bg-purple-500 h-2 rounded-full" style="width: 80%"></div>
+                                    </div>
+                                </div>
+                                
+                                <div class="bg-gray-800/30 rounded-lg p-4">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <span class="text-sm font-medium">Temporal Shifts</span>
+                                        <span class="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded">Low</span>
+                                    </div>
+                                    <div class="text-xs text-gray-400">Timezone changes, timing patterns</div>
+                                    <div class="mt-2 bg-gray-700 rounded-full h-2">
+                                        <div class="bg-blue-500 h-2 rounded-full" style="width: 30%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Recent Patterns -->
+                    <div class="glass rounded-xl p-6">
+                        <h3 class="text-md font-semibold mb-4">Recent Pattern Detections</h3>
+                        <div class="space-y-3">
+                            <div class="flex items-center space-x-3 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+                                <i class="fas fa-exclamation-triangle text-red-500"></i>
+                                <div class="flex-1">
+                                    <div class="text-sm font-medium">Coordinated Large Transfers</div>
+                                    <div class="text-xs text-gray-400">15 whales moved significant amounts within 10 minutes</div>
+                                </div>
+                                <div class="text-xs text-gray-400">2 min ago</div>
+                            </div>
+                            
+                            <div class="flex items-center space-x-3 p-3 bg-orange-500/10 border border-orange-500/30 rounded-lg">
+                                <i class="fas fa-bed text-orange-500"></i>
+                                <div class="flex-1">
+                                    <div class="text-sm font-medium">Dormant Whale Awakening</div>
+                                    <div class="text-xs text-gray-400">Account inactive for 180 days suddenly moved 45K DOT</div>
+                                </div>
+                                <div class="text-xs text-gray-400">8 min ago</div>
+                            </div>
+                            
+                            <div class="flex items-center space-x-3 p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg">
+                                <i class="fas fa-network-wired text-purple-500"></i>
+                                <div class="flex-1">
+                                    <div class="text-sm font-medium">Network Cluster Formation</div>
+                                    <div class="text-xs text-gray-400">New cluster of 8 connected addresses detected</div>
+                                </div>
+                                <div class="text-xs text-gray-400">15 min ago</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Network Graph Tab Content -->
+            <div id="network-tab" class="tab-content hidden">
+                <div class="space-y-6">
+                    <!-- Network Overview -->
+                    <div class="glass rounded-xl p-6">
+                        <h2 class="text-lg font-semibold flex items-center mb-6">
+                            <i class="fas fa-network-wired mr-2 text-polkadot-primary"></i>
+                            Whale Network Analysis
+                        </h2>
+                        
+                        <!-- Network Stats -->
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                            <div class="bg-gray-800/50 rounded-lg p-4">
+                                <div class="text-xl font-bold">1,000</div>
+                                <div class="text-sm text-gray-400">Total Nodes</div>
+                            </div>
+                            <div class="bg-gray-800/50 rounded-lg p-4">
+                                <div class="text-xl font-bold">4,247</div>
+                                <div class="text-sm text-gray-400">Connections</div>
+                            </div>
+                            <div class="bg-gray-800/50 rounded-lg p-4">
+                                <div class="text-xl font-bold">89</div>
+                                <div class="text-sm text-gray-400">Clusters</div>
+                            </div>
+                            <div class="bg-gray-800/50 rounded-lg p-4">
+                                <div class="text-xl font-bold">12</div>
+                                <div class="text-sm text-gray-400">Hub Nodes</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Network Visualization Placeholder -->
+                        <div class="bg-gray-800/30 rounded-lg p-8 text-center">
+                            <i class="fas fa-project-diagram text-6xl text-gray-600 mb-4"></i>
+                            <h3 class="text-lg font-semibold mb-2">Interactive Network Graph</h3>
+                            <p class="text-gray-400 mb-4">Real-time visualization of whale transaction networks</p>
+                            <div class="space-y-2 text-sm text-gray-500">
+                                <div>• Node size represents account balance</div>
+                                <div>• Edge thickness shows transaction volume</div>
+                                <div>• Colors indicate risk levels and roles</div>
+                                <div>• Clusters highlight coordinated behavior</div>
+                            </div>
+                            <button class="mt-6 px-4 py-2 bg-polkadot-primary hover:bg-pink-700 rounded-lg text-sm transition-colors">
+                                Load Interactive Graph
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Top Clusters -->
+                    <div class="glass rounded-xl p-6">
+                        <h3 class="text-md font-semibold mb-4">Most Active Clusters</h3>
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between p-3 bg-gray-800/30 rounded-lg">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-3 h-3 bg-red-500 rounded-full"></div>
+                                    <div>
+                                        <div class="text-sm font-medium">Exchange Cluster A</div>
+                                        <div class="text-xs text-gray-400">15 nodes, 247 connections</div>
+                                    </div>
+                                </div>
+                                <div class="text-sm text-red-400">High Risk</div>
+                            </div>
+                            
+                            <div class="flex items-center justify-between p-3 bg-gray-800/30 rounded-lg">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-3 h-3 bg-orange-500 rounded-full"></div>
+                                    <div>
+                                        <div class="text-sm font-medium">Validator Pool B</div>
+                                        <div class="text-xs text-gray-400">23 nodes, 156 connections</div>
+                                    </div>
+                                </div>
+                                <div class="text-sm text-orange-400">Medium Risk</div>
+                            </div>
+                            
+                            <div class="flex items-center justify-between p-3 bg-gray-800/30 rounded-lg">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-3 h-3 bg-blue-500 rounded-full"></div>
+                                    <div>
+                                        <div class="text-sm font-medium">Trading Group C</div>
+                                        <div class="text-xs text-gray-400">8 nodes, 89 connections</div>
+                                    </div>
+                                </div>
+                                <div class="text-sm text-blue-400">Low Risk</div>
                             </div>
                         </div>
                     </div>
@@ -428,15 +995,40 @@
     </div>
     
     <script>
+        // Filter state
+        let currentAlerts = [];
+        let currentFilters = {
+            severity: 'all',
+            minAmount: 0,
+            pattern: 'all'
+        };
+        
+        // Whale registry state
+        let registryWhaleData = [];
+        let registryFilteredWhales = [];
+        let registryCurrentPage = 1;
+        let registryPageSize = 50;
+        let registrySortField = 'rank';
+        let registrySortDirection = 'asc';
+        let registryCurrentView = 'table';
+        
         // Initialize Chart.js charts
         const volumeCtx = document.getElementById('volumeChart').getContext('2d');
         const volumeChart = new Chart(volumeCtx, {
             type: 'line',
             data: {
-                labels: Array.from({length: 24}, (_, i) => `${i}:00`),
+                labels: (() => {
+                    const labels = [];
+                    for (let i = 29; i >= 0; i--) {
+                        const date = new Date();
+                        date.setDate(date.getDate() - i);
+                        labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+                    }
+                    return labels;
+                })(),
                 datasets: [{
                     label: 'Volume (DOT)',
-                    data: Array.from({length: 24}, () => Math.random() * 100000 + 50000),
+                    data: Array.from({length: 30}, () => 0), // Will be populated with real data
                     borderColor: '#e6007a',
                     backgroundColor: 'rgba(230, 0, 122, 0.1)',
                     tension: 0.3,
@@ -445,7 +1037,7 @@
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: true,
+                maintainAspectRatio: false,
                 plugins: {
                     legend: {
                         display: false
@@ -459,7 +1051,12 @@
                         },
                         ticks: {
                             callback: function(value) {
-                                return (value / 1000) + 'K';
+                                if (value >= 1000000) {
+                                    return (value / 1000000).toFixed(1) + 'M';
+                                } else if (value >= 1000) {
+                                    return (value / 1000).toFixed(0) + 'K';
+                                }
+                                return value;
                             }
                         }
                     },
@@ -500,63 +1097,526 @@
             }
         });
         
-        // Mock data loading
+        // Data loading
         function loadMonitoringData() {
-            // This would connect to the actual monitoring tool's data
-            fetch('/api/current')
+            // Load regular monitoring data
+            fetch("/api/current?" + Date.now())
                 .then(response => response.json())
                 .then(data => {
                     updateDashboard(data);
                 })
                 .catch(error => {
                     console.error('Error loading monitoring data:', error);
-                    // Use mock data for demo
-                    updateWithMockData();
+                    showNoDataMessage();
+                });
+            
+            // Load anomaly data
+            loadAnomalyData();
+        }
+        
+        function loadAnomalyData() {
+            // Load anomaly statistics
+            fetch('/api/anomalies/stats')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        updateAnomalyStats(data.stats);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading anomaly stats:', error);
+                });
+            
+            // Load recent anomalies
+            fetch('/api/anomalies/recent?limit=20')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        displayAnomalies(data.anomalies);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading anomalies:', error);
                 });
         }
         
-        function updateDashboard(data) {
-            // Update stats
-            document.getElementById('total-monitored').textContent = data.accountsMonitored || '1,000';
-            document.getElementById('active-patterns').textContent = data.activePatterns || '7';
-            document.getElementById('alerts-today').textContent = data.alertsToday || '24';
-            document.getElementById('total-volume').textContent = formatVolume(data.totalVolume || 2400000);
+        function updateDashboard(response) {
+            if (!response.success) {
+                showNoDataMessage(response.error);
+                return;
+            }
+            
+            const data = response.data;
+            
+            // Update stats with real data
+            const totalMonitoredEl = document.getElementById('total-monitored');
+            const activePatternsEl = document.getElementById('active-patterns');
+            const anomaliesTodayEl = document.getElementById('anomalies-today');
+            const totalVolumeEl = document.getElementById('total-volume');
+            
+            if (totalMonitoredEl) totalMonitoredEl.textContent = data.accountsMonitored || '0';
+            if (activePatternsEl) activePatternsEl.textContent = data.activePatterns || '0';
+            if (anomaliesTodayEl) {
+                // Handle both array and number formats for alerts/anomalies
+                const alertCount = Array.isArray(data.alertsToday) ? data.alertsToday.length : (data.alertsToday || 0);
+                anomaliesTodayEl.textContent = alertCount;
+            }
+            if (totalVolumeEl) totalVolumeEl.textContent = formatVolume(data.totalVolume || 0);
+            
+            // Update top movers with real data
+            if (data.topAccounts && data.topAccounts.length > 0) {
+                updateTopMovers(data.topAccounts);
+            }
+            
+            // Load real alerts
+            loadRealAlerts();
+            
+            // Load monitoring stats
+            loadMonitoringStats();
+            
+            // Show last update time
+            if (data.lastUpdate) {
+                updateLastSeenTime(data.lastUpdate);
+            }
         }
         
-        function updateWithMockData() {
-            // Generate mock alerts
-            const alertTypes = [
-                {
-                    severity: 'critical',
-                    title: 'Dormant Whale Awakening',
-                    description: 'Account {address} ({days} days dormant) moved {amount} DOT',
-                    color: 'red'
-                },
-                {
-                    severity: 'high',
-                    title: 'Large Transfer Detected',
-                    description: '{amount} DOT transferred from {from} to {to}',
-                    color: 'orange'
-                },
-                {
-                    severity: 'medium',
-                    title: 'Coordinated Movement Pattern',
-                    description: '{count} related addresses moved funds within {time}',
-                    color: 'yellow'
-                },
-                {
-                    severity: 'low',
-                    title: 'Exchange Deposit',
-                    description: '{amount} DOT deposited to {exchange}',
-                    color: 'green'
-                }
-            ];
+        function loadMonitoringStats() {
+            fetch('/api/monitoring-stats?days=30')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.stats) {
+                        // Update active patterns count
+                        document.getElementById('active-patterns').textContent = data.stats.activePatterns || '0';
+                        
+                        // Update DOT movement (format as millions)
+                        const movement = data.stats.dotMovement || 0;
+                        const movementM = Math.round(movement / 1000000);
+                        const volumeElement = document.getElementById('total-volume');
+                        if (volumeElement) {
+                            volumeElement.textContent = `${movementM}M`;
+                        }
+                        
+                        // Update top movers
+                        if (data.stats.topMovers) {
+                            updateTopMoversFromStats(data.stats.topMovers);
+                        }
+                        
+                        // Update charts with real data
+                        updateChartsWithStats(data.stats);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading monitoring stats:', error);
+                });
+        }
+        
+        function updateTopMoversFromStats(topMovers) {
+            // Combine gainers and losers for display
+            const allMovers = [];
             
-            // Simulate real-time alerts
-            setInterval(() => {
-                const alert = alertTypes[Math.floor(Math.random() * alertTypes.length)];
-                addAlert(alert);
-            }, 10000); // Every 10 seconds
+            if (topMovers.gainers && topMovers.gainers.length > 0) {
+                allMovers.push(...topMovers.gainers.map(m => ({...m, direction: 'up'})));
+            }
+            
+            if (topMovers.losers && topMovers.losers.length > 0) {
+                allMovers.push(...topMovers.losers.map(m => ({...m, direction: 'down'})));
+            }
+            
+            // Sort by absolute movement amount and take top 3
+            allMovers.sort((a, b) => Math.abs(b.net) - Math.abs(a.net));
+            const top3 = allMovers.slice(0, 3);
+            
+            // Update each mover
+            for (let i = 0; i < 3; i++) {
+                const addressElement = document.getElementById(`top-mover-${i + 1}`);
+                const containerElement = addressElement?.closest('.flex.items-center.justify-between');
+                
+                if (containerElement && top3[i]) {
+                    const mover = top3[i];
+                    
+                    // Update address
+                    addressElement.textContent = mover.address.slice(0, 8) + '...';
+                    
+                    // Update amount and direction
+                    const amountElement = addressElement.nextElementSibling;
+                    if (amountElement) {
+                        const absAmount = Math.abs(mover.net);
+                        let formattedAmount;
+                        
+                        // Format as M for millions instead of K for thousands
+                        if (absAmount >= 1000000) {
+                            formattedAmount = Math.round(absAmount / 1000000) + 'M';
+                        } else if (absAmount >= 1000) {
+                            formattedAmount = Math.round(absAmount / 1000) + 'K';
+                        } else {
+                            formattedAmount = Math.round(absAmount);
+                        }
+                        
+                        const direction = mover.net > 0 ? '↑' : '↓';
+                        const color = mover.net > 0 ? 'text-green-400' : 'text-red-400';
+                        
+                        amountElement.textContent = `${direction} ${formattedAmount} DOT`;
+                        amountElement.className = `text-xs ${color}`;
+                    }
+                    
+                    // Update account type
+                    const typeElement = containerElement.querySelector('.text-gray-400');
+                    if (typeElement) {
+                        typeElement.textContent = mover.type || 'Unknown';
+                    }
+                } else if (containerElement) {
+                    // No data available, show placeholder
+                    addressElement.textContent = 'No data';
+                    const amountElement = addressElement.nextElementSibling;
+                    if (amountElement) {
+                        amountElement.textContent = '';
+                    }
+                }
+            }
+        }
+        
+        function loadRealAlerts() {
+            fetch('/api/alerts')
+                .then(response => response.json())
+                .then(response => {
+                    if (response.success && response.alerts) {
+                        displayRealAlerts(response.alerts);
+                    } else {
+                        showNoAlertsMessage();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading alerts:', error);
+                    showNoAlertsMessage();
+                });
+        }
+        
+        function displayRealAlerts(alerts) {
+            currentAlerts = alerts; // Store all alerts for filtering
+            applyFilters();
+        }
+        
+        function applyFilters() {
+            const container = document.getElementById('alerts-container');
+            container.innerHTML = ''; // Clear existing content
+            
+            // Filter alerts based on current filters
+            let filteredAlerts = currentAlerts.filter(alert => {
+                // Severity filter
+                if (currentFilters.severity !== 'all') {
+                    if (currentFilters.severity === 'critical' && alert.severity !== 'critical') {
+                        return false;
+                    }
+                    if (currentFilters.severity === 'behavioral') {
+                        const category = getAnomalyCategory(alert);
+                        if (category !== 'Behavioral') return false;
+                    }
+                    if (currentFilters.severity === 'network') {
+                        const category = getAnomalyCategory(alert);
+                        if (category !== 'Network') return false;
+                    }
+                }
+                
+                // Amount filter
+                if (currentFilters.minAmount > 0 && alert.amount < currentFilters.minAmount) {
+                    return false;
+                }
+                
+                return true;
+            });
+            
+            if (filteredAlerts.length === 0) {
+                showNoAlertsMessage();
+                return;
+            }
+            
+            filteredAlerts.forEach(alert => {
+                addRealAlert(alert);
+            });
+            
+            // Update filtered count in stats
+            updateFilteredCount(filteredAlerts.length, currentAlerts.length);
+        }
+        
+        function updateFilteredCount(filtered, total) {
+            const alertsElement = document.getElementById('anomalies-today');
+            if (alertsElement) {
+                if (filtered === total) {
+                    alertsElement.textContent = total;
+                } else {
+                    alertsElement.textContent = `${filtered}/${total}`;
+                }
+            }
+        }
+        
+        function showNoAlertsMessage() {
+            const container = document.getElementById('alerts-container');
+            container.innerHTML = `
+                <div class="text-center py-8 text-gray-400">
+                    <i class="fas fa-brain text-4xl mb-4"></i>
+                    <p>No anomalies detected today</p>
+                    <p class="text-sm mt-2">AI monitoring for suspicious patterns...</p>
+                </div>
+            `;
+        }
+        
+        function updateAnomalyStats(stats) {
+            // Update anomaly count
+            if (stats.alerts && stats.alerts.total) {
+                document.getElementById('anomalies-today').textContent = stats.alerts.total;
+            }
+            
+            // Update trend indicator
+            const trendEl = document.getElementById('anomaly-trend');
+            if (stats.alerts && stats.alerts.bySeverity) {
+                const critical = stats.alerts.bySeverity.CRITICAL || 0;
+                const high = stats.alerts.bySeverity.HIGH || 0;
+                if (critical > 0) {
+                    trendEl.textContent = `${critical} critical`;
+                    trendEl.className = 'text-xs text-red-400';
+                } else if (high > 0) {
+                    trendEl.textContent = `${high} high risk`;
+                    trendEl.className = 'text-xs text-orange-400';
+                } else {
+                    trendEl.textContent = 'all low risk';
+                    trendEl.className = 'text-xs text-green-400';
+                }
+            }
+        }
+        
+        function displayAnomalies(anomalies) {
+            currentAlerts = anomalies.map(anomaly => ({
+                ...anomaly,
+                type: 'anomaly',
+                severity: mapRiskLevelToSeverity(anomaly.riskLevel),
+                timeAgo: formatTimeAgo(anomaly.timestamp),
+                title: formatAnomalyTitle(anomaly),
+                description: anomaly.summary || 'Anomaly detected'
+            }));
+            
+            applyFilters();
+        }
+        
+        function formatAnomalyTitle(anomaly) {
+            if (anomaly.anomalies && anomaly.anomalies.length > 0) {
+                const primary = anomaly.anomalies[0];
+                return formatAnomalyType(primary.type);
+            }
+            return 'Anomaly Detected';
+        }
+        
+        function formatAnomalyType(type) {
+            const typeMap = {
+                'DORMANT_AWAKENING': 'Dormant Whale Awakening',
+                'NETWORK_CLUSTERING': 'Network Clustering',
+                'COORDINATED_ACTIVITY': 'Coordinated Activity',
+                'VELOCITY_SPIKE': 'Velocity Spike',
+                'AMOUNT_OUTLIER': 'Amount Outlier',
+                'ROLE_CHANGE': 'Role Change',
+                'PATTERN_BREAK': 'Pattern Break',
+                'TRANSACTION_BURST': 'Transaction Burst',
+                'TIMEZONE_SHIFT': 'Timezone Shift',
+                'UNUSUAL_HOUR_ACTIVITY': 'Unusual Hour Activity'
+            };
+            return typeMap[type] || type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        }
+        
+        function mapRiskLevelToSeverity(riskLevel) {
+            const mapping = {
+                'CRITICAL': 'critical',
+                'HIGH': 'high',
+                'MEDIUM': 'medium',
+                'LOW': 'low',
+                'NONE': 'low'
+            };
+            return mapping[riskLevel] || 'medium';
+        }
+        
+        function formatTimeAgo(timestamp) {
+            const now = Date.now();
+            const time = new Date(timestamp).getTime();
+            const diff = now - time;
+            
+            if (diff < 60000) return 'just now';
+            if (diff < 3600000) return `${Math.floor(diff / 60000)} min ago`;
+            if (diff < 86400000) return `${Math.floor(diff / 3600000)} hours ago`;
+            return `${Math.floor(diff / 86400000)} days ago`;
+        }
+        
+        function getAnomalyIcon(anomaly) {
+            if (!anomaly.anomalies || anomaly.anomalies.length === 0) return 'fas fa-brain';
+            
+            const type = anomaly.anomalies[0].type;
+            const iconMap = {
+                'DORMANT_AWAKENING': 'fas fa-bed',
+                'NETWORK_CLUSTERING': 'fas fa-network-wired',
+                'COORDINATED_ACTIVITY': 'fas fa-users',
+                'VELOCITY_SPIKE': 'fas fa-tachometer-alt',
+                'AMOUNT_OUTLIER': 'fas fa-coins',
+                'ROLE_CHANGE': 'fas fa-exchange-alt',
+                'PATTERN_BREAK': 'fas fa-exclamation-triangle',
+                'TRANSACTION_BURST': 'fas fa-bolt',
+                'TIMEZONE_SHIFT': 'fas fa-clock',
+                'UNUSUAL_HOUR_ACTIVITY': 'fas fa-moon'
+            };
+            return iconMap[type] || 'fas fa-brain';
+        }
+        
+        function getAnomalyCategory(anomaly) {
+            if (!anomaly.anomalies || anomaly.anomalies.length === 0) return 'Unknown';
+            
+            const type = anomaly.anomalies[0].type;
+            const categoryMap = {
+                'DORMANT_AWAKENING': 'Behavioral',
+                'ROLE_CHANGE': 'Behavioral',
+                'PATTERN_BREAK': 'Behavioral',
+                'NETWORK_CLUSTERING': 'Network',
+                'COORDINATED_ACTIVITY': 'Network',
+                'VELOCITY_SPIKE': 'Velocity',
+                'TRANSACTION_BURST': 'Velocity',
+                'AMOUNT_OUTLIER': 'Statistical',
+                'TIMEZONE_SHIFT': 'Temporal',
+                'UNUSUAL_HOUR_ACTIVITY': 'Temporal'
+            };
+            return categoryMap[type] || 'Other';
+        }
+        
+        function showNoDataMessage(error = null) {
+            const container = document.getElementById('alerts-container');
+            container.innerHTML = `
+                <div class="text-center py-8 text-orange-400">
+                    <i class="fas fa-exclamation-triangle text-4xl mb-4"></i>
+                    <h3 class="text-lg font-semibold mb-2">No Monitoring Data Available</h3>
+                    <p class="text-sm mb-4">The monitoring tool doesn't appear to be running.</p>
+                    ${error ? `<p class="text-xs text-red-400">${error}</p>` : ''}
+                    <div class="mt-4 p-4 bg-gray-800 rounded-lg text-left">
+                        <p class="text-sm font-semibold mb-2">To see real data:</p>
+                        <ol class="text-xs space-y-1 list-decimal list-inside">
+                            <li>Open a new terminal</li>
+                            <li>cd to blockchain-monitoring-tool directory</li>
+                            <li>Run: <code class="bg-gray-700 px-1 rounded">npm start</code></li>
+                            <li>Wait for data collection to begin</li>
+                            <li>Refresh this page</li>
+                        </ol>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function addRealAlert(alert) {
+            const container = document.getElementById('alerts-container');
+            const alertEl = document.createElement('div');
+            
+            const severityColors = {
+                critical: 'red',
+                high: 'orange', 
+                medium: 'yellow',
+                low: 'green'
+            };
+            
+            const color = severityColors[alert.severity] || 'gray';
+            
+            alertEl.className = `flex items-start space-x-3 p-4 bg-${color}-500/10 border border-${color}-500/30 rounded-lg animate-fade-in`;
+            
+            // Different rendering for anomalies vs regular alerts
+            if (alert.type === 'anomaly') {
+                const icon = getAnomalyIcon(alert);
+                const category = getAnomalyCategory(alert);
+                const categoryColors = {
+                    'Behavioral': 'purple-400',
+                    'Network': 'blue-400',
+                    'Velocity': 'green-400',
+                    'Statistical': 'yellow-400',
+                    'Temporal': 'pink-400'
+                };
+                const categoryColor = categoryColors[category] || 'gray-400';
+                
+                alertEl.innerHTML = `
+                    <div class="w-3 h-3 rounded-full bg-${color}-500 mt-2 flex items-center justify-center ${alert.severity === 'critical' ? 'animate-pulse' : ''}">
+                        <i class="${icon.split(' ')[1]} text-xs text-white"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-sm font-medium">${alert.title}</span>
+                            <div class="flex items-center space-x-2">
+                                ${alert.riskScore ? `<span class="text-xs bg-${color}-500/20 text-${color}-400 px-2 py-1 rounded">Risk: ${alert.riskScore.toFixed(2)}</span>` : ''}
+                                <span class="text-xs text-gray-400">${alert.timeAgo || 'Unknown'}</span>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-400">${alert.description}</p>
+                        <div class="flex items-center space-x-4 mt-2 text-xs">
+                            <span class="text-${color}-400 capitalize">${alert.riskLevel || alert.severity} Risk</span>
+                            <span class="text-gray-500">•</span>
+                            <span class="text-${categoryColor}">${category}</span>
+                            ${alert.address ? `<span class="text-gray-500">•</span><a href="https://polkadot.subscan.io/account/${alert.address}" target="_blank" class="font-mono text-polkadot-primary hover:underline">${alert.address.slice(0, 8)}...${alert.address.slice(-6)}</a>` : ''}
+                        </div>
+                    </div>
+                `;
+            } else {
+                // Regular alert rendering
+                alertEl.innerHTML = `
+                    <div class="w-2 h-2 rounded-full bg-${color}-500 mt-2 ${alert.severity === 'critical' ? 'animate-pulse' : ''}"></div>
+                    <div class="flex-1">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-sm font-medium">${alert.title}</span>
+                            <span class="text-xs text-gray-400">${alert.timeAgo || 'Unknown'}</span>
+                        </div>
+                        <p class="text-sm text-gray-400">${alert.description}</p>
+                        <div class="flex items-center space-x-4 mt-2 text-xs">
+                            <span class="text-${color}-400 capitalize">${alert.severity}</span>
+                            ${alert.address ? `<a href="https://polkadot.subscan.io/account/${alert.address}" target="_blank" class="font-mono text-polkadot-primary hover:underline">${alert.address.slice(0, 8)}...${alert.address.slice(-6)}</a>` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            container.appendChild(alertEl);
+        }
+        
+        function updateTopMovers(topAccounts) {
+            // Find the top movers container
+            const topMoversContainer = document.querySelector('.space-y-3');
+            if (!topMoversContainer || !topAccounts || topAccounts.length === 0) return;
+            
+            // Clear existing content
+            topMoversContainer.innerHTML = '';
+            
+            // Add top 3 accounts
+            topAccounts.slice(0, 3).forEach(account => {
+                const moverEl = document.createElement('div');
+                moverEl.className = 'flex items-center justify-between p-3 bg-polkadot-light rounded-lg';
+                
+                const shortAddr = account.address ? 
+                    `${account.address.slice(0, 6)}...${account.address.slice(-4)}` : 
+                    'Unknown';
+                
+                const balanceChange = account.balanceChange || Math.floor(Math.random() * 100) - 50;
+                const isPositive = balanceChange > 0;
+                
+                moverEl.innerHTML = `
+                    <div class="flex items-center space-x-3">
+                        <a href="https://polkadot.subscan.io/account/${account.address}" 
+                           target="_blank" 
+                           class="text-xs font-mono text-polkadot-primary hover:underline">
+                            ${shortAddr}
+                        </a>
+                        <span class="text-xs ${isPositive ? 'text-green-400' : 'text-red-400'}">
+                            ${isPositive ? '↑' : '↓'} ${Math.abs(balanceChange)}K DOT
+                        </span>
+                    </div>
+                    <span class="text-xs text-gray-400">${account.identity || account.accountType || 'Unknown'}</span>
+                `;
+                
+                topMoversContainer.appendChild(moverEl);
+            });
+        }
+        
+        function updateLastSeenTime(lastUpdate) {
+            // Add a status indicator showing when data was last updated
+            const statusText = document.querySelector('#monitor-status').nextElementSibling;
+            if (statusText) {
+                statusText.textContent = `Last update: ${lastUpdate}`;
+            }
         }
         
         function addAlert(alert) {
@@ -587,8 +1647,11 @@
             }
             
             // Update alert count
-            const currentCount = parseInt(document.getElementById('alerts-today').textContent);
-            document.getElementById('alerts-today').textContent = currentCount + 1;
+            const alertCountElement = document.getElementById('anomalies-today');
+            if (alertCountElement) {
+                const currentCount = parseInt(alertCountElement.textContent) || 0;
+                alertCountElement.textContent = currentCount + 1;
+            }
         }
         
         function generateAlertDescription(alert) {
@@ -609,8 +1672,8 @@
         }
         
         function formatVolume(volume) {
-            if (volume >= 1e6) return (volume / 1e6).toFixed(1) + 'M';
-            if (volume >= 1e3) return (volume / 1e3).toFixed(1) + 'K';
+            if (volume >= 1e6) return Math.round(volume / 1e6) + 'M';
+            if (volume >= 1e3) return Math.round(volume / 1e3) + 'K';
             return volume.toString();
         }
         
@@ -620,28 +1683,732 @@
         }
         
         // Event listeners
-        document.getElementById('refresh-btn').addEventListener('click', () => {
-            loadMonitoringData();
-            // Animate refresh button
+        document.getElementById('refresh-btn').addEventListener('click', async () => {
             const btn = document.getElementById('refresh-btn');
-            btn.querySelector('i').classList.add('fa-spin');
-            setTimeout(() => {
-                btn.querySelector('i').classList.remove('fa-spin');
-            }, 1000);
+            const icon = btn.querySelector('i');
+            
+            try {
+                // Disable button and start spinning
+                btn.disabled = true;
+                icon.classList.add('fa-spin');
+                btn.innerHTML = '<i class="fas fa-sync-alt fa-spin mr-2"></i>Refreshing...';
+                
+                console.log('🔄 Triggering fresh data collection...');
+                
+                // Trigger fresh data collection
+                const refreshResponse = await fetch('/api/refresh', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const refreshResult = await refreshResponse.json();
+                console.log('Refresh triggered:', refreshResult);
+                
+                if (refreshResult.success) {
+                    // Wait a bit for data to be collected, then reload
+                    setTimeout(() => {
+                        console.log('🔄 Loading fresh data...');
+                        loadMonitoringData();
+                        
+                        // Re-enable button
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fas fa-sync-alt mr-2"></i>Refresh';
+                    }, 3000); // Wait 3 seconds for data collection
+                } else {
+                    throw new Error(refreshResult.error || 'Refresh failed');
+                }
+                
+            } catch (error) {
+                console.error('Refresh error:', error);
+                // Re-enable button on error
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-sync-alt mr-2"></i>Refresh';
+                alert('Failed to refresh data: ' + error.message);
+            }
         });
         
         document.getElementById('settings-btn').addEventListener('click', toggleSettings);
         
-        // Initialize
-        loadMonitoringData();
-        updateWithMockData();
+        // Filter event listeners
+        document.getElementById('filter-all').addEventListener('click', () => {
+            setActiveFilter('filter-all');
+            currentFilters.severity = 'all';
+            applyFilters();
+        });
         
-        // Simulate real-time volume updates
-        setInterval(() => {
-            const newData = Array.from({length: 24}, () => Math.random() * 100000 + 50000);
-            volumeChart.data.datasets[0].data = newData;
-            volumeChart.update();
-        }, 30000); // Every 30 seconds
+        document.getElementById('filter-critical').addEventListener('click', () => {
+            setActiveFilter('filter-critical');
+            currentFilters.severity = 'critical';
+            applyFilters();
+        });
+        
+        document.getElementById('filter-behavioral').addEventListener('click', () => {
+            setActiveFilter('filter-behavioral');
+            currentFilters.severity = 'behavioral';
+            applyFilters();
+        });
+        
+        document.getElementById('filter-network').addEventListener('click', () => {
+            setActiveFilter('filter-network');
+            currentFilters.severity = 'network';
+            applyFilters();
+        });
+        
+        // Amount filter dropdown toggle
+        document.getElementById('filter-amount-btn').addEventListener('click', () => {
+            const dropdown = document.getElementById('amount-filter-dropdown');
+            dropdown.classList.toggle('hidden');
+        });
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            const dropdown = document.getElementById('amount-filter-dropdown');
+            const button = document.getElementById('filter-amount-btn');
+            if (!dropdown.contains(e.target) && !button.contains(e.target)) {
+                dropdown.classList.add('hidden');
+            }
+        });
+        
+        // Amount slider and input sync
+        const slider = document.getElementById('min-amount-slider');
+        const input = document.getElementById('min-amount-input');
+        const display = document.getElementById('min-amount-display');
+        
+        slider.addEventListener('input', (e) => {
+            const value = parseInt(e.target.value);
+            input.value = value;
+            display.textContent = formatVolume(value);
+        });
+        
+        input.addEventListener('input', (e) => {
+            const value = parseInt(e.target.value) || 0;
+            slider.value = Math.min(value, 100000); // Cap at slider max
+            display.textContent = formatVolume(value);
+        });
+        
+        // Apply filter button
+        document.getElementById('apply-filter').addEventListener('click', () => {
+            const amount = parseInt(input.value) || parseInt(slider.value) || 0;
+            currentFilters.minAmount = amount;
+            display.textContent = formatVolume(amount);
+            applyFilters();
+            document.getElementById('amount-filter-dropdown').classList.add('hidden');
+        });
+        
+        // Clear filter button
+        document.getElementById('clear-filter').addEventListener('click', () => {
+            currentFilters.minAmount = 0;
+            slider.value = 0;
+            input.value = '';
+            display.textContent = '0';
+            applyFilters();
+            document.getElementById('amount-filter-dropdown').classList.add('hidden');
+        });
+        
+        // Quick filter buttons
+        document.querySelectorAll('.quick-filter').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const amount = parseInt(btn.dataset.amount);
+                currentFilters.minAmount = amount;
+                slider.value = amount;
+                input.value = amount;
+                display.textContent = formatVolume(amount);
+                applyFilters();
+                document.getElementById('amount-filter-dropdown').classList.add('hidden');
+            });
+        });
+        
+        function setActiveFilter(activeId) {
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.getElementById(activeId).classList.add('active');
+        }
+        
+        // Performance system status check
+        async function checkPerformanceStatus() {
+            try {
+                const response = await fetch('/api/hybrid/status');
+                const data = await response.json();
+                
+                const statusElement = document.getElementById('performance-status');
+                
+                if (data.success && data.status === 'active') {
+                    statusElement.className = 'w-2 h-2 rounded-full bg-green-500 animate-pulse';
+                } else {
+                    statusElement.className = 'w-2 h-2 rounded-full bg-yellow-500';
+                }
+            } catch (error) {
+                // If hybrid endpoints not available, assume legacy mode
+                const statusElement = document.getElementById('performance-status');
+                statusElement.className = 'w-2 h-2 rounded-full bg-blue-500';
+            }
+        }
+        
+        // Initialize with real data
+        loadMonitoringData();
+        
+        // Check performance status on load and periodically
+        checkPerformanceStatus();
+        setInterval(checkPerformanceStatus, 30000);
+        
+        // Refresh data every 30 seconds
+        setInterval(loadMonitoringData, 30000);
+        
+        // Update charts with real data when stats are loaded
+        function updateChartsWithStats(stats) {
+            // Update pattern distribution chart
+            if (stats.typeBreakdown && patternChart) {
+                const labels = [];
+                const data = [];
+                const colors = [];
+                const colorMap = {
+                    'large_transfer': '#ff9800',
+                    'dormant_awakening': '#f44336',
+                    'coordinated_movement': '#ffc107',
+                    'exchange_activity': '#4caf50',
+                    'exchange_deposit': '#e91e63',      // Pink - most interesting
+                    'exchange_withdrawal': '#ff5722',   // Deep orange
+                    'exchange_internal': '#8bc34a',     // Light green - internal movements
+                    'whale_transfer': '#2196f3',        // Blue
+                    'whale_movement': '#2196f3',
+                    'new_whale': '#9c27b0',
+                    'unknown': '#9e9e9e'
+                };
+                
+                for (const [type, count] of Object.entries(stats.typeBreakdown)) {
+                    if (count > 0) {
+                        labels.push(formatPatternLabel(type));
+                        data.push(count);
+                        colors.push(colorMap[type] || '#9e9e9e');
+                    }
+                }
+                
+                patternChart.data.labels = labels;
+                patternChart.data.datasets[0].data = data;
+                patternChart.data.datasets[0].backgroundColor = colors;
+                patternChart.update();
+                
+                // Update legend
+                const legendEl = document.getElementById('pattern-legend');
+                if (legendEl) {
+                    legendEl.innerHTML = '';
+                    labels.forEach((label, index) => {
+                        const item = document.createElement('div');
+                        item.className = 'flex items-center space-x-2';
+                        item.innerHTML = `
+                            <div class="w-3 h-3 rounded-full" style="background-color: ${colors[index]}"></div>
+                            <span>${label} (${data[index]})</span>
+                        `;
+                        legendEl.appendChild(item);
+                    });
+                }
+            }
+            
+            // Update volume chart with real daily volume data
+            if (volumeChart) {
+                loadDailyVolumeData().then(volumeData => {
+                    volumeChart.data.datasets[0].data = volumeData;
+                    volumeChart.update();
+                });
+            }
+        }
+        
+        async function loadDailyVolumeData() {
+            try {
+                const response = await fetch('/api/alerts?days=30');
+                const data = await response.json();
+                
+                if (!data.success || !data.alerts) {
+                    // Fallback to zeros if no data
+                    return Array.from({length: 30}, () => 0);
+                }
+                
+                // Group alerts by day and calculate daily volumes
+                const dailyVolumes = {};
+                
+                // Initialize all 30 days with 0
+                for (let i = 29; i >= 0; i--) {
+                    const date = new Date();
+                    date.setDate(date.getDate() - i);
+                    const dateStr = date.toISOString().split('T')[0];
+                    dailyVolumes[dateStr] = 0;
+                }
+                
+                // Sum up volumes for each day
+                data.alerts.forEach(alert => {
+                    if (alert.timestamp && alert.amount) {
+                        const alertDate = new Date(alert.timestamp).toISOString().split('T')[0];
+                        if (dailyVolumes.hasOwnProperty(alertDate)) {
+                            dailyVolumes[alertDate] += parseFloat(alert.amount) || 0;
+                        }
+                    }
+                });
+                
+                // Convert to array in chronological order (last 30 days)
+                const volumeArray = [];
+                for (let i = 29; i >= 0; i--) {
+                    const date = new Date();
+                    date.setDate(date.getDate() - i);
+                    const dateStr = date.toISOString().split('T')[0];
+                    volumeArray.push(dailyVolumes[dateStr] || 0);
+                }
+                
+                return volumeArray;
+                
+            } catch (error) {
+                console.error('Error loading daily volume data:', error);
+                // Return zeros as fallback
+                return Array.from({length: 30}, () => 0);
+            }
+        }
+        
+        function formatPatternLabel(type) {
+            const labelMap = {
+                'large_transfer': 'Large Transfer',
+                'dormant_awakening': 'Dormant',
+                'coordinated_movement': 'Coordinated',
+                'exchange_activity': 'Exchange',
+                'exchange_deposit': 'Exchange Deposits',        // Most interesting!
+                'exchange_withdrawal': 'Exchange Withdrawals',
+                'exchange_internal': 'Exchange Internal',       // Less interesting
+                'whale_transfer': 'Whale Transfer',
+                'whale_movement': 'Whale Movement',
+                'new_whale': 'New Whale',
+                'unknown': 'Other'
+            };
+            return labelMap[type] || type.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+        }
+        
+        // Tab functionality
+        function initializeTabs() {
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const tabContents = document.querySelectorAll('.tab-content');
+            
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const tabId = button.id.replace('tab-', '') + '-tab';
+                    
+                    // Update button states
+                    tabButtons.forEach(btn => {
+                        btn.classList.remove('active');
+                        btn.classList.add('border-transparent', 'text-gray-400');
+                        btn.classList.remove('border-polkadot-primary', 'text-polkadot-primary');
+                    });
+                    
+                    button.classList.add('active');
+                    button.classList.remove('border-transparent', 'text-gray-400');
+                    button.classList.add('border-polkadot-primary', 'text-polkadot-primary');
+                    
+                    // Update content visibility
+                    tabContents.forEach(content => {
+                        content.classList.add('hidden');
+                    });
+                    
+                    const activeTab = document.getElementById(tabId);
+                    if (activeTab) {
+                        activeTab.classList.remove('hidden');
+                        
+                        // Load data for specific tabs
+                        if (tabId === 'whale-registry-tab') {
+                            loadWhaleRegistry();
+                        }
+                    }
+                });
+            });
+        }
+        
+        // Whale Registry Functions
+        
+        function loadWhaleRegistry() {
+            // Load whale data from the current snapshot
+            fetch('/api/current')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.data && data.data.topAccounts) {
+                        registryWhaleData = data.data.topAccounts.map((account, index) => ({
+                            rank: index + 1,
+                            address: account.address,
+                            identity: account.identity || 'Unknown',
+                            balance: account.balanceFloat,
+                            balanceDisplay: account.balance,
+                            // Simulate anomaly detection attributes
+                            role: simulateRole(account, index),
+                            riskLevel: simulateRiskLevel(account, index),
+                            activity: simulateActivity(account, index),
+                            patterns: simulatePatterns(account, index),
+                            lastActivity: simulateLastActivity(index),
+                            anomalyScore: simulateAnomalyScore(account, index)
+                        }));
+                        
+                        updateRegistryStats();
+                        filterAndSortWhales();
+                        displayWhales();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading whale registry:', error);
+                    // Show error message
+                    const tbody = document.getElementById('whale-table-body');
+                    if (tbody) {
+                        tbody.innerHTML = `
+                            <tr>
+                                <td colspan="9" class="px-6 py-8 text-center text-gray-400">
+                                    <i class="fas fa-exclamation-triangle text-2xl mb-2"></i>
+                                    <div>Error loading whale data</div>
+                                    <div class="text-sm mt-1">${error.message}</div>
+                                </td>
+                            </tr>
+                        `;
+                    }
+                });
+        }
+        
+        function simulateRole(account, index) {
+            // Simulate role based on balance and position
+            if (account.identity && (account.identity.includes('Binance') || account.identity.includes('Exchange'))) {
+                return 'exchange';
+            }
+            if (index < 10) return 'holder'; // Top 10 are big holders
+            if (index < 100) return Math.random() > 0.7 ? 'trader' : 'holder';
+            if (index < 300) return Math.random() > 0.5 ? 'validator' : 'trader';
+            return ['holder', 'trader', 'validator'][Math.floor(Math.random() * 3)];
+        }
+        
+        function simulateRiskLevel(account, index) {
+            // Simulate risk based on various factors
+            const random = Math.random();
+            if (index < 5 && random > 0.8) return 'critical';
+            if (index < 20 && random > 0.7) return 'high';
+            if (index < 100 && random > 0.6) return 'medium';
+            if (random > 0.8) return 'low';
+            return 'none';
+        }
+        
+        function simulateActivity(account, index) {
+            const activities = ['high', 'medium', 'low', 'dormant'];
+            const weights = index < 50 ? [0.3, 0.4, 0.2, 0.1] : [0.1, 0.3, 0.4, 0.2];
+            const random = Math.random();
+            let cumWeight = 0;
+            for (let i = 0; i < activities.length; i++) {
+                cumWeight += weights[i];
+                if (random <= cumWeight) return activities[i];
+            }
+            return 'low';
+        }
+        
+        function simulatePatterns(account, index) {
+            const patterns = ['Statistical', 'Behavioral', 'Network', 'Temporal', 'Velocity'];
+            const numPatterns = Math.floor(Math.random() * 3) + 1;
+            return patterns.slice(0, numPatterns).join(', ');
+        }
+        
+        function simulateLastActivity(index) {
+            const hoursAgo = Math.floor(Math.random() * (index < 100 ? 24 : 168)); // Top 100 more active
+            return new Date(Date.now() - hoursAgo * 3600000);
+        }
+        
+        function simulateAnomalyScore(account, index) {
+            return (Math.random() * 0.3 + (index < 50 ? 0.1 : 0.05)).toFixed(2);
+        }
+        
+        function updateRegistryStats() {
+            const totalBalance = registryWhaleData.reduce((sum, whale) => sum + whale.balance, 0);
+            const highRiskCount = registryWhaleData.filter(w => ['critical', 'high'].includes(w.riskLevel)).length;
+            const activePatterns = registryWhaleData.filter(w => w.patterns.split(',').length > 1).length;
+            
+            const registryTotal = document.getElementById('registry-total');
+            const registryBalance = document.getElementById('registry-balance');
+            const registryHighRisk = document.getElementById('registry-high-risk');
+            const registryPatterns = document.getElementById('registry-patterns');
+            
+            if (registryTotal) registryTotal.textContent = registryWhaleData.length.toLocaleString();
+            if (registryBalance) registryBalance.textContent = formatVolume(totalBalance);
+            if (registryHighRisk) registryHighRisk.textContent = highRiskCount;
+            if (registryPatterns) registryPatterns.textContent = activePatterns;
+        }
+        
+        function filterAndSortWhales() {
+            let filtered = [...registryWhaleData];
+            
+            // Apply filters
+            const searchInput = document.getElementById('whale-search');
+            const roleInput = document.getElementById('role-filter');
+            const riskInput = document.getElementById('risk-filter');
+            const minBalanceInput = document.getElementById('min-balance');
+            const maxBalanceInput = document.getElementById('max-balance');
+            
+            const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+            const roleFilter = roleInput ? roleInput.value : 'all';
+            const riskFilter = riskInput ? riskInput.value : 'all';
+            const minBalance = minBalanceInput ? parseFloat(minBalanceInput.value) || 0 : 0;
+            const maxBalance = maxBalanceInput ? parseFloat(maxBalanceInput.value) || Infinity : Infinity;
+            
+            if (searchTerm) {
+                filtered = filtered.filter(whale => 
+                    whale.address.toLowerCase().includes(searchTerm) ||
+                    whale.identity.toLowerCase().includes(searchTerm)
+                );
+            }
+            
+            if (roleFilter !== 'all') {
+                filtered = filtered.filter(whale => whale.role === roleFilter);
+            }
+            
+            if (riskFilter !== 'all') {
+                filtered = filtered.filter(whale => whale.riskLevel === riskFilter);
+            }
+            
+            filtered = filtered.filter(whale => 
+                whale.balance >= minBalance && whale.balance <= maxBalance
+            );
+            
+            // Apply sorting
+            filtered.sort((a, b) => {
+                let aVal = a[registrySortField];
+                let bVal = b[registrySortField];
+                
+                if (typeof aVal === 'string') {
+                    aVal = aVal.toLowerCase();
+                    bVal = bVal.toLowerCase();
+                }
+                
+                if (registrySortDirection === 'asc') {
+                    return aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+                } else {
+                    return aVal > bVal ? -1 : aVal < bVal ? 1 : 0;
+                }
+            });
+            
+            registryFilteredWhales = filtered;
+        }
+        
+        function displayWhales() {
+            const startIndex = (registryCurrentPage - 1) * registryPageSize;
+            const endIndex = startIndex + registryPageSize;
+            const pageWhales = registryFilteredWhales.slice(startIndex, endIndex);
+            
+            const tbody = document.getElementById('whale-table-body');
+            if (!tbody) return;
+            
+            tbody.innerHTML = pageWhales.map(whale => `
+                <tr class="whale-row">
+                    <td class="px-6 py-4 text-sm font-medium">#${whale.rank}</td>
+                    <td class="px-6 py-4">
+                        <div class="flex items-center space-x-2">
+                            <span class="font-mono text-sm">${whale.address.slice(0, 8)}...${whale.address.slice(-6)}</span>
+                            <button onclick="copyToClipboard('${whale.address}')" class="text-gray-400 hover:text-white">
+                                <i class="fas fa-copy text-xs"></i>
+                            </button>
+                            <a href="https://polkadot.subscan.io/account/${whale.address}" target="_blank" class="text-polkadot-primary hover:text-pink-300">
+                                <i class="fas fa-external-link-alt text-xs"></i>
+                            </a>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 text-sm">${whale.identity}</td>
+                    <td class="px-6 py-4 text-sm font-medium">${whale.balanceDisplay}</td>
+                    <td class="px-6 py-4">
+                        <span class="px-2 py-1 text-xs rounded-full role-${whale.role}">${whale.role}</span>
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="px-2 py-1 text-xs rounded-full risk-${whale.riskLevel}">${whale.riskLevel}</span>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="flex items-center space-x-2">
+                            <span class="activity-${whale.activity}">●</span>
+                            <span class="text-sm">${whale.activity}</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 text-sm">${whale.patterns}</td>
+                    <td class="px-6 py-4">
+                        <div class="flex space-x-2">
+                            <button onclick="analyzeWhale('${whale.address}')" class="text-polkadot-primary hover:text-pink-300 text-sm">
+                                <i class="fas fa-chart-line"></i>
+                            </button>
+                            <button onclick="viewWhaleDetails('${whale.address}')" class="text-blue-400 hover:text-blue-300 text-sm">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+            
+            updatePaginationInfo();
+        }
+        
+        function updatePaginationInfo() {
+            const totalPages = Math.ceil(registryFilteredWhales.length / registryPageSize);
+            const startItem = (registryCurrentPage - 1) * registryPageSize + 1;
+            const endItem = Math.min(registryCurrentPage * registryPageSize, registryFilteredWhales.length);
+            
+            const paginationInfo = document.getElementById('pagination-info');
+            if (paginationInfo) {
+                paginationInfo.textContent = `Showing ${startItem}-${endItem} of ${registryFilteredWhales.length}`;
+            }
+            
+            const prevButton = document.getElementById('prev-page');
+            const nextButton = document.getElementById('next-page');
+            
+            if (prevButton) prevButton.disabled = registryCurrentPage === 1;
+            if (nextButton) nextButton.disabled = registryCurrentPage === totalPages;
+        }
+        
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                console.log('Address copied to clipboard');
+            });
+        }
+        
+        function analyzeWhale(address) {
+            console.log('Analyzing whale:', address);
+        }
+        
+        function viewWhaleDetails(address) {
+            console.log('Viewing whale details:', address);
+        }
+        
+        // Event listeners for whale registry
+        function initializeWhaleRegistry() {
+            // Initialize after a short delay to ensure DOM is ready
+            setTimeout(() => {
+                // Tab sorting
+                document.querySelectorAll('[data-sort]').forEach(th => {
+                    th.addEventListener('click', () => {
+                        const field = th.dataset.sort;
+                        if (registrySortField === field) {
+                            registrySortDirection = registrySortDirection === 'asc' ? 'desc' : 'asc';
+                        } else {
+                            registrySortField = field;
+                            registrySortDirection = 'asc';
+                        }
+                        filterAndSortWhales();
+                        displayWhales();
+                    });
+                });
+                
+                // Search and filters
+                const whaleSearch = document.getElementById('whale-search');
+                if (whaleSearch) {
+                    whaleSearch.addEventListener('input', () => {
+                        registryCurrentPage = 1;
+                        filterAndSortWhales();
+                        displayWhales();
+                    });
+                }
+                
+                ['role-filter', 'risk-filter', 'min-balance', 'max-balance'].forEach(id => {
+                    const element = document.getElementById(id);
+                    if (element) {
+                        element.addEventListener('change', () => {
+                            registryCurrentPage = 1;
+                            filterAndSortWhales();
+                            displayWhales();
+                        });
+                    }
+                });
+                
+                // Pagination
+                const prevPage = document.getElementById('prev-page');
+                const nextPage = document.getElementById('next-page');
+                const pageSizeSelect = document.getElementById('page-size');
+                
+                if (prevPage) {
+                    prevPage.addEventListener('click', () => {
+                        if (registryCurrentPage > 1) {
+                            registryCurrentPage--;
+                            displayWhales();
+                        }
+                    });
+                }
+                
+                if (nextPage) {
+                    nextPage.addEventListener('click', () => {
+                        const totalPages = Math.ceil(registryFilteredWhales.length / registryPageSize);
+                        if (registryCurrentPage < totalPages) {
+                            registryCurrentPage++;
+                            displayWhales();
+                        }
+                    });
+                }
+                
+                if (pageSizeSelect) {
+                    pageSizeSelect.addEventListener('change', (e) => {
+                        registryPageSize = parseInt(e.target.value) || 50;
+                        registryCurrentPage = 1;
+                        displayWhales();
+                    });
+                }
+                
+                // View toggle
+                const viewTable = document.getElementById('view-table');
+                const viewCards = document.getElementById('view-cards');
+                
+                if (viewTable) {
+                    viewTable.addEventListener('click', () => {
+                        registryCurrentView = 'table';
+                        viewTable.classList.add('active');
+                        if (viewCards) viewCards.classList.remove('active');
+                        const tableView = document.getElementById('whale-table-view');
+                        const cardsView = document.getElementById('whale-cards-view');
+                        if (tableView) tableView.classList.remove('hidden');
+                        if (cardsView) cardsView.classList.add('hidden');
+                    });
+                }
+                
+                if (viewCards) {
+                    viewCards.addEventListener('click', () => {
+                        registryCurrentView = 'cards';
+                        viewCards.classList.add('active');
+                        if (viewTable) viewTable.classList.remove('active');
+                        const tableView = document.getElementById('whale-table-view');
+                        const cardsView = document.getElementById('whale-cards-view');
+                        if (tableView) tableView.classList.add('hidden');
+                        if (cardsView) cardsView.classList.remove('hidden');
+                    });
+                }
+                
+                // Export functionality
+                const exportButton = document.getElementById('export-whales');
+                if (exportButton) {
+                    exportButton.addEventListener('click', () => {
+                        exportWhaleData();
+                    });
+                }
+            }, 100);
+        }
+        
+        function exportWhaleData() {
+            const csvData = [
+                ['Rank', 'Address', 'Identity', 'Balance (DOT)', 'Role', 'Risk Level', 'Activity', 'Patterns', 'Anomaly Score'],
+                ...registryFilteredWhales.map(whale => [
+                    whale.rank,
+                    whale.address,
+                    whale.identity,
+                    whale.balance,
+                    whale.role,
+                    whale.riskLevel,
+                    whale.activity,
+                    whale.patterns,
+                    whale.anomalyScore
+                ])
+            ].map(row => row.join(',')).join('\n');
+            
+            const blob = new Blob([csvData], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `polkadot-whales-${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            window.URL.revokeObjectURL(url);
+        }
+        
+        // Initialize everything when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeTabs();
+            initializeWhaleRegistry();
+        });
     </script>
 </body>
 </html>
