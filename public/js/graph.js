@@ -134,7 +134,7 @@ class PolkadotGraphVisualization {
             throw error;
         }
         
-        console.log(`Graph container found: ${containerSelector}`, containerNode);
+        // console.log(`Graph container found: ${containerSelector}`, containerNode);
         
         this.initializeVisualization();
         this.setupEventHandlers();
@@ -170,7 +170,7 @@ class PolkadotGraphVisualization {
             
             // Validate dimensions are meaningful
             if (!rect || (rect.width === 0 && rect.height === 0)) {
-                console.warn('Container has zero dimensions, using fallback values');
+                // console.warn('Container has zero dimensions, using fallback values');
                 // Use CSS or computed styles as fallback
                 const computedStyle = window.getComputedStyle(containerElement);
                 const computedWidth = parseFloat(computedStyle.width);
@@ -188,7 +188,7 @@ class PolkadotGraphVisualization {
             this.config.width = Math.max(this.config.width, 300);
             this.config.height = Math.max(this.config.height, 200);
             
-            console.log(`Graph dimensions: ${this.config.width}x${this.config.height}`);
+            // console.log(`Graph dimensions: ${this.config.width}x${this.config.height}`);
         } catch (error) {
             console.error('Error during container dimension detection:', error);
             this.callbacks.onError?.(error);
@@ -216,7 +216,7 @@ class PolkadotGraphVisualization {
                 .attr('viewBox', [0, 0, this.config.width, this.config.height])
                 .style('background-color', this.config.colors.background);
                 
-            console.log('SVG element created successfully');
+            // console.log('SVG element created successfully');
         } catch (error) {
             console.error('Error creating SVG element:', error);
             this.callbacks.onError?.(error);
@@ -281,7 +281,7 @@ class PolkadotGraphVisualization {
         // Create loading indicator
         this.loadingIndicator = this.createLoadingIndicator();
         
-        console.log('D3.js graph visualization initialized');
+        // console.log('D3.js graph visualization initialized');
     }
     
     /**
@@ -433,11 +433,11 @@ class PolkadotGraphVisualization {
             // Clear any existing animations before loading new data
             this.clearAnimations();
             
-            console.log('Loading graph data:', {
-                nodes: graphData.nodes.length,
-                links: graphData.links.length,
-                metadata: graphData.metadata
-            });
+            // console.log('Loading graph data:', {
+            //     nodes: graphData.nodes.length,
+            //     links: graphData.links.length,
+            //     metadata: graphData.metadata
+            // });
             
             // Store original data
             this.state.data = {
@@ -467,7 +467,7 @@ class PolkadotGraphVisualization {
             this.metrics.edgeCount = this.state.filteredData.links.length;
             this.metrics.lastUpdate = Date.now();
             
-            console.log(`Graph rendered in ${loadTime.toFixed(2)}ms`);
+            // console.log(`Graph rendered in ${loadTime.toFixed(2)}ms`);
             
             // Trigger callback
             this.callbacks.onDataUpdate(this.state.filteredData, this.metrics);
@@ -485,14 +485,14 @@ class PolkadotGraphVisualization {
         try {
             // Validate incremental data
             if (!incrementalData) {
-                console.warn('No incremental data provided');
+                // console.warn('No incremental data provided');
                 return;
             }
             
-            console.log('Adding incremental data:', {
-                newNodes: incrementalData.nodes?.length || 0,
-                newEdges: incrementalData.edges?.length || 0
-            });
+            // console.log('Adding incremental data:', {
+            //     newNodes: incrementalData.nodes?.length || 0,
+            //     newEdges: incrementalData.edges?.length || 0
+            // });
             
             let hasNewData = false;
             
@@ -504,7 +504,7 @@ class PolkadotGraphVisualization {
                 if (newNodes.length > 0) {
                     this.state.data.nodes.push(...newNodes.map(node => ({ ...node })));
                     hasNewData = true;
-                    console.log(`Added ${newNodes.length} new nodes`);
+                    // console.log(`Added ${newNodes.length} new nodes`);
                 }
             }
             
@@ -519,7 +519,7 @@ class PolkadotGraphVisualization {
                 if (newEdges.length > 0) {
                     this.state.data.links.push(...newEdges.map(edge => ({ ...edge })));
                     hasNewData = true;
-                    console.log(`Added ${newEdges.length} new edges`);
+                    // console.log(`Added ${newEdges.length} new edges`);
                 }
             }
             
@@ -542,7 +542,7 @@ class PolkadotGraphVisualization {
                 // Trigger callback
                 this.callbacks.onDataUpdate(this.state.filteredData, this.metrics);
                 
-                console.log(`Graph updated incrementally. Total: ${this.state.data.nodes.length} nodes, ${this.state.data.links.length} edges`);
+                // console.log(`Graph updated incrementally. Total: ${this.state.data.nodes.length} nodes, ${this.state.data.links.length} edges`);
             }
             
         } catch (error) {
@@ -706,14 +706,14 @@ class PolkadotGraphVisualization {
             links: filteredLinks
         };
         
-        console.log('Filters applied:', {
-            originalNodes: this.state.data.nodes.length,
-            filteredNodes: filteredNodes.length,
-            originalLinks: this.state.data.links.length,
-            filteredLinks: filteredLinks.length,
-            volumeThreshold: filters.volumeThreshold || 'none',
-            direction: filters.direction || 'all'
-        });
+        // console.log('Filters applied:', {
+        //     originalNodes: this.state.data.nodes.length,
+        //     filteredNodes: filteredNodes.length,
+        //     originalLinks: this.state.data.links.length,
+        //     filteredLinks: filteredLinks.length,
+        //     volumeThreshold: filters.volumeThreshold || 'none',
+        //     direction: filters.direction || 'all'
+        // });
     }
     
     /**
@@ -756,13 +756,13 @@ class PolkadotGraphVisualization {
             .alphaDecay(0.001)  // Extremely slow decay
             .restart();
         
-        console.log('Simulation parameters updated for maximum spacing:', {
-            chargeStrength,
-            linkDistance,
-            avgNodeSize,
-            density: density.toFixed(3),
-            collisionRadius: avgNodeSize * 2 + 60
-        });
+        // console.log('Simulation parameters updated for maximum spacing:', {
+        //     chargeStrength,
+        //     linkDistance,
+        //     avgNodeSize,
+        //     density: density.toFixed(3),
+        //     collisionRadius: avgNodeSize * 2 + 60
+        // });
     }
     
     /**
@@ -813,7 +813,7 @@ class PolkadotGraphVisualization {
     trackAnimation(transition, nodeId = null) {
         try {
             if (!transition) {
-                console.warn('trackAnimation called with null transition');
+                // console.warn('trackAnimation called with null transition');
                 return transition;
             }
             
@@ -832,7 +832,7 @@ class PolkadotGraphVisualization {
                             this.animations.pulsingNodes.delete(nodeId);
                         }
                     } catch (error) {
-                        console.warn('Error in transition cleanup:', error);
+                        // console.warn('Error in transition cleanup:', error);
                     }
                 });
             }
@@ -1262,7 +1262,7 @@ class PolkadotGraphVisualization {
      * Simulation end handler
      */
     onSimulationEnd() {
-        console.log('Force simulation completed');
+        // console.log('Force simulation completed');
         this.hideLoading();
     }
     
@@ -1423,7 +1423,7 @@ class PolkadotGraphVisualization {
                 newWidth / 2, 
                 newHeight / 2));
             
-            console.log(`Graph resized to ${newWidth}x${newHeight}`);
+            // console.log(`Graph resized to ${newWidth}x${newHeight}`);
         }
     }
     
@@ -1554,17 +1554,17 @@ class PolkadotGraphVisualization {
     // Default callback implementations
     
     defaultNodeClick(nodeData, event, selectedNodes) {
-        console.log('Node clicked:', nodeData.address, 'Selected nodes:', selectedNodes.size);
+        // console.log('Node clicked:', nodeData.address, 'Selected nodes:', selectedNodes.size);
     }
     
     defaultNodeDoubleClick(nodeData, event) {
-        console.log('Node double-clicked:', nodeData.address);
+        // console.log('Node double-clicked:', nodeData.address);
         // Center on node
         this.centerOnNode(nodeData);
     }
     
     defaultEdgeClick(edgeData, event) {
-        console.log('Edge clicked:', edgeData.source, '->', edgeData.target);
+        // console.log('Edge clicked:', edgeData.source, '->', edgeData.target);
     }
     
     // Visual property calculation methods
@@ -1572,7 +1572,7 @@ class PolkadotGraphVisualization {
     getNodeRadius(nodeData) {
         // Validate nodeData before processing
         if (!nodeData || typeof nodeData !== 'object') {
-            console.warn('getNodeRadius called with invalid nodeData:', nodeData);
+            // console.warn('getNodeRadius called with invalid nodeData:', nodeData);
             return this.config.nodes.minRadius;
         }
         
@@ -1618,7 +1618,7 @@ class PolkadotGraphVisualization {
     getNodeColor(nodeData) {
         // Validate nodeData before processing
         if (!nodeData || typeof nodeData !== 'object') {
-            console.warn('getNodeColor called with invalid nodeData:', nodeData);
+            // console.warn('getNodeColor called with invalid nodeData:', nodeData);
             return this.config.colors.neutral;
         }
         
@@ -1644,7 +1644,7 @@ class PolkadotGraphVisualization {
     getNodeStrokeColor(nodeData) {
         // Validate nodeData before processing
         if (!nodeData || typeof nodeData !== 'object') {
-            console.warn('getNodeStrokeColor called with invalid nodeData:', nodeData);
+            // console.warn('getNodeStrokeColor called with invalid nodeData:', nodeData);
             return '#ffffff';
         }
         
@@ -2280,7 +2280,7 @@ class PolkadotGraphVisualization {
         nodeData.fx = nodeData.x;
         nodeData.fy = nodeData.y;
         this.updateNodeLockVisualization();
-        console.log(`Node ${nodeData.address.substring(0, 8)}... locked`);
+        // console.log(`Node ${nodeData.address.substring(0, 8)}... locked`);
     }
     
     /**
@@ -2291,7 +2291,7 @@ class PolkadotGraphVisualization {
         nodeData.fx = null;
         nodeData.fy = null;
         this.updateNodeLockVisualization();
-        console.log(`Node ${nodeData.address.substring(0, 8)}... unlocked`);
+        // console.log(`Node ${nodeData.address.substring(0, 8)}... unlocked`);
     }
     
     /**
@@ -2313,7 +2313,7 @@ class PolkadotGraphVisualization {
     pauseSimulation() {
         this.state.simulationPaused = true;
         this.simulation.alphaTarget(0).stop();
-        console.log('Force simulation paused');
+        // console.log('Force simulation paused');
     }
     
     /**
@@ -2322,7 +2322,7 @@ class PolkadotGraphVisualization {
     resumeSimulation() {
         this.state.simulationPaused = false;
         this.simulation.alpha(0.3).restart();
-        console.log('Force simulation resumed');
+        // console.log('Force simulation resumed');
     }
     
     /**
@@ -2352,7 +2352,7 @@ class PolkadotGraphVisualization {
     fitToView() {
         // Skip if zoom is disabled
         if (!this.zoom) {
-            console.log("Zoom disabled - fitToView not available");
+            // console.log("Zoom disabled - fitToView not available");
             return;
         }
         try {

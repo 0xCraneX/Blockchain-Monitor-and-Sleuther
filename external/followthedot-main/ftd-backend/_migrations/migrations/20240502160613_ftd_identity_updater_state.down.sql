@@ -1,1 +1,0 @@
-DROP TABLE ftd_identity_transfer_updater_state CASCADE;

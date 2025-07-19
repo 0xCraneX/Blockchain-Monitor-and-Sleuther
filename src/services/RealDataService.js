@@ -22,50 +22,50 @@ export class RealDataService {
     this.serviceId = Math.random().toString(36).substring(7); // Unique ID for tracking this instance
 
     // Log all methods that will be available
-    const methods = Object.getOwnPropertyNames(Object.getPrototypeOf(this));
-    logger.debug('[CONSTRUCTOR] RealDataService initialized', {
-      cacheTimeout: this.cacheTimeout,
-      serviceId: this.serviceId,
-      availableMethods: methods.filter(m => typeof this[m] === 'function' && m !== 'constructor'),
-      hasBuildGraphData: methods.includes('buildGraphData'),
-      buildGraphDataType: typeof this.buildGraphData
-    });
+    // const methods = Object.getOwnPropertyNames(Object.getPrototypeOf(this));
+    // logger.debug('[CONSTRUCTOR] RealDataService initialized', {
+    //   cacheTimeout: this.cacheTimeout,
+    //   serviceId: this.serviceId,
+    //   availableMethods: methods.filter(m => typeof this[m] === 'function' && m !== 'constructor'),
+    //   hasBuildGraphData: methods.includes('buildGraphData'),
+    //   buildGraphDataType: typeof this.buildGraphData
+    // });
   }
 
   /**
    * Get or fetch account data with caching
    */
   async getAccountData(address) {
-    logger.debug('getAccountData called', {
-      address,
-      method: 'getAccountData',
-      hasBlockchainApi: !!this.blockchain?.api,
-      hasDatabaseService: !!this.database
-    });
+    // logger.debug('getAccountData called', {
+    //   address,
+    //   method: 'getAccountData',
+    //   hasBlockchainApi: !!this.blockchain?.api,
+    //   hasDatabaseService: !!this.database
+    // });
 
     const cacheKey = `account:${address}`;
     const cached = this.getFromCache(cacheKey);
     if (cached) {
-      logger.debug('Account data found in cache', { address, cacheKey });
+      // logger.debug('Account data found in cache', { address, cacheKey });
       return cached;
     }
 
-    logger.debug('Account data not in cache, fetching...', { address });
+    // logger.debug('Account data not in cache, fetching...', { address });
 
     try {
       // Try Subscan first for richer data
-      logger.debug('Attempting to fetch from Subscan', { address });
+      // logger.debug('Attempting to fetch from Subscan', { address });
       let accountInfo = await subscanService.getAccountInfo(address);
 
-      logger.debug('Subscan response', {
-        address,
-        hasAccountInfo: !!accountInfo,
-        accountInfoKeys: accountInfo ? Object.keys(accountInfo) : null
-      });
+      // logger.debug('Subscan response', {
+      //   address,
+      //   hasAccountInfo: !!accountInfo,
+      //   accountInfoKeys: accountInfo ? Object.keys(accountInfo) : null
+      // });
 
       // Fallback to blockchain RPC if Subscan fails
       if (!accountInfo && this.blockchain?.api) {
-        logger.debug('Subscan failed, trying blockchain RPC', { address });
+        // logger.debug('Subscan failed, trying blockchain RPC', { address });
         try {
           const account = await this.blockchain.api.query.system.account(address);
           let identity = null;
@@ -80,7 +80,7 @@ export class RealDataService {
               }
             }
           } catch (identityError) {
-            logger.debug('Failed to get identity from blockchain', { address, error: identityError.message });
+            // logger.debug('Failed to get identity from blockchain', { address, error: identityError.message });
           }
 
           accountInfo = {
@@ -102,12 +102,12 @@ export class RealDataService {
             role: 'regular'
           };
 
-          logger.debug('Successfully fetched from blockchain RPC', {
-            address,
-            hasIdentity: !!identity,
-            balance: accountInfo.balance.free,
-            nonce: accountInfo.nonce
-          });
+          // logger.debug('Successfully fetched from blockchain RPC', {
+          //   address,
+          //   hasIdentity: !!identity,
+          //   balance: accountInfo.balance.free,
+          //   nonce: accountInfo.nonce
+          // });
         } catch (blockchainError) {
           logger.warn('Failed to get account data from blockchain', {
             address,
@@ -118,7 +118,7 @@ export class RealDataService {
       }
 
       if (accountInfo) {
-        logger.debug('Account info obtained, updating cache and database', { address });
+        // logger.debug('Account info obtained, updating cache and database', { address });
         this.setCache(cacheKey, accountInfo);
 
         // Update database
@@ -127,11 +127,11 @@ export class RealDataService {
         logger.warn('No account info obtained from any source', { address });
       }
 
-      logger.debug('getAccountData completed', {
-        address,
-        hasResult: !!accountInfo,
-        source: accountInfo ? 'subscan/blockchain' : 'none'
-      });
+      // logger.debug('getAccountData completed', {
+      //   address,
+      //   hasResult: !!accountInfo,
+      //   source: accountInfo ? 'subscan/blockchain' : 'none'
+      // });
 
       return accountInfo;
     } catch (error) {
@@ -142,14 +142,14 @@ export class RealDataService {
       });
 
       // Try database as last resort
-      logger.debug('Attempting database fallback', { address });
+      // logger.debug('Attempting database fallback', { address });
       const dbResult = await this.database?.getAccount(address);
 
-      logger.debug('Database fallback result', {
-        address,
-        hasResult: !!dbResult,
-        resultKeys: dbResult ? Object.keys(dbResult) : null
-      });
+      // logger.debug('Database fallback result', {
+      //   address,
+      //   hasResult: !!dbResult,
+      //   resultKeys: dbResult ? Object.keys(dbResult) : null
+      // });
 
       return dbResult;
     }
@@ -161,58 +161,58 @@ export class RealDataService {
   async getAddressRelationships(address, options = {}) {
     const { limit = 50, minVolume = '0' } = options;
 
-    logger.debug('getAddressRelationships called', {
-      address,
-      limit,
-      minVolume,
-      method: 'getAddressRelationships'
-    });
+    // logger.debug('getAddressRelationships called', {
+    //   address,
+    //   limit,
+    //   minVolume,
+    //   method: 'getAddressRelationships'
+    // });
 
     const cacheKey = `relationships:${address}:${limit}:${minVolume}`;
     const cached = this.getFromCache(cacheKey);
     if (cached) {
-      logger.debug('Relationships found in cache', {
-        address,
-        cacheKey,
-        relationshipCount: cached.length
-      });
+      // logger.debug('Relationships found in cache', {
+      //   address,
+      //   cacheKey,
+      //   relationshipCount: cached.length
+      // });
       return cached;
     }
 
-    logger.debug('Relationships not in cache, fetching...', { address });
+    // logger.debug('Relationships not in cache, fetching...', { address });
 
     try {
       // Get relationships from Subscan
-      logger.debug('Fetching relationships from Subscan', { address, limit });
+      // logger.debug('Fetching relationships from Subscan', { address, limit });
       const relationships = await subscanService.getAccountRelationships(address, { limit });
 
-      logger.debug('Subscan relationships response', {
-        address,
-        relationshipCount: relationships.length,
-        hasRelationships: relationships.length > 0
-      });
+      // logger.debug('Subscan relationships response', {
+      //   address,
+      //   relationshipCount: relationships.length,
+      //   hasRelationships: relationships.length > 0
+      // });
 
       // Filter by minimum volume
       const filtered = relationships.filter(rel =>
         BigInt(rel.total_volume) >= BigInt(minVolume)
       );
 
-      logger.debug('Filtered relationships by volume', {
-        address,
-        originalCount: relationships.length,
-        filteredCount: filtered.length,
-        minVolume
-      });
+      // logger.debug('Filtered relationships by volume', {
+      //   address,
+      //   originalCount: relationships.length,
+      //   filteredCount: filtered.length,
+      //   minVolume
+      // });
 
       // Enrich only the top relationships to avoid rate limiting
       const topRelationships = filtered.slice(0, 10); // Only enrich top 10 by volume
       const remainingRelationships = filtered.slice(10);
 
-      logger.debug('Enriching top relationships with account data', {
-        address,
-        topCount: topRelationships.length,
-        skippedCount: remainingRelationships.length
-      });
+      // logger.debug('Enriching top relationships with account data', {
+      //   address,
+      //   topCount: topRelationships.length,
+      //   skippedCount: remainingRelationships.length
+      // });
 
       // Enrich top relationships sequentially to respect rate limit
       const enrichedTop = [];
@@ -228,7 +228,7 @@ export class RealDataService {
             tags: []
           });
         } catch (error) {
-          logger.debug('Failed to enrich relationship', { address: rel.connected_address });
+          // logger.debug('Failed to enrich relationship', { address: rel.connected_address });
           enrichedTop.push({
             ...rel,
             identity: null,
@@ -248,22 +248,22 @@ export class RealDataService {
 
       const enriched = [...enrichedTop, ...enrichedRemaining];
 
-      logger.debug('Relationships enriched', {
-        address,
-        totalCount: enriched.length,
-        enrichedCount: enrichedTop.length,
-        hasIdentities: enrichedTop.filter(r => r.identity).length
-      });
+      // logger.debug('Relationships enriched', {
+      //   address,
+      //   totalCount: enriched.length,
+      //   enrichedCount: enrichedTop.length,
+      //   hasIdentities: enrichedTop.filter(r => r.identity).length
+      // });
 
       this.setCache(cacheKey, enriched);
 
       // Update database with relationships
       await this.updateRelationshipsInDatabase(address, enriched);
 
-      logger.debug('getAddressRelationships completed', {
-        address,
-        resultCount: enriched.length
-      });
+      // logger.debug('getAddressRelationships completed', {
+      //   address,
+      //   resultCount: enriched.length
+      // });
 
       return enriched;
     } catch (error) {
@@ -315,7 +315,7 @@ export class RealDataService {
     const queue = [{ address: centerAddress, currentDepth: 0 }];
 
     // Add center node
-    logger.debug('Fetching center node data', { centerAddress });
+    // logger.debug('Fetching center node data', { centerAddress });
     const centerAccount = await this.getAccountData(centerAddress);
 
     if (!centerAccount) {
@@ -336,11 +336,11 @@ export class RealDataService {
       totalVolume: '0'
     });
 
-    logger.debug('Center node added', {
-      centerAddress,
-      hasIdentity: !!centerAccount?.identity?.display,
-      balance: centerAccount?.balance?.free
-    });
+    // logger.debug('Center node added', {
+    //   centerAddress,
+    //   hasIdentity: !!centerAccount?.identity?.display,
+    //   balance: centerAccount?.balance?.free
+    // });
 
     let iteration = 0;
     const startTime = Date.now();
@@ -362,41 +362,41 @@ export class RealDataService {
       }
       const { address, currentDepth } = queue.shift();
 
-      logger.debug('Processing node', {
-        address,
-        currentDepth,
-        alreadyVisited: visited.has(address),
-        depthReached: currentDepth >= depth
-      });
+      // logger.debug('Processing node', {
+      //   address,
+      //   currentDepth,
+      //   alreadyVisited: visited.has(address),
+      //   depthReached: currentDepth >= depth
+      // });
 
       if (visited.has(address) || currentDepth >= depth) {
-        logger.debug('Skipping node', {
-          address,
-          reason: visited.has(address) ? 'already_visited' : 'depth_reached'
-        });
+        // logger.debug('Skipping node', {
+        //   address,
+        //   reason: visited.has(address) ? 'already_visited' : 'depth_reached'
+        // });
         continue;
       }
       visited.add(address);
 
       // Get relationships
       const relationshipLimit = Math.min(maxNodes - nodes.size, 100);
-      logger.debug('Fetching relationships for node', {
-        address,
-        currentDepth,
-        relationshipLimit,
-        minVolume
-      });
+      // logger.debug('Fetching relationships for node', {
+      //   address,
+      //   currentDepth,
+      //   relationshipLimit,
+      //   minVolume
+      // });
 
       const relationships = await this.getAddressRelationships(address, {
         limit: relationshipLimit,
         minVolume
       });
 
-      logger.debug('Relationships fetched', {
-        address,
-        relationshipCount: relationships.length,
-        currentNodesCount: nodes.size
-      });
+      // logger.debug('Relationships fetched', {
+      //   address,
+      //   relationshipCount: relationships.length,
+      //   currentNodesCount: nodes.size
+      // });
 
       for (const rel of relationships) {
         const connectedAddress = rel.connected_address;
@@ -499,11 +499,11 @@ export class RealDataService {
       }
     }
 
-    logger.debug('Graph building complete', {
-      nodesCount: nodes.size,
-      edgesCount: edges.size,
-      visitedCount: visited.size
-    });
+    // logger.debug('Graph building complete', {
+    //   nodesCount: nodes.size,
+    //   edgesCount: edges.size,
+    //   visitedCount: visited.size
+    // });
 
     // Convert to arrays and add visual properties
     const nodeArray = Array.from(nodes.values()).map(node => ({
@@ -551,16 +551,16 @@ export class RealDataService {
    * Update account in database
    */
   async updateAccountInDatabase(accountInfo) {
-    logger.debug('updateAccountInDatabase called', {
-      address: accountInfo.address,
-      hasDatabaseDb: !!this.database?.db,
-      hasIdentity: !!accountInfo.identity?.display
-    });
+    // logger.debug('updateAccountInDatabase called', {
+    //   address: accountInfo.address,
+    //   hasDatabaseDb: !!this.database?.db,
+    //   hasIdentity: !!accountInfo.identity?.display
+    // });
 
     if (!this.database?.db) {
-      logger.debug('No database connection, skipping update', {
-        address: accountInfo.address
-      });
+      // logger.debug('No database connection, skipping update', {
+      //   address: accountInfo.address
+      // });
       return;
     }
 
@@ -586,10 +586,10 @@ export class RealDataService {
         accountInfo.balance?.free || '0'
       );
 
-      logger.debug('Account updated in database', {
-        address: accountInfo.address,
-        identityDisplay: accountInfo.identity?.display
-      });
+      // logger.debug('Account updated in database', {
+      //   address: accountInfo.address,
+      //   identityDisplay: accountInfo.identity?.display
+      // });
     } catch (error) {
       logger.warn('Failed to update account in database', {
         address: accountInfo.address,
@@ -603,16 +603,16 @@ export class RealDataService {
    * Update relationships in database
    */
   async updateRelationshipsInDatabase(address, relationships) {
-    logger.debug('updateRelationshipsInDatabase called', {
-      address,
-      relationshipCount: relationships.length,
-      hasDatabaseDb: !!this.database?.db
-    });
+    // logger.debug('updateRelationshipsInDatabase called', {
+    //   address,
+    //   relationshipCount: relationships.length,
+    //   hasDatabaseDb: !!this.database?.db
+    // });
 
     if (!this.database?.db) {
-      logger.debug('No database connection, skipping relationships update', {
-        address
-      });
+      // logger.debug('No database connection, skipping relationships update', {
+      //   address
+      // });
       return;
     }
 
@@ -653,10 +653,10 @@ export class RealDataService {
 
       transaction(relationships);
 
-      logger.debug('Relationships updated in database', {
-        address,
-        relationshipCount: relationships.length
-      });
+      // logger.debug('Relationships updated in database', {
+      //   address,
+      //   relationshipCount: relationships.length
+      // });
     } catch (error) {
       logger.warn('Failed to update relationships in database', {
         address,
@@ -673,36 +673,36 @@ export class RealDataService {
   getFromCache(key) {
     const cached = this.cache.get(key);
     if (cached && Date.now() - cached.timestamp < this.cacheTimeout) {
-      logger.debug('Cache hit', {
-        key,
-        age: Date.now() - cached.timestamp,
-        cacheTimeout: this.cacheTimeout
-      });
+      // logger.debug('Cache hit', {
+      //   key,
+      //   age: Date.now() - cached.timestamp,
+      //   cacheTimeout: this.cacheTimeout
+      // });
       return cached.data;
     }
 
     if (cached) {
-      logger.debug('Cache expired', {
-        key,
-        age: Date.now() - cached.timestamp,
-        cacheTimeout: this.cacheTimeout
-      });
+      // logger.debug('Cache expired', {
+      //   key,
+      //   age: Date.now() - cached.timestamp,
+      //   cacheTimeout: this.cacheTimeout
+      // });
       this.cache.delete(key);
-    } else {
-      logger.debug('Cache miss', { key });
-    }
+    } // else {
+      // logger.debug('Cache miss', { key });
+    // }
 
     return null;
   }
 
   setCache(key, data) {
     this.cache.set(key, { data, timestamp: Date.now() });
-    logger.debug('Cache set', {
-      key,
-      cacheSize: this.cache.size,
-      dataType: Array.isArray(data) ? 'array' : typeof data,
-      dataLength: Array.isArray(data) ? data.length : undefined
-    });
+    // logger.debug('Cache set', {
+    //   key,
+    //   cacheSize: this.cache.size,
+    //   dataType: Array.isArray(data) ? 'array' : typeof data,
+    //   dataLength: Array.isArray(data) ? data.length : undefined
+    // });
   }
 
   /**
@@ -767,11 +767,11 @@ export class RealDataService {
     for (let i = 0; i < addressesToProcess.length; i++) {
       const { address, currentDepth } = addressesToProcess[i];
       
-      logger.debug('Processing address with filtered fetch', {
-        address,
-        currentDepth,
-        progress: `${i + 1}/${addressesToProcess.length}`
-      });
+      // logger.debug('Processing address with filtered fetch', {
+      //   address,
+      //   currentDepth,
+      //   progress: `${i + 1}/${addressesToProcess.length}`
+      // });
 
       // Use the new filtered relationship fetching
       const relationships = await subscanService.getFilteredRelationships(address, {
@@ -907,10 +907,10 @@ export class RealDataService {
   clearCache() {
     const previousSize = this.cache.size;
     this.cache.clear();
-    logger.debug('Cache cleared', {
-      previousSize,
-      newSize: this.cache.size
-    });
+    // logger.debug('Cache cleared', {
+    //   previousSize,
+    //   newSize: this.cache.size
+    // });
   }
 
   /**

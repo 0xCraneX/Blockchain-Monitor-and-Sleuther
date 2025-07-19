@@ -12,7 +12,6 @@ import crypto from 'crypto';
 import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
 import cors from 'cors';
-// import createDOMPurify from 'isomorphic-dompurify';
 import {
   securityConfig,
   getCorsConfig,
@@ -20,8 +19,6 @@ import {
   getRateLimitConfig,
   initializeSecurityConfig
 } from '../../config/security.js';
-
-// const DOMPurify = createDOMPurify();
 
 /**
  * Query Validator - Prevents SQL injection and validates inputs
@@ -53,12 +50,6 @@ export class QueryValidator {
         return defaultValue;
       }
 
-      // Temporarily disabled DOMPurify - need to install isomorphic-dompurify
-      // const sanitized = DOMPurify.sanitize(jsonString, {
-      //   USE_PROFILES: { html: false, svg: false, mathMl: false }
-      // });
-
-      // return JSON.parse(sanitized);
       return JSON.parse(jsonString);
     } catch (error) {
       console.error('JSON parsing error:', error);

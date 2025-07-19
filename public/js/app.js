@@ -28,14 +28,14 @@ class PolkadotAnalysisApp {
         };
         
         // Initialize components
-        console.log('Initializing application components...');
+        // console.log('Initializing application components...');
         this.initializeComponents();
-        console.log('Setting up event handlers...');
+        // console.log('Setting up event handlers...');
         this.setupEventHandlers();
-        console.log('Loading initial data...');
+        // console.log('Loading initial data...');
         this.loadInitialData();
         
-        console.log('Polkadot Analysis Tool initialized successfully with loadAddressGraph method available:', typeof this.loadAddressGraph === 'function');
+        // console.log('Polkadot Analysis Tool initialized successfully with loadAddressGraph method available:', typeof this.loadAddressGraph === 'function');
     }
     
     /**
@@ -59,7 +59,7 @@ class PolkadotAnalysisApp {
             // Ensure the visualization section is visible
             const visualizationSection = document.getElementById('visualization-section');
             if (visualizationSection && visualizationSection.style.display === 'none') {
-                console.log('Making visualization section visible');
+                // console.log('Making visualization section visible');
                 visualizationSection.style.display = 'block';
             }
             
@@ -67,7 +67,7 @@ class PolkadotAnalysisApp {
             const graphContainerParent = document.getElementById('graph-container');
             if (graphContainerParent) {
                 const parentRect = graphContainerParent.getBoundingClientRect();
-                console.log('Graph container parent dimensions:', parentRect);
+                // console.log('Graph container parent dimensions:', parentRect);
                 
                 // If parent has no dimensions, set explicit ones
                 if (parentRect.width === 0 || parentRect.height === 0) {
@@ -80,7 +80,7 @@ class PolkadotAnalysisApp {
             // Check if SVG container has dimensions
             const containerRect = graphContainer.getBoundingClientRect();
             if (containerRect.width === 0 || containerRect.height === 0) {
-                console.warn('Graph container has zero dimensions. Setting default dimensions.');
+                // console.warn('Graph container has zero dimensions. Setting default dimensions.');
                 // Set explicit dimensions on the SVG
                 graphContainer.setAttribute('width', '1200');
                 graphContainer.setAttribute('height', '600');
@@ -89,7 +89,7 @@ class PolkadotAnalysisApp {
                 graphContainer.style.height = '100%';
             }
             
-            console.log('Initializing graph with container:', graphContainer);
+            // console.log('Initializing graph with container:', graphContainer);
             
             this.graph = new PolkadotGraphVisualization('#network-graph', {
                 width: 1200,
@@ -101,7 +101,7 @@ class PolkadotAnalysisApp {
                 onDataUpdate: (data, metrics) => this.handleDataUpdate(data, metrics),
                 onError: (error) => this.handleError(error)
             });
-            console.log('Graph visualization initialized successfully');
+            // console.log('Graph visualization initialized successfully');
         } catch (error) {
             console.error('Failed to initialize graph visualization:', error);
             this.handleError(error);
@@ -115,7 +115,7 @@ class PolkadotAnalysisApp {
             };
             
             // Don't throw - allow app to continue with degraded functionality
-            console.log('Continuing with placeholder graph object');
+            // console.log('Continuing with placeholder graph object');
         }
         
         // Initialize WebSocket for real-time updates
@@ -124,7 +124,7 @@ class PolkadotAnalysisApp {
         // Initialize search functionality
         this.initializeSearch();
         
-        console.log('Application components initialized');
+        // console.log('Application components initialized');
     }
     
     /**
@@ -208,7 +208,7 @@ class PolkadotAnalysisApp {
         // Filter input change handlers
         this.setupFilterChangeHandlers();
         
-        console.log('Event handlers setup complete');
+        // console.log('Event handlers setup complete');
     }
     
     /**
@@ -249,7 +249,7 @@ class PolkadotAnalysisApp {
             this.socket = io(wsUrl);
             
             this.socket.on('connect', () => {
-                console.log('WebSocket connected');
+                // console.log('WebSocket connected');
             });
             
             this.socket.on('graph-update', (data) => {
@@ -261,7 +261,7 @@ class PolkadotAnalysisApp {
             });
             
             this.socket.on('disconnect', () => {
-                console.log('WebSocket disconnected');
+                // console.log('WebSocket disconnected');
             });
         }
     }
@@ -278,33 +278,33 @@ class PolkadotAnalysisApp {
      * Load initial application data
      */
     async loadInitialData() {
-        console.log('Starting loadInitialData...');
+        // console.log('Starting loadInitialData...');
         try {
             // Load any saved investigations
-            console.log('Loading saved investigations...');
+            // console.log('Loading saved investigations...');
             await this.loadSavedInvestigations();
             
             // Check for URL parameters for direct address loading
             const urlParams = new URLSearchParams(window.location.search);
             const addressFromUrl = urlParams.get('address');
-            console.log('URL address:', addressFromUrl);
+            // console.log('URL address:', addressFromUrl);
             
             if (addressFromUrl) {
-                console.log('Loading address from URL:', addressFromUrl);
+                // console.log('Loading address from URL:', addressFromUrl);
                 // Set search input to the address from URL
                 const searchInput = document.getElementById('address-search');
                 if (searchInput) {
                     searchInput.value = addressFromUrl;
-                    console.log('Set search input value to:', addressFromUrl);
+                    // console.log('Set search input value to:', addressFromUrl);
                 } else {
-                    console.log('Search input element not found');
+                    // console.log('Search input element not found');
                 }
                 
                 // Don't load directly - let it complete initialization first
                 // The search component will trigger the load via performMainSearch
-                console.log('Address set in search box, waiting for user action or auto-trigger');
+                // console.log('Address set in search box, waiting for user action or auto-trigger');
             } else {
-                console.log('No address to load');
+                // console.log('No address to load');
             }
             
         } catch (error) {
@@ -445,23 +445,23 @@ class PolkadotAnalysisApp {
      * Load graph data for a specific address
      */
     async loadAddressGraph(address) {
-        console.log('loadAddressGraph called with address:', address);
+        // console.log('loadAddressGraph called with address:', address);
         
         if (!this.isValidSubstrateAddress(address)) {
             console.error('Invalid Substrate address format:', address);
             this.showError('Invalid Substrate address format');
             return;
         }
-        console.log('Address validation passed');
+        // console.log('Address validation passed');
         
-        console.log('Calling showLoading...');
+        // console.log('Calling showLoading...');
         this.showLoading();
         this.state.currentAddress = address;
         
-        console.log('Building query parameters...');
+        // console.log('Building query parameters...');
         try {
             // Build query parameters
-            console.log('Current filters:', JSON.stringify(this.state.filters));
+            // console.log('Current filters:', JSON.stringify(this.state.filters));
             const params = new URLSearchParams({
                 depth: this.state.filters.depth,
                 maxNodes: this.state.filters.maxNodes,
@@ -470,7 +470,7 @@ class PolkadotAnalysisApp {
                 direction: this.state.filters.direction,
                 layout: 'force'
             });
-            console.log('URLSearchParams created successfully');
+            // console.log('URLSearchParams created successfully');
             
             if (this.state.filters.nodeTypes.length > 0) {
                 this.state.filters.nodeTypes.forEach(type => {
@@ -482,15 +482,15 @@ class PolkadotAnalysisApp {
                 params.set('riskThreshold', this.state.filters.riskThreshold);
             }
             
-            console.log('Query parameters built:', params.toString());
+            // console.log('Query parameters built:', params.toString());
             
             // Fetch graph data
             const apiUrl = window.APP_CONFIG?.API_BASE_URL || '';
             const fetchUrl = `${apiUrl}/api/graph/${address}?${params}`;
-            console.log('Fetching graph data from:', fetchUrl);
+            // console.log('Fetching graph data from:', fetchUrl);
             
             const response = await fetch(fetchUrl);
-            console.log('Fetch response received:', response.status);
+            // console.log('Fetch response received:', response.status);
             
             if (!response.ok) {
                 const errorData = await response.json();
@@ -527,7 +527,7 @@ class PolkadotAnalysisApp {
             newUrl.searchParams.set('address', address);
             window.history.replaceState(null, '', newUrl);
             
-            console.log('Graph loaded successfully for address:', address);
+            // console.log('Graph loaded successfully for address:', address);
             
         } catch (error) {
             console.error('Error loading graph:', error);
@@ -541,7 +541,7 @@ class PolkadotAnalysisApp {
      * Load address with progressive streaming (for filtered data)
      */
     async loadAddressProgressive(address) {
-        console.log('Loading address with progressive streaming:', address);
+        // console.log('Loading address with progressive streaming:', address);
         
         if (!this.isValidSubstrateAddress(address)) {
             console.error('Invalid Substrate address format:', address);
@@ -555,26 +555,26 @@ class PolkadotAnalysisApp {
         try {
             // Initialize WebSocket if not connected
             if (!this.websocket) {
-                console.log('Initializing WebSocket client...');
+                // console.log('Initializing WebSocket client...');
                 const { WebSocketClient } = await import('./modules/websocket-client.js');
                 this.websocket = new WebSocketClient();
                 await this.websocket.connect();
                 
                 // Setup streaming event handlers
                 this.websocket.on('stream:started', (data) => {
-                    console.log('Stream started:', data);
+                    // console.log('Stream started:', data);
                     this.showProgressMessage(`Starting progressive graph loading for ${data.minVolume || 'all volumes'}...`);
                 });
                 
                 this.websocket.on('stream:progress', (data) => {
-                    console.log('Stream progress:', data);
+                    // console.log('Stream progress:', data);
                     if (data.progress) {
                         this.showProgressMessage(`${data.progress.phase} - ${data.progress.percentage}% complete`);
                     }
                 });
                 
                 this.websocket.on('stream:data', (data) => {
-                    console.log('Stream data batch received:', data);
+                    // console.log('Stream data batch received:', data);
                     
                     // Update graph incrementally with new batch data
                     if (data.batch && this.graph) {
@@ -590,12 +590,12 @@ class PolkadotAnalysisApp {
                         // Update statistics in real-time
                         this.updateStatistics();
                         
-                        console.log(`Progressive loading: added ${incrementalData.nodes.length} nodes, ${incrementalData.edges.length} edges`);
+                        // console.log(`Progressive loading: added ${incrementalData.nodes.length} nodes, ${incrementalData.edges.length} edges`);
                     }
                 });
                 
                 this.websocket.on('stream:completed', (data) => {
-                    console.log('Stream completed:', data);
+                    // console.log('Stream completed:', data);
                     if (data.graph) {
                         // Map API response format to expected format
                         const mappedData = {
@@ -677,7 +677,7 @@ class PolkadotAnalysisApp {
     applyFilters() {
         const previousDepth = this.state.filters.depth;
         this.updateFiltersFromUI();
-        console.log('Applying filters:', this.state.filters);
+        // console.log('Applying filters:', this.state.filters);
         
         if (this.state.currentAddress) {
             // Check if depth has changed - this requires reloading from API
@@ -686,12 +686,12 @@ class PolkadotAnalysisApp {
             // When volume filter is applied OR depth has changed, reload the entire graph
             // This ensures we get ALL connections matching the filter criteria
             if (BigInt(this.state.filters.minVolume) > BigInt(0) || depthChanged) {
-                console.log('Reloading graph:', {
-                    reason: depthChanged ? 'depth changed' : 'volume filter',
-                    previousDepth,
-                    newDepth: this.state.filters.depth,
-                    volumeFilter: this.state.filters.minVolume
-                });
+                // console.log('Reloading graph:', {
+                //     reason: depthChanged ? 'depth changed' : 'volume filter',
+                //     previousDepth,
+                //     newDepth: this.state.filters.depth,
+                //     volumeFilter: this.state.filters.minVolume
+                // });
                 // Reload the address with the new filter applied
                 this.loadAddressGraph(this.state.currentAddress);
                 return;
@@ -699,7 +699,7 @@ class PolkadotAnalysisApp {
             
             // Don't reload the entire graph, just update filters on existing graph
             if (this.state.graphData) {
-                console.log('Updating filters on existing graph data');
+                // console.log('Updating filters on existing graph data');
                 this.graph.setFilters(this.state.filters);
                 this.updateStatistics();
             } else {
@@ -762,14 +762,14 @@ class PolkadotAnalysisApp {
         // Volume threshold for red highlighting
         if (volumeThresholdFilter) {
             const threshold = parseFloat(volumeThresholdFilter.value);
-            console.log('Volume threshold input value:', volumeThresholdFilter.value, 'parsed as:', threshold);
+            // console.log('Volume threshold input value:', volumeThresholdFilter.value, 'parsed as:', threshold);
             
             if (threshold > 0) {
                 this.state.filters.volumeThreshold = (BigInt(Math.floor(threshold * 1e10)).toString());
-                console.log(`Volume threshold set to ${threshold} DOT (${this.state.filters.volumeThreshold} plancks)`);
+                // console.log(`Volume threshold set to ${threshold} DOT (${this.state.filters.volumeThreshold} plancks)`);
             } else {
                 this.state.filters.volumeThreshold = null;
-                console.log('Volume threshold cleared');
+                // console.log('Volume threshold cleared');
             }
         }
         
@@ -777,7 +777,7 @@ class PolkadotAnalysisApp {
         const directionFilter = document.querySelector('input[name="direction-filter"]:checked');
         if (directionFilter) {
             this.state.filters.direction = directionFilter.value;
-            console.log(`Direction filter set to: ${directionFilter.value}`);
+            // console.log(`Direction filter set to: ${directionFilter.value}`);
         }
     }
     
@@ -865,14 +865,14 @@ class PolkadotAnalysisApp {
     handleNodeClick(nodeData, event, selectedNodes) {
         this.state.selectedNodes = selectedNodes;
         this.displayNodeDetails(nodeData);
-        console.log('Node selected:', nodeData.address);
+        // console.log('Node selected:', nodeData.address);
     }
     
     /**
      * Handle node double-click events
      */
     async handleNodeDoubleClick(nodeData, event) {
-        console.log('Node double-clicked, expanding:', nodeData.address);
+        // console.log('Node double-clicked, expanding:', nodeData.address);
         
         // Expand the graph from this node
         try {
@@ -887,7 +887,7 @@ class PolkadotAnalysisApp {
      * Handle edge click events
      */
     handleEdgeClick(edgeData, event) {
-        console.log('Edge clicked:', edgeData);
+        // console.log('Edge clicked:', edgeData);
         this.displayEdgeDetails(edgeData);
     }
     
@@ -904,7 +904,7 @@ class PolkadotAnalysisApp {
      */
     handleDataUpdate(data, metrics) {
         this.updateStatistics(metrics);
-        console.log('Graph data updated:', metrics);
+        // console.log('Graph data updated:', metrics);
     }
     
     /**
@@ -1073,11 +1073,11 @@ class PolkadotAnalysisApp {
         if (!nodeInfoContainer || !nodeDetailsPanel) return;
         
         // Debug logging
-        console.log('[DEBUG] Node data:', nodeData);
-        console.log('[DEBUG] Identity object:', nodeData.identity);
-        console.log('[DEBUG] Identity type:', typeof nodeData.identity);
-        console.log('[DEBUG] Identity.display:', nodeData.identity?.display);
-        console.log('[DEBUG] Identity.display type:', typeof nodeData.identity?.display);
+        // console.log('[DEBUG] Node data:', nodeData);
+        // console.log('[DEBUG] Identity object:', nodeData.identity);
+        // console.log('[DEBUG] Identity type:', typeof nodeData.identity);
+        // console.log('[DEBUG] Identity.display:', nodeData.identity?.display);
+        // console.log('[DEBUG] Identity.display type:', typeof nodeData.identity?.display);
         
         // Fix for identity structure - handle all cases
         let identity = 'Unknown';
@@ -1205,13 +1205,13 @@ class PolkadotAnalysisApp {
             'Unknown';
         const count = edgeData.count || 1;
         
-        console.log('Edge details:', {
-            from: edgeData.source.address || edgeData.source,
-            to: edgeData.target.address || edgeData.target,
-            volume,
-            count,
-            suspicious: edgeData.suspiciousPattern || false
-        });
+        // console.log('Edge details:', {
+        //     from: edgeData.source.address || edgeData.source,
+        //     to: edgeData.target.address || edgeData.target,
+        //     volume,
+        //     count,
+        //     suspicious: edgeData.suspiciousPattern || false
+        // });
     }
     
     /**
@@ -1480,7 +1480,7 @@ class PolkadotAnalysisApp {
             });
             
             if (response.ok) {
-                console.log('Investigation saved successfully');
+                // console.log('Investigation saved successfully');
                 await this.loadSavedInvestigations();
             } else {
                 throw new Error('Failed to save investigation');
@@ -1496,43 +1496,43 @@ class PolkadotAnalysisApp {
      * Load saved investigations
      */
     async loadSavedInvestigations() {
-        console.log('loadSavedInvestigations called');
+        // console.log('loadSavedInvestigations called');
         try {
             // Skip loading investigations for now since the endpoint doesn't exist
-            console.log('Skipping investigations load - endpoint not implemented yet');
+            // console.log('Skipping investigations load - endpoint not implemented yet');
             this.state.investigations = [];
             
             /* TODO: Implement when investigations endpoint is ready
             const apiUrl = window.APP_CONFIG?.API_BASE_URL || '';
             const url = `${apiUrl}/api/investigations`;
-            console.log('Fetching investigations from:', url);
+            // console.log('Fetching investigations from:', url);
             const response = await fetch(url, {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
             });
-            console.log('Investigations response:', response.status);
+            // console.log('Investigations response:', response.status);
             if (response.ok) {
                 this.state.investigations = await response.json();
-                console.log('Investigations loaded:', this.state.investigations);
+                // console.log('Investigations loaded:', this.state.investigations);
             }
             */
         } catch (error) {
             console.error('Error loading investigations:', error);
         }
-        console.log('loadSavedInvestigations completed');
+        // console.log('loadSavedInvestigations completed');
     }
     
     /**
      * Handle real-time updates from WebSocket
      */
     handleRealtimeUpdate(data) {
-        console.log('Real-time update received:', data);
+        // console.log('Real-time update received:', data);
         
         if (data.type === 'new_transaction' && this.state.currentAddress) {
             // Check if the transaction involves the current address
             if (data.from === this.state.currentAddress || data.to === this.state.currentAddress) {
                 // Optionally refresh the graph or show notification
-                console.log('New transaction for current address');
+                // console.log('New transaction for current address');
             }
         }
     }
@@ -1541,7 +1541,7 @@ class PolkadotAnalysisApp {
      * Handle new transaction events
      */
     handleNewTransaction(data) {
-        console.log('New transaction:', data);
+        // console.log('New transaction:', data);
         // Could show a notification or update the graph in real-time
     }
     
@@ -1614,7 +1614,7 @@ class PolkadotAnalysisApp {
      * Investigate a specific node
      */
     async investigateNode(address) {
-        console.log('Investigating node:', address);
+        // console.log('Investigating node:', address);
         
         try {
             // Load detailed information about the node
@@ -1623,7 +1623,7 @@ class PolkadotAnalysisApp {
             
             if (response.ok) {
                 const nodeDetails = await response.json();
-                console.log('Node details:', nodeDetails);
+                // console.log('Node details:', nodeDetails);
                 
                 // Display the investigation results in a modal or panel
                 this.displayInvestigationResults(nodeDetails);
@@ -1639,7 +1639,7 @@ class PolkadotAnalysisApp {
      * Display detailed node information
      */
     displayDetailedNodeInfo(metrics) {
-        console.log('Detailed node info:', metrics);
+        // console.log('Detailed node info:', metrics);
         // This could open a modal or dedicated panel with detailed analysis
     }
     
@@ -1737,7 +1737,7 @@ class PolkadotAnalysisApp {
 
 // Initialize application when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM loaded, initializing Polkadot Analysis Tool...');
+    // console.log('DOM loaded, initializing Polkadot Analysis Tool...');
     
     try {
         // Check dependencies
@@ -1753,14 +1753,14 @@ document.addEventListener('DOMContentLoaded', function() {
         window.app = new PolkadotAnalysisApp();
         
         // Ensure the app is properly exposed for integration
-        console.log('Main app system initialized and available');
+        // console.log('Main app system initialized and available');
         
         // Dispatch custom event to notify other components that app is ready
         document.dispatchEvent(new CustomEvent('polkadotAppReady', { 
             detail: { app: window.app } 
         }));
         
-        console.log('App ready event dispatched');
+        // console.log('App ready event dispatched');
         
     } catch (error) {
         console.error('Failed to initialize Polkadot Analysis Tool:', error);
