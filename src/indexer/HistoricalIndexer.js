@@ -1,6 +1,6 @@
 const SubscanClient = require('../api/SubscanClient');
 const FileStorage = require('../storage/FileStorage');
-const { monitorLogger } = require('../utils/simple-logger');
+const { monitorLogger } = require('../utils/logger');
 const fs = require('fs').promises;
 const path = require('path');
 

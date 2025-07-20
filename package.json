@@ -9,14 +9,15 @@
     "test": "node test.js",
     "demo": "node index.js --demo",
     "demo:fast": "node index.js --demo --fast",
-    "test:api": "node src/test/test-api.js",
-    "test:storage": "node src/test/test-storage.js",
-    "test:patterns": "node src/test/test-patterns.js",
+    "test:unit": "node tests/unit/*.js",
+    "test:integration": "node tests/integration/*.js",
     "reset": "rm -rf data/snapshots/*.json && echo 'Data reset complete'",
     "web": "node server.js",
     "monitor-with-web": "npm run start & npm run web",
-    "monitor:real": "node monitor-real-blockchain.js",
-    "monitor:real-web": "node monitor-real-blockchain.js & node server-real.js"
+    "logs:clean": "node scripts/clean-logs.js",
+    "logs:tail": "node scripts/tail-logs.js",
+    "logs:tail:alerts": "node scripts/tail-logs.js alerts",
+    "logs:tail:errors": "node scripts/tail-logs.js error"
   },
   "keywords": [
     "polkadot",
@@ -27,15 +28,19 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@polkadot/api": "^16.4.1",
     "axios": "^1.6.5",
     "chalk": "^4.1.2",
     "dotenv": "^16.3.1",
-    "express": "^4.18.2",
+    "express": "^4.21.2",
     "limiter": "^2.1.0",
     "lru-cache": "^10.1.0",
     "node-cron": "^3.0.3",
-    "p-retry": "^4.6.2"
+    "nodemailer": "^7.0.5",
+    "p-retry": "^4.6.2",
+    "socket.io": "^4.8.1",
+    "tail": "^2.2.6",
+    "winston": "^3.11.0",
+    "winston-daily-rotate-file": "^4.7.1"
   },
   "engines": {
     "node": ">=14.0.0"

@@ -139,6 +139,131 @@ app.get('/api/hybrid/status', (req, res) => {
     }
 });
 
+// Custom identities API endpoints
+app.get('/api/custom-identities', (req, res) => {
+    try {
+        const identities = loadCustomIdentities();
+        const count = Object.keys(identities).length;
+        
+        res.json({
+            success: true,
+            identities,
+            count
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+app.post('/api/custom-identities', (req, res) => {
+    try {
+        const { identities } = req.body;
+        
+        if (!identities || typeof identities !== 'object') {
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid identities data'
+            });
+        }
+        
+        const success = saveCustomIdentities(identities);
+        
+        if (success) {
+            res.json({
+                success: true,
+                message: 'Custom identities saved successfully',
+                count: Object.keys(identities).length
+            });
+        } else {
+            res.status(500).json({
+                success: false,
+                error: 'Failed to save custom identities'
+            });
+        }
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+app.post('/api/custom-identities/csv', (req, res) => {
+    try {
+        const { csvData } = req.body;
+        
+        if (!csvData) {
+            return res.status(400).json({
+                success: false,
+                error: 'No CSV data provided'
+            });
+        }
+        
+        // Parse CSV data
+        const lines = csvData.split('\n').map(line => line.trim()).filter(line => line);
+        const identities = {};
+        let processed = 0;
+        let errors = [];
+        
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            
+            // Skip header if it looks like one
+            if (i === 0 && (line.toLowerCase().includes('address') || line.toLowerCase().includes('identity'))) {
+                continue;
+            }
+            
+            // Parse CSV line (handle both comma and semicolon)
+            const parts = line.split(/[,;]/).map(part => part.trim().replace(/^"|"$/g, ''));
+            
+            if (parts.length >= 2) {
+                const address = parts[0];
+                const identity = parts[1];
+                
+                // Basic validation
+                if (address && identity && address.length > 10) {
+                    identities[address] = identity;
+                    processed++;
+                } else {
+                    errors.push(`Line ${i + 1}: Invalid address or identity`);
+                }
+            } else {
+                errors.push(`Line ${i + 1}: Not enough columns`);
+            }
+        }
+        
+        // Merge with existing identities
+        const existingIdentities = loadCustomIdentities();
+        const mergedIdentities = { ...existingIdentities, ...identities };
+        
+        const success = saveCustomIdentities(mergedIdentities);
+        
+        if (success) {
+            res.json({
+                success: true,
+                message: `Successfully imported ${processed} custom identities`,
+                processed,
+                errors: errors.length > 0 ? errors : undefined,
+                totalCount: Object.keys(mergedIdentities).length
+            });
+        } else {
+            res.status(500).json({
+                success: false,
+                error: 'Failed to save custom identities'
+            });
+        }
+        
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
 // Hybrid system runs automatically - no manual controls needed
 
 app.post('/api/hybrid/emergency-rollback', async (req, res) => {
@@ -580,11 +705,16 @@ function getTopMovers(data) {
         .map(account => {
             const balanceFloat = account.balanceFloat || parseFloat(account.balance) || 0;
             const balanceDisplay = formatBalance(balanceFloat);
+            const currentIdentity = account.identity || (account.accountDisplay?.merkle?.tag_name) || 'Unknown';
+            const storedCustomIdentity = getCustomIdentity(account.address);
+            const customIdentity = storedCustomIdentity || (currentIdentity !== 'Unknown' ? currentIdentity : '');
+            
             return {
                 address: account.address,
                 balance: balanceDisplay,
                 balanceFloat: balanceFloat,
-                identity: account.identity || (account.accountDisplay?.merkle?.tag_name) || 'Unknown',
+                identity: currentIdentity,
+                customIdentity: customIdentity,
                 accountType: account.accountType || determineAccountType(account),
                 isActive: account.isActive,
                 transferCount: account.transferCount
@@ -715,6 +845,38 @@ function isMonitoringActive() {
         console.error('Error checking monitoring status:', error);
     }
     return false;
+}
+
+// Load custom whale identities from file
+function loadCustomIdentities() {
+    try {
+        const identitiesPath = path.join(__dirname, 'data/config/custom-identities.json');
+        if (fs.existsSync(identitiesPath)) {
+            const data = fs.readFileSync(identitiesPath, 'utf8');
+            return JSON.parse(data);
+        }
+    } catch (error) {
+        console.error('Error loading custom identities:', error);
+    }
+    return {};
+}
+
+// Save custom whale identities to file
+function saveCustomIdentities(identities) {
+    try {
+        const identitiesPath = path.join(__dirname, 'data/config/custom-identities.json');
+        fs.writeFileSync(identitiesPath, JSON.stringify(identities, null, 2));
+        return true;
+    } catch (error) {
+        console.error('Error saving custom identities:', error);
+        return false;
+    }
+}
+
+// Get custom identity for an address
+function getCustomIdentity(address) {
+    const customIdentities = loadCustomIdentities();
+    return customIdentities[address] || '';
 }
 
 function generateRecommendations(status) {

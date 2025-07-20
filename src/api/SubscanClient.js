@@ -16,7 +16,7 @@ try {
   LRU = mocks.LRU;
 }
 
-const { apiLogger } = require('../utils/simple-logger');
+const { apiLogger } = require('../utils/logger');
 
 class SubscanClient {
   constructor(apiKey = '') {

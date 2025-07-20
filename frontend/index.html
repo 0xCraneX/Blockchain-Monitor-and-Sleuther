@@ -666,6 +666,9 @@
                                         <th class="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white" data-sort="identity">
                                             Identity <i class="fas fa-sort ml-1"></i>
                                         </th>
+                                        <th class="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white" data-sort="customIdentity">
+                                            Custom Identity <i class="fas fa-sort ml-1"></i>
+                                        </th>
                                         <th class="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white" data-sort="balance">
                                             Balance <i class="fas fa-sort ml-1"></i>
                                         </th>
@@ -952,7 +955,7 @@
     
     <!-- Settings Modal -->
     <div id="settings-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-        <div class="bg-polkadot-surface rounded-xl p-6 w-full max-w-md">
+        <div class="bg-polkadot-surface rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div class="flex items-center justify-between mb-6">
                 <h3 class="text-lg font-semibold">Monitor Settings</h3>
                 <button onclick="toggleSettings()" class="text-gray-400 hover:text-white">
@@ -960,28 +963,80 @@
                 </button>
             </div>
             
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium mb-2">Check Interval</label>
-                    <select class="w-full px-3 py-2 bg-polkadot-light border border-gray-700 rounded-lg">
-                        <option value="60">Every hour</option>
-                        <option value="30">Every 30 minutes</option>
-                        <option value="15">Every 15 minutes</option>
-                    </select>
+            <div class="space-y-6">
+                <!-- Custom Identities Section -->
+                <div class="border-b border-gray-700 pb-4">
+                    <h4 class="text-md font-medium mb-4 flex items-center">
+                        <i class="fas fa-id-card mr-2 text-polkadot-primary"></i>
+                        Custom Whale Identities
+                    </h4>
+                    
+                    <div class="space-y-3">
+                        <!-- Current count -->
+                        <div class="flex items-center justify-between text-sm">
+                            <span class="text-gray-400">Custom identities loaded:</span>
+                            <span class="font-medium" id="custom-identities-count">0</span>
+                        </div>
+                        
+                        <!-- CSV Upload -->
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Upload CSV File</label>
+                            <div class="space-y-2">
+                                <input type="file" id="csv-file-input" accept=".csv" class="w-full px-3 py-2 bg-polkadot-light border border-gray-700 rounded-lg text-sm file:mr-4 file:py-1 file:px-2 file:rounded file:border-0 file:text-sm file:bg-polkadot-primary file:text-white hover:file:bg-pink-700">
+                                <div class="text-xs text-gray-400">
+                                    CSV format: address,identity (one per line)
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Manual paste -->
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Or paste CSV data</label>
+                            <textarea id="csv-paste-area" placeholder="address1,Web3 Foundation&#10;address2,Polkadot Treasury&#10;..." class="w-full px-3 py-2 bg-polkadot-light border border-gray-700 rounded-lg text-sm h-20 resize-none"></textarea>
+                        </div>
+                        
+                        <!-- Upload button -->
+                        <button id="upload-identities-btn" class="w-full py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors text-sm">
+                            <i class="fas fa-upload mr-2"></i>
+                            Import Custom Identities
+                        </button>
+                        
+                        <!-- Status -->
+                        <div id="upload-status" class="text-sm hidden"></div>
+                    </div>
                 </div>
                 
+                <!-- Monitor Settings -->
                 <div>
-                    <label class="block text-sm font-medium mb-2">Alert Threshold (DOT)</label>
-                    <input type="number" value="10000" class="w-full px-3 py-2 bg-polkadot-light border border-gray-700 rounded-lg">
-                </div>
-                
-                <div>
-                    <label class="block text-sm font-medium mb-2">Pattern Sensitivity</label>
-                    <input type="range" min="1" max="5" value="3" class="w-full">
-                    <div class="flex justify-between text-xs text-gray-400 mt-1">
-                        <span>Low</span>
-                        <span>Medium</span>
-                        <span>High</span>
+                    <h4 class="text-md font-medium mb-4 flex items-center">
+                        <i class="fas fa-cog mr-2 text-polkadot-primary"></i>
+                        Monitor Settings
+                    </h4>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Check Interval</label>
+                            <select class="w-full px-3 py-2 bg-polkadot-light border border-gray-700 rounded-lg">
+                                <option value="60">Every hour</option>
+                                <option value="30">Every 30 minutes</option>
+                                <option value="15">Every 15 minutes</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Alert Threshold (DOT)</label>
+                            <input type="number" value="10000" class="w-full px-3 py-2 bg-polkadot-light border border-gray-700 rounded-lg">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Pattern Sensitivity</label>
+                            <input type="range" min="1" max="5" value="3" class="w-full">
+                            <div class="flex justify-between text-xs text-gray-400 mt-1">
+                                <span>Low</span>
+                                <span>Medium</span>
+                                <span>High</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 
@@ -2036,6 +2091,7 @@
                             rank: index + 1,
                             address: account.address,
                             identity: account.identity || 'Unknown',
+                            customIdentity: account.customIdentity || '',
                             balance: account.balanceFloat,
                             balanceDisplay: account.balance,
                             // Simulate anomaly detection attributes
@@ -2156,7 +2212,8 @@
             if (searchTerm) {
                 filtered = filtered.filter(whale => 
                     whale.address.toLowerCase().includes(searchTerm) ||
-                    whale.identity.toLowerCase().includes(searchTerm)
+                    whale.identity.toLowerCase().includes(searchTerm) ||
+                    whale.customIdentity.toLowerCase().includes(searchTerm)
                 );
             }
             
@@ -2220,6 +2277,11 @@
                         </div>
                     </td>
                     <td class="px-6 py-4 text-sm">${whale.identity}</td>
+                    <td class="px-6 py-4 text-sm">
+                        <span class="${whale.customIdentity && whale.customIdentity !== whale.identity ? 'text-polkadot-primary font-medium' : 'text-gray-400'}">
+                            ${whale.customIdentity || 'Not Set'}
+                        </span>
+                    </td>
                     <td class="px-6 py-4 text-sm font-medium">${whale.balanceDisplay}</td>
                     <td class="px-6 py-4">
                         <span class="px-2 py-1 text-xs rounded-full role-${whale.role}">${whale.role}</span>
@@ -2416,10 +2478,138 @@
             window.URL.revokeObjectURL(url);
         }
         
+        // Custom Identities Management
+        function loadCustomIdentitiesCount() {
+            fetch('/api/custom-identities')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const countElement = document.getElementById('custom-identities-count');
+                        if (countElement) {
+                            countElement.textContent = data.count || 0;
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading custom identities count:', error);
+                });
+        }
+        
+        function uploadCustomIdentities() {
+            const fileInput = document.getElementById('csv-file-input');
+            const pasteArea = document.getElementById('csv-paste-area');
+            const statusDiv = document.getElementById('upload-status');
+            const button = document.getElementById('upload-identities-btn');
+            
+            let csvData = '';
+            
+            // Check if file is selected
+            if (fileInput.files.length > 0) {
+                const file = fileInput.files[0];
+                const reader = new FileReader();
+                
+                reader.onload = (e) => {
+                    csvData = e.target.result;
+                    processUpload(csvData, statusDiv, button);
+                };
+                
+                reader.readAsText(file);
+            } else if (pasteArea.value.trim()) {
+                // Use pasted data
+                csvData = pasteArea.value.trim();
+                processUpload(csvData, statusDiv, button);
+            } else {
+                showUploadStatus(statusDiv, 'Please select a CSV file or paste CSV data', 'error');
+            }
+        }
+        
+        function processUpload(csvData, statusDiv, button) {
+            // Disable button and show loading
+            button.disabled = true;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Importing...';
+            showUploadStatus(statusDiv, 'Processing CSV data...', 'info');
+            
+            fetch('/api/custom-identities/csv', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ csvData })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showUploadStatus(statusDiv, data.message, 'success');
+                    loadCustomIdentitiesCount();
+                    
+                    // Clear inputs
+                    document.getElementById('csv-file-input').value = '';
+                    document.getElementById('csv-paste-area').value = '';
+                    
+                    // Reload whale registry if it's currently displayed
+                    const activeTab = document.querySelector('.tab-button.active');
+                    if (activeTab && activeTab.id === 'tab-whale-registry') {
+                        setTimeout(() => {
+                            loadWhaleRegistry();
+                        }, 1000);
+                    }
+                    
+                    if (data.errors && data.errors.length > 0) {
+                        console.warn('Import warnings:', data.errors);
+                        showUploadStatus(statusDiv, 
+                            `${data.message}. ${data.errors.length} warnings (check console)`, 
+                            'warning'
+                        );
+                    }
+                } else {
+                    showUploadStatus(statusDiv, `Error: ${data.error}`, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Upload error:', error);
+                showUploadStatus(statusDiv, `Upload failed: ${error.message}`, 'error');
+            })
+            .finally(() => {
+                // Re-enable button
+                button.disabled = false;
+                button.innerHTML = '<i class="fas fa-upload mr-2"></i>Import Custom Identities';
+            });
+        }
+        
+        function showUploadStatus(statusDiv, message, type) {
+            statusDiv.classList.remove('hidden');
+            statusDiv.className = `text-sm ${getStatusColor(type)}`;
+            statusDiv.textContent = message;
+            
+            // Auto-hide after 5 seconds for success/info messages
+            if (type === 'success' || type === 'info') {
+                setTimeout(() => {
+                    statusDiv.classList.add('hidden');
+                }, 5000);
+            }
+        }
+        
+        function getStatusColor(type) {
+            switch (type) {
+                case 'success': return 'text-green-400';
+                case 'error': return 'text-red-400';
+                case 'warning': return 'text-yellow-400';
+                case 'info': return 'text-blue-400';
+                default: return 'text-gray-400';
+            }
+        }
+        
         // Initialize everything when DOM is loaded
         document.addEventListener('DOMContentLoaded', () => {
             initializeTabs();
             initializeWhaleRegistry();
+            loadCustomIdentitiesCount();
+            
+            // Set up CSV upload functionality
+            const uploadButton = document.getElementById('upload-identities-btn');
+            if (uploadButton) {
+                uploadButton.addEventListener('click', uploadCustomIdentities);
+            }
         });
     </script>
 </body>

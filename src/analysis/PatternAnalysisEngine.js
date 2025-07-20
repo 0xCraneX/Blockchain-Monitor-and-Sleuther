@@ -1,6 +1,6 @@
 const fs = require('fs').promises;
 const path = require('path');
-const { monitorLogger } = require('../utils/simple-logger');
+const { monitorLogger } = require('../utils/logger');
 
 class PatternAnalysisEngine {
   constructor(config = {}) {

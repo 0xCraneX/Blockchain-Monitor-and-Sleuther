@@ -1,5 +1,5 @@
 const { ApiPromise, WsProvider } = require('@polkadot/api');
-const { monitorLogger } = require('../utils/simple-logger');
+const { monitorLogger } = require('../utils/logger');
 
 class RealtimeMonitor {
   constructor(config = {}) {

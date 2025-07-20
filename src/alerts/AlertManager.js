@@ -1,4 +1,4 @@
-const { alertLogger } = require('../utils/simple-logger');
+const { alertLogger } = require('../utils/logger');
 const fs = require('fs').promises;
 const path = require('path');
 

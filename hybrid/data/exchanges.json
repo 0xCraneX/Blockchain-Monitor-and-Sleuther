@@ -1,0 +1,128 @@
+{
+  "exchanges": {
+    "binance": {
+      "name": "Binance",
+      "addresses": [
+        "12QV7UDM37MNDf9eLLd5fQj8W8E8PvJJBmvkZkVJGgSL6WNx",
+        "13YVuQqnoNQMVhQPXq6iqPqgkQ3DtdKUPAKFFBTa8J4JLFJ8",
+        "14E5nqKAp3oAJcmzgZhUD2RcptBeUBScxKHgJKU4HPNcKVf3"
+      ],
+      "type": "cex",
+      "patterns": ["deposit", "withdrawal", "internal"]
+    },
+    "kraken": {
+      "name": "Kraken",
+      "addresses": [
+        "15oF4uVJwmo4TdGW7VfQxNLavjCXviqxT9S1MgbjMNHr6Sp5",
+        "16ZL8yLyXv3V3L3z9ofR1ovFLziyXaN1DPq4yffMAZ9czzBD"
+      ],
+      "type": "cex",
+      "patterns": ["deposit", "withdrawal", "internal"]
+    },
+    "coinbase": {
+      "name": "Coinbase",
+      "addresses": [
+        "1zugcavYA9yCuYwiEYeMHNJm9gXznYjNfXQjZsZukF1Mpow",
+        "12xtAYsRUrmbniiWQqJtECiBQrMn8AypQcXhnQAc6RB6XkLW"
+      ],
+      "type": "cex",
+      "patterns": ["deposit", "withdrawal"]
+    },
+    "polkadot_treasury": {
+      "name": "Polkadot Treasury",
+      "addresses": [
+        "13UVJyLnbVp77Z2t6qZV4fNpRjDHppL6c7weMJobZmSPaZcn"
+      ],
+      "type": "treasury",
+      "patterns": ["governance", "treasury_spend"]
+    },
+    "staking_pools": {
+      "name": "Liquid Staking Pools",
+      "addresses": [
+        "16aP3oTaD7oQ6qmxU6fDAi7NWUB7knqH6UsWbwGH4PZLhMnx",
+        "15kUt2i86LHRWCkE3D9Bg1HZAoc2smhn1fwPzDERTb1BXAkX"
+      ],
+      "type": "defi",
+      "patterns": ["staking", "unstaking", "rewards"]
+    }
+  },
+  "validators": {
+    "well_known": [
+      "1REAJ1k691g5Eqqg9gL7HKAgJpQagwxcFh2dXv87hsqULhJ",
+      "16SpacegeUTft9v3ts27CEC8egnTy9G2Mx6cBHRcSZj6h2ZnP",
+      "14Ns6kKbCoka3MS4Hn6b7oRw9fFejG8RH5rq5j63cWUfpPDN"
+    ],
+    "patterns": ["commission", "validator_stake", "rewards_distribution"]
+  },
+  "patterns": {
+    "exchange_deposit": {
+      "description": "User deposits to exchange",
+      "indicators": ["to_exchange", "from_user"],
+      "risk_level": "medium",
+      "volume_threshold": 10000
+    },
+    "exchange_withdrawal": {
+      "description": "User withdraws from exchange", 
+      "indicators": ["from_exchange", "to_user"],
+      "risk_level": "medium",
+      "volume_threshold": 10000
+    },
+    "exchange_internal": {
+      "description": "Exchange internal movement (hot/cold wallet)",
+      "indicators": ["from_exchange", "to_exchange"],
+      "risk_level": "low",
+      "volume_threshold": 100000
+    },
+    "whale_accumulation": {
+      "description": "Large accumulation from multiple sources",
+      "indicators": ["multiple_inflows", "large_amounts"],
+      "risk_level": "high",
+      "volume_threshold": 500000
+    },
+    "coordinated_movement": {
+      "description": "Coordinated movements between whales",
+      "indicators": ["time_correlation", "amount_correlation"],
+      "risk_level": "high",
+      "volume_threshold": 1000000
+    },
+    "staking_changes": {
+      "description": "Large staking/unstaking activities",
+      "indicators": ["validator_interaction", "staking_pools"],
+      "risk_level": "medium",
+      "volume_threshold": 50000
+    },
+    "governance_activity": {
+      "description": "Treasury or governance related movements",
+      "indicators": ["treasury_interaction", "referendum_activity"],
+      "risk_level": "low",
+      "volume_threshold": 100000
+    }
+  },
+  "risk_indicators": {
+    "high_risk": [
+      "rapid_succession_transfers",
+      "cross_exchange_arbitrage",
+      "unusual_timing_patterns",
+      "privacy_coin_bridges",
+      "mixer_services"
+    ],
+    "medium_risk": [
+      "large_exchange_deposits",
+      "dormant_account_activity",
+      "validator_commission_changes",
+      "governance_vote_buying"
+    ],
+    "low_risk": [
+      "regular_staking_rewards",
+      "known_institutional_flows",
+      "treasury_operations",
+      "validator_operations"
+    ]
+  },
+  "monitoring_thresholds": {
+    "instant_alert": 2000000,
+    "high_priority": 1000000,
+    "medium_priority": 100000,
+    "low_priority": 10000
+  }
+}

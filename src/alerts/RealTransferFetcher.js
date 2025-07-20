@@ -1,6 +1,6 @@
 const SubscanClient = require('../api/SubscanClient');
 const FileStorage = require('../storage/FileStorage');
-const { monitorLogger } = require('../utils/simple-logger');
+const { monitorLogger } = require('../utils/logger');
 
 class RealTransferFetcher {
   constructor(config = {}) {

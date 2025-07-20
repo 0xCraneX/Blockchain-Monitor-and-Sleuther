@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
-const { storageLogger } = require('../utils/simple-logger');
+const { storageLogger } = require('../utils/logger');
 
 class FileStorage {
   constructor(basePath = './data') {

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 const WhaleMonitor = require('./src/monitor');
-const { mainLogger } = require('./src/utils/simple-logger');
+const { mainLogger } = require('./src/utils/logger');
 const path = require('path');
 const fs = require('fs');
 

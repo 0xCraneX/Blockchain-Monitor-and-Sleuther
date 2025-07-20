@@ -1,0 +1,25 @@
+{
+  "name": "hybrid-whale-monitor",
+  "version": "1.0.0",
+  "description": "Hybrid RPC/Subscan whale monitoring system",
+  "main": "core/HybridMonitor.js",
+  "scripts": {
+    "start": "node start.js",
+    "dev": "NODE_ENV=development node start.js",
+    "test": "NODE_ENV=test node tests/integration/basic-test.js",
+    "test:performance": "node tests/performance/load-test.js",
+    "test:comparison": "node tests/comparison/system-comparison.js",
+    "cache:clear": "rm -rf cache/data/* cache/test-data/* cache/dev-data/*",
+    "logs:clear": "rm -rf logs/*"
+  },
+  "dependencies": {
+    "@polkadot/api": "^10.9.1",
+    "@polkadot/keyring": "^12.3.2",
+    "@polkadot/types": "^10.9.1",
+    "@polkadot/util": "^12.3.2",
+    "@polkadot/util-crypto": "^12.3.2",
+    "node-fetch": "^2.6.12",
+    "ws": "^8.13.0"
+  },
+  "type": "module"
+}

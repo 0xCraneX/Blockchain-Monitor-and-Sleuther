@@ -1,25 +1,7 @@
-// Use dynamic import for chalk v5 ESM module
-let chalk;
-(async () => {
-  chalk = (await import('chalk')).default;
-})();
-
+// Use chalk v4 which is CommonJS compatible
+const chalk = require('chalk');
 const fs = require('fs');
 const path = require('path');
-
-// Fallback colors if chalk not loaded yet
-const colors = {
-  gray: (text) => chalk ? chalk.gray(text) : `\x1b[90m${text}\x1b[0m`,
-  blue: (text) => chalk ? chalk.blue(text) : `\x1b[34m${text}\x1b[0m`,
-  white: (text) => chalk ? chalk.white(text) : text,
-  green: (text) => chalk ? chalk.green(text) : `\x1b[32m${text}\x1b[0m`,
-  yellow: (text) => chalk ? chalk.yellow(text) : `\x1b[33m${text}\x1b[0m`,
-  red: (text) => chalk ? chalk.red(text) : `\x1b[31m${text}\x1b[0m`,
-  cyan: (text) => chalk ? chalk.cyan(text) : `\x1b[36m${text}\x1b[0m`,
-  bold: (text) => chalk ? chalk.bold(text) : `\x1b[1m${text}\x1b[0m`,
-  whiteBold: (text) => chalk ? chalk.white.bold(text) : `\x1b[1m${text}\x1b[0m`,
-  cyanBold: (text) => chalk ? chalk.cyan.bold(text) : `\x1b[36;1m${text}\x1b[0m`
-};
 
 class Logger {
   constructor(module = 'MAIN') {
@@ -50,7 +32,7 @@ class Logger {
     try {
       fs.appendFileSync(this.logFile, fullMessage + '\n');
     } catch (error) {
-      console.error(colors.red('Failed to write to log file:'), error);
+      console.error(chalk.red('Failed to write to log file:'), error);
     }
   }
 
@@ -195,5 +177,6 @@ module.exports = {
   apiLogger: new Logger('API'),
   storageLogger: new Logger('STORAGE'),
   patternLogger: new Logger('PATTERNS'),
-  alertLogger: new Logger('ALERTS')
+  alertLogger: new Logger('ALERTS'),
+  monitorLogger: new Logger('MONITOR')
 };

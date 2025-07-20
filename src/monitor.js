@@ -2,7 +2,7 @@ const SubscanClient = require('./api/SubscanClient');
 const FileStorage = require('./storage/FileStorage');
 const PatternDetector = require('./patterns/PatternDetector');
 const AlertManager = require('./alerts/AlertManager');
-const { monitorLogger } = require('./utils/simple-logger');
+const { monitorLogger } = require('./utils/logger');
 
 class WhaleMonitor {
   constructor(config = {}) {

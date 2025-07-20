@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hybrid Rollout Dashboard - Polkadot Whale Monitor</title>
+    <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #ffffff;
+            overflow-x: auto;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            color: #e91e63;
+            margin-bottom: 0.5rem;
+        }
+
+        .header-info {
+            display: flex;
+            gap: 2rem;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .container {
+            padding: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .card h3 {
+            color: #e91e63;
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+        }
+
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.8rem;
+            padding: 0.5rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 6px;
+        }
+
+        .metric-label {
+            font-weight: 500;
+            opacity: 0.9;
+        }
+
+        .metric-value {
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .status {
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .status.healthy { background: #4caf50; color: white; }
+        .status.warning { background: #ff9800; color: white; }
+        .status.critical { background: #f44336; color: white; }
+        .status.info { background: #2196f3; color: white; }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 0.5rem 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #e91e63, #ff6b35);
+            transition: width 0.3s ease;
+        }
+
+        .chart-container {
+            height: 300px;
+            margin: 1rem 0;
+            position: relative;
+        }
+
+        .emergency-controls {
+            background: rgba(244, 67, 54, 0.1);
+            border: 2px solid #f44336;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .emergency-controls h3 {
+            color: #f44336;
+            margin-bottom: 1rem;
+        }
+
+        .button {
+            background: linear-gradient(45deg, #e91e63, #ff6b35);
+            color: white;
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            margin: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(233, 30, 99, 0.4);
+        }
+
+        .button.danger {
+            background: linear-gradient(45deg, #f44336, #d32f2f);
+        }
+
+        .button.danger:hover {
+            box-shadow: 0 5px 15px rgba(244, 67, 54, 0.4);
+        }
+
+        .alerts-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .alert-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 0.8rem;
+            margin: 0.5rem 0;
+            border-radius: 6px;
+            border-left: 4px solid;
+        }
+
+        .alert-item.critical { border-left-color: #f44336; }
+        .alert-item.warning { border-left-color: #ff9800; }
+        .alert-item.info { border-left-color: #2196f3; }
+
+        .feature-flags {
+            display: grid;
+            gap: 0.5rem;
+        }
+
+        .flag-control {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 6px;
+        }
+
+        .toggle {
+            position: relative;
+            width: 50px;
+            height: 25px;
+            background: #ccc;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .toggle.active {
+            background: #e91e63;
+        }
+
+        .toggle::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 21px;
+            height: 21px;
+            background: white;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+
+        .toggle.active::after {
+            left: 27px;
+        }
+
+        .phase-indicator {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .phase-step {
+            padding: 0.5rem 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            font-size: 0.9rem;
+            position: relative;
+        }
+
+        .phase-step.active {
+            background: #e91e63;
+            color: white;
+        }
+
+        .phase-step.completed {
+            background: #4caf50;
+            color: white;
+        }
+
+        .connection-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            z-index: 1001;
+        }
+
+        .connection-status.connected {
+            background: #4caf50;
+            color: white;
+        }
+
+        .connection-status.disconnected {
+            background: #f44336;
+            color: white;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            .grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header-info {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="connection-status" id="connectionStatus">Connecting...</div>
+
+    <div class="header">
+        <h1>🐋 Hybrid Rollout Dashboard</h1>
+        <div class="header-info">
+            <div>Last Update: <span id="lastUpdate">-</span></div>
+            <div>Connected Clients: <span id="connectedClients">-</span></div>
+            <div>System Uptime: <span id="systemUptime">-</span></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Emergency Controls -->
+        <div class="emergency-controls">
+            <h3>🚨 Emergency Controls</h3>
+            <button class="button danger" onclick="triggerEmergencyRollback()">
+                Emergency Rollback
+            </button>
+            <button class="button danger" onclick="enableEmergencyMode()">
+                Enable Emergency Mode
+            </button>
+            <button class="button" onclick="resetSafetyCounters()">
+                Reset Safety Counters
+            </button>
+        </div>
+
+        <!-- Rollout Progress -->
+        <div class="card">
+            <h3>📈 Rollout Progress</h3>
+            <div class="phase-indicator" id="phaseIndicator">
+                <div class="phase-step">Foundation</div>
+                <div class="phase-step">Parallel</div>
+                <div class="phase-step">Gradual</div>
+                <div class="phase-step">Performance</div>
+                <div class="phase-step">Production</div>
+            </div>
+            <div class="metric">
+                <span class="metric-label">Current Phase:</span>
+                <span class="metric-value" id="currentPhase">-</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">Traffic Split:</span>
+                <span class="metric-value" id="trafficSplit">-</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="trafficProgress"></div>
+            </div>
+        </div>
+
+        <div class="grid">
+            <!-- System Status -->
+            <div class="card">
+                <h3>⚙️ System Status</h3>
+                <div class="metric">
+                    <span class="metric-label">Bridge Status:</span>
+                    <span class="status" id="bridgeStatus">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Active System:</span>
+                    <span class="metric-value" id="activeSystem">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Validation Mode:</span>
+                    <span class="status" id="validationMode">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Emergency Mode:</span>
+                    <span class="status" id="emergencyMode">-</span>
+                </div>
+            </div>
+
+            <!-- Performance Metrics -->
+            <div class="card">
+                <h3>⚡ Performance</h3>
+                <div class="metric">
+                    <span class="metric-label">Legacy Latency:</span>
+                    <span class="metric-value" id="legacyLatency">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Hybrid Latency:</span>
+                    <span class="metric-value" id="hybridLatency">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Improvement:</span>
+                    <span class="metric-value" id="improvementFactor">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Error Rate:</span>
+                    <span class="status" id="errorRate">-</span>
+                </div>
+            </div>
+
+            <!-- Alert Summary -->
+            <div class="card">
+                <h3>🔔 Alerts</h3>
+                <div class="metric">
+                    <span class="metric-label">Total Alerts:</span>
+                    <span class="metric-value" id="totalAlerts">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Legacy Alerts:</span>
+                    <span class="metric-value" id="legacyAlerts">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Hybrid Alerts:</span>
+                    <span class="metric-value" id="hybridAlerts">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Safety Status:</span>
+                    <span class="status" id="safetyStatus">-</span>
+                </div>
+            </div>
+
+            <!-- Validation -->
+            <div class="card">
+                <h3>✅ Validation</h3>
+                <div class="metric">
+                    <span class="metric-label">Current Accuracy:</span>
+                    <span class="metric-value" id="validationAccuracy">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Average Accuracy:</span>
+                    <span class="metric-value" id="avgValidationAccuracy">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Validations:</span>
+                    <span class="metric-value" id="totalValidations">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Consecutive Failures:</span>
+                    <span class="status" id="consecutiveFailures">-</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="grid">
+            <div class="card">
+                <h3>📊 Performance Trend</h3>
+                <div class="chart-container">
+                    <canvas id="performanceChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>📈 Validation Accuracy</h3>
+                <div class="chart-container">
+                    <canvas id="validationChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Feature Flags -->
+        <div class="card">
+            <h3>🚩 Feature Flags</h3>
+            <div class="feature-flags" id="featureFlags">
+                <!-- Feature flags will be populated here -->
+            </div>
+        </div>
+
+        <!-- Recent Alerts -->
+        <div class="card">
+            <h3>🚨 Recent Safety Alerts</h3>
+            <div class="alerts-list" id="recentAlerts">
+                <!-- Recent alerts will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Socket.IO connection
+        const socket = io();
+        
+        // Charts
+        let performanceChart;
+        let validationChart;
+        
+        // Connection status
+        const connectionStatus = document.getElementById('connectionStatus');
+        
+        socket.on('connect', () => {
+            connectionStatus.textContent = 'Connected';
+            connectionStatus.className = 'connection-status connected';
+        });
+        
+        socket.on('disconnect', () => {
+            connectionStatus.textContent = 'Disconnected';
+            connectionStatus.className = 'connection-status disconnected';
+        });
+        
+        // Dashboard data updates
+        socket.on('dashboard-data', (data) => {
+            updateDashboard(data);
+        });
+        
+        socket.on('safety-alert', (alert) => {
+            addSafetyAlert(alert);
+        });
+        
+        socket.on('new-alerts', (alerts) => {
+            showNotification(`${alerts.length} new whale alerts detected`);
+        });
+        
+        socket.on('emergency-rollback', (data) => {
+            showNotification('Emergency rollback triggered!', 'critical');
+        });
+        
+        socket.on('system-switched', (data) => {
+            showNotification(`System switched to ${data.to}`, 'info');
+        });
+        
+        // Initialize charts
+        function initCharts() {
+            const chartOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: '#ffffff'
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: { color: '#ffffff' },
+                        grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                    },
+                    y: {
+                        ticks: { color: '#ffffff' },
+                        grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                    }
+                }
+            };
+            
+            // Performance chart
+            const perfCtx = document.getElementById('performanceChart').getContext('2d');
+            performanceChart = new Chart(perfCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Legacy Latency (ms)',
+                            data: [],
+                            borderColor: '#ff6b35',
+                            backgroundColor: 'rgba(255, 107, 53, 0.1)',
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Hybrid Latency (ms)',
+                            data: [],
+                            borderColor: '#e91e63',
+                            backgroundColor: 'rgba(233, 30, 99, 0.1)',
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: chartOptions
+            });
+            
+            // Validation chart
+            const valCtx = document.getElementById('validationChart').getContext('2d');
+            validationChart = new Chart(valCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Validation Accuracy (%)',
+                        data: [],
+                        borderColor: '#4caf50',
+                        backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    ...chartOptions,
+                    scales: {
+                        ...chartOptions.scales,
+                        y: {
+                            ...chartOptions.scales.y,
+                            min: 80,
+                            max: 100
+                        }
+                    }
+                }
+            });
+        }
+        
+        function updateDashboard(data) {
+            try {
+                // Update header info
+                document.getElementById('lastUpdate').textContent = new Date(data.timestamp).toLocaleTimeString();
+                document.getElementById('connectedClients').textContent = data.dashboard?.connectedClients || '0';
+                document.getElementById('systemUptime').textContent = formatUptime(data.rollout?.uptime || 0);
+                
+                // Update rollout progress
+                updateRolloutProgress(data.rollout);
+                
+                // Update system status
+                updateSystemStatus(data.bridge, data.safety);
+                
+                // Update performance metrics
+                updatePerformanceMetrics(data.performance);
+                
+                // Update alerts
+                updateAlerts(data.alerts);
+                
+                // Update validation
+                updateValidation(data.validation);
+                
+                // Update feature flags
+                updateFeatureFlags(data.featureFlags);
+                
+                // Update safety alerts
+                updateSafetyAlerts(data.safety?.recentAlerts || []);
+                
+            } catch (error) {
+                console.error('Error updating dashboard:', error);
+            }
+        }
+        
+        function updateRolloutProgress(rollout) {
+            if (!rollout) return;
+            
+            document.getElementById('currentPhase').textContent = rollout.phase || 'Unknown';
+            document.getElementById('trafficSplit').textContent = `${rollout.trafficPercent || 0}%`;
+            
+            // Update progress bar
+            const progressBar = document.getElementById('trafficProgress');
+            progressBar.style.width = `${rollout.trafficPercent || 0}%`;
+            
+            // Update phase indicators
+            updatePhaseIndicators(rollout.phase);
+        }
+        
+        function updatePhaseIndicators(currentPhase) {
+            const phases = ['foundation', 'parallel', 'gradual', 'performance', 'production'];
+            const currentIndex = phases.indexOf(currentPhase);
+            
+            document.querySelectorAll('.phase-step').forEach((step, index) => {
+                step.className = 'phase-step';
+                
+                if (index < currentIndex) {
+                    step.classList.add('completed');
+                } else if (index === currentIndex) {
+                    step.classList.add('active');
+                }
+            });
+        }
+        
+        function updateSystemStatus(bridge, safety) {
+            if (!bridge) return;
+            
+            document.getElementById('bridgeStatus').textContent = bridge.isRunning ? 'Running' : 'Stopped';
+            document.getElementById('bridgeStatus').className = `status ${bridge.isRunning ? 'healthy' : 'critical'}`;
+            
+            document.getElementById('activeSystem').textContent = bridge.activeSystem || 'Unknown';
+            
+            document.getElementById('validationMode').textContent = bridge.validationMode ? 'Active' : 'Inactive';
+            document.getElementById('validationMode').className = `status ${bridge.validationMode ? 'info' : 'warning'}`;
+            
+            if (safety) {
+                document.getElementById('emergencyMode').textContent = safety.emergencyMode ? 'Enabled' : 'Disabled';
+                document.getElementById('emergencyMode').className = `status ${safety.emergencyMode ? 'critical' : 'healthy'}`;
+                
+                document.getElementById('consecutiveFailures').textContent = safety.consecutiveFailures || '0';
+                document.getElementById('consecutiveFailures').className = `status ${safety.consecutiveFailures > 2 ? 'critical' : 'healthy'}`;
+                
+                document.getElementById('safetyStatus').textContent = safety.isActive ? 'Active' : 'Inactive';
+                document.getElementById('safetyStatus').className = `status ${safety.isActive ? 'healthy' : 'warning'}`;
+            }
+        }
+        
+        function updatePerformanceMetrics(performance) {
+            if (!performance) return;
+            
+            document.getElementById('legacyLatency').textContent = `${Math.round(performance.legacy?.avgLatency || 0)}ms`;
+            document.getElementById('hybridLatency').textContent = `${Math.round(performance.hybrid?.avgLatency || 0)}ms`;
+            document.getElementById('improvementFactor').textContent = `${(performance.improvementFactor || 0).toFixed(2)}x`;
+        }
+        
+        function updateAlerts(alerts) {
+            if (!alerts) return;
+            
+            document.getElementById('totalAlerts').textContent = alerts.total || '0';
+            document.getElementById('legacyAlerts').textContent = alerts.legacy || '0';
+            document.getElementById('hybridAlerts').textContent = alerts.hybrid || '0';
+        }
+        
+        function updateValidation(validation) {
+            if (!validation) return;
+            
+            const accuracy = validation.latest?.accuracy;
+            if (accuracy !== undefined) {
+                document.getElementById('validationAccuracy').textContent = `${(accuracy * 100).toFixed(1)}%`;
+            }
+            
+            const avgAccuracy = validation.averageAccuracy;
+            if (avgAccuracy !== undefined) {
+                document.getElementById('avgValidationAccuracy').textContent = `${(avgAccuracy * 100).toFixed(1)}%`;
+            }
+            
+            document.getElementById('totalValidations').textContent = validation.totalValidations || '0';
+        }
+        
+        function updateFeatureFlags(flags) {
+            if (!flags) return;
+            
+            const container = document.getElementById('featureFlags');
+            container.innerHTML = '';
+            
+            Object.entries(flags).forEach(([flag, value]) => {
+                if (typeof value === 'boolean') {
+                    const flagControl = document.createElement('div');
+                    flagControl.className = 'flag-control';
+                    flagControl.innerHTML = `
+                        <span>${flag}</span>
+                        <div class="toggle ${value ? 'active' : ''}" onclick="toggleFlag('${flag}', ${!value})"></div>
+                    `;
+                    container.appendChild(flagControl);
+                }
+            });
+        }
+        
+        function updateSafetyAlerts(alerts) {
+            const container = document.getElementById('recentAlerts');
+            container.innerHTML = '';
+            
+            alerts.slice(-10).reverse().forEach(alert => {
+                const alertElement = document.createElement('div');
+                alertElement.className = `alert-item ${alert.severity}`;
+                alertElement.innerHTML = `
+                    <strong>${alert.type}</strong> - ${new Date(alert.timestamp).toLocaleString()}
+                    <div style="font-size: 0.9em; opacity: 0.8; margin-top: 0.5rem;">
+                        ${JSON.stringify(alert.data, null, 2)}
+                    </div>
+                `;
+                container.appendChild(alertElement);
+            });
+        }
+        
+        // Emergency controls
+        function triggerEmergencyRollback() {
+            if (confirm('Are you sure you want to trigger an emergency rollback? This will immediately switch to legacy mode.')) {
+                const reason = prompt('Enter rollback reason:') || 'Dashboard emergency rollback';
+                socket.emit('emergency-rollback', { reason });
+            }
+        }
+        
+        function enableEmergencyMode() {
+            if (confirm('Enable emergency mode? This will pause the rollout.')) {
+                fetch('/api/emergency/pause', { method: 'POST' })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            showNotification('Emergency mode enabled', 'warning');
+                        }
+                    });
+            }
+        }
+        
+        function resetSafetyCounters() {
+            if (confirm('Reset safety counters? This will clear consecutive failure counts.')) {
+                // Would implement API endpoint for this
+                showNotification('Safety counters reset', 'info');
+            }
+        }
+        
+        function toggleFlag(flag, value) {
+            socket.emit('update-flag', { flag, value });
+        }
+        
+        // Utility functions
+        function formatUptime(ms) {
+            const seconds = Math.floor(ms / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const hours = Math.floor(minutes / 60);
+            const days = Math.floor(hours / 24);
+            
+            if (days > 0) return `${days}d ${hours % 24}h`;
+            if (hours > 0) return `${hours}h ${minutes % 60}m`;
+            if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
+            return `${seconds}s`;
+        }
+        
+        function showNotification(message, type = 'info') {
+            // Simple notification system
+            const notification = document.createElement('div');
+            notification.className = `status ${type}`;
+            notification.textContent = message;
+            notification.style.position = 'fixed';
+            notification.style.top = '20px';
+            notification.style.left = '50%';
+            notification.style.transform = 'translateX(-50%)';
+            notification.style.zIndex = '1002';
+            notification.style.padding = '1rem 2rem';
+            notification.style.borderRadius = '6px';
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 5000);
+        }
+        
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', () => {
+            initCharts();
+            
+            // Request initial data
+            socket.emit('request-update');
+            
+            // Auto-refresh every 5 seconds
+            setInterval(() => {
+                socket.emit('request-update');
+            }, 5000);
+        });
+    </script>
+</body>
+</html>

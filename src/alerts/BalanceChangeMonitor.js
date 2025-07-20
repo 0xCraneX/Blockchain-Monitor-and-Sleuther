@@ -1,4 +1,4 @@
-const { monitorLogger } = require('../utils/simple-logger');
+const { monitorLogger } = require('../utils/logger');
 
 class BalanceChangeMonitor {
   constructor(config = {}) {

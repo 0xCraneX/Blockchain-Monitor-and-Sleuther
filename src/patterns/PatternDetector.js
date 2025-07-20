@@ -1,4 +1,4 @@
-const { patternLogger } = require('../utils/simple-logger');
+const { patternLogger } = require('../utils/logger');
 
 class PatternDetector {
   constructor() {
