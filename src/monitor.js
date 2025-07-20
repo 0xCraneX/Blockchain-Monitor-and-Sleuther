@@ -3,6 +3,7 @@ const FileStorage = require('./storage/FileStorage');
 const PatternDetector = require('./patterns/PatternDetector');
 const AlertManager = require('./alerts/AlertManager');
 const { monitorLogger } = require('./utils/logger');
+const UnknownAddressAnalyzer = require('./integration/analyze-unknown');
 
 class WhaleMonitor {
   constructor(config = {}) {

@@ -18,7 +18,33 @@ class AlertManager {
       NOTABLE: '\x1b[96m'    // Bright cyan
     };
     
+    // Load shared entities for identification
+    this.loadEntities();
+    
     alertLogger.info('AlertManager initialized');
+  }
+  
+  // Load entity database
+  async loadEntities() {
+    try {
+      const entitiesPath = path.join(__dirname, '../../../../shared-entities.json');
+      const data = await fs.readFile(entitiesPath, 'utf8');
+      this.entities = JSON.parse(data);
+      alertLogger.info(`Loaded ${Object.keys(this.entities).length} entity types`);
+    } catch (error) {
+      alertLogger.warn('Could not load entities file:', error.message);
+      this.entities = {};
+    }
+  }
+  
+  // Look up entity name for an address
+  getEntityName(address) {
+    for (const [entityId, entity] of Object.entries(this.entities)) {
+      if (entity.addresses && entity.addresses.includes(address)) {
+        return entity.name;
+      }
+    }
+    return null;
   }
 
   // Format alert for console display
@@ -31,6 +57,9 @@ class AlertManager {
     const shortAddress = alert.address ? 
       `${alert.address.slice(0, 8)}...${alert.address.slice(-6)}` : 
       'Multiple';
+    
+    // Look up entity name
+    const entityName = alert.address ? this.getEntityName(alert.address) : null;
     
     // Format amount
     const amountStr = alert.amount ? 
@@ -74,8 +103,9 @@ class AlertManager {
       shortAddress,
       amountStr,
       details,
+      entityName,
       formatted: `${color}${emoji} [${alert.severity}] ${alert.type}${reset}\n` +
-                 `   Address: ${shortAddress}\n` +
+                 `   Address: ${shortAddress}${entityName ? ` (Entity: ${entityName})` : ''}\n` +
                  `   Amount: ${amountStr}\n` +
                  `   ${alert.message}\n` +
                  `   ${details ? `Details: ${details}` : ''}`
