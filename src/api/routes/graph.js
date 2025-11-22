@@ -133,15 +133,24 @@ function getServices(req) {
         realDataService: !!req.app.locals.graphServices.realDataService
       });
 
-      // Create controller with all services
-      logger.debug('Creating GraphController');
+      // Get PatternDetector from app.locals (CRITICAL FIX - inject pattern detector)
+      const patternDetector = req.app.locals.patternDetector;
+      logger.debug('PatternDetector availability check', {
+        hasPatternDetector: !!patternDetector,
+        patternDetectorType: typeof patternDetector,
+        patternDetectorMethods: patternDetector ? Object.getOwnPropertyNames(Object.getPrototypeOf(patternDetector)) : []
+      });
+
+      // Create controller with all services including PatternDetector
+      logger.debug('Creating GraphController with PatternDetector');
       req.app.locals.graphServices.graphController = new GraphController(
         databaseService,
         req.app.locals.graphServices.graphQueries,
         req.app.locals.graphServices.relationshipScorer,
         req.app.locals.graphServices.pathFinder,
         req.app.locals.graphServices.graphMetrics,
-        req.app.locals.graphServices.realDataService
+        req.app.locals.graphServices.realDataService,
+        patternDetector // CRITICAL FIX - pass pattern detector to controller
       );
 
       logger.info('Created GraphController successfully', {

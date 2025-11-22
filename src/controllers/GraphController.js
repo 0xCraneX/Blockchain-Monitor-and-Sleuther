@@ -15,7 +15,7 @@ const controllerLogger = createLogger('GraphController');
  * Implements D3.js compatible format for all responses
  */
 export class GraphController {
-  constructor(databaseService, graphQueries, relationshipScorer, pathFinder, graphMetrics, realDataService) {
+  constructor(databaseService, graphQueries, relationshipScorer, pathFinder, graphMetrics, realDataService, patternDetector) {
     const trackerId = logMethodEntry('GraphController', 'constructor');
 
     this.db = databaseService;
@@ -24,6 +24,11 @@ export class GraphController {
     this.pathFinder = pathFinder;
     this.graphMetrics = graphMetrics;
     this.realDataService = realDataService;
+    this.patternDetector = patternDetector; // CRITICAL FIX - store pattern detector
+
+    // Pattern detection cache (30-minute TTL)
+    this.patternCache = new Map();
+    this.patternCacheTTL = 30 * 60 * 1000; // 30 minutes
 
     // DEBUG: Log constructor initialization
     controllerLogger.debug('=== GraphController Constructor Debug ===');
@@ -34,8 +39,11 @@ export class GraphController {
       hasPathFinder: !!pathFinder,
       hasGraphMetrics: !!graphMetrics,
       hasRealDataService: !!realDataService,
+      hasPatternDetector: !!patternDetector,
       realDataServiceType: realDataService ? typeof realDataService : 'not provided',
-      realDataServiceConstructor: realDataService?.constructor?.name || 'N/A'
+      realDataServiceConstructor: realDataService?.constructor?.name || 'N/A',
+      patternDetectorType: patternDetector ? typeof patternDetector : 'not provided',
+      patternDetectorConstructor: patternDetector?.constructor?.name || 'N/A'
     });
 
 
@@ -46,7 +54,15 @@ export class GraphController {
       });
     }
 
-    controllerLogger.info('GraphController initialized with all services');
+    if (patternDetector) {
+      controllerLogger.debug('PatternDetector details:', {
+        methods: Object.getOwnPropertyNames(Object.getPrototypeOf(patternDetector)).filter(m => typeof patternDetector[m] === 'function'),
+        properties: Object.keys(patternDetector),
+        patternTypes: Object.keys(patternDetector.patternTypes || {})
+      });
+    }
+
+    controllerLogger.info('GraphController initialized with all services including PatternDetector');
     logMethodExit('GraphController', 'constructor', trackerId);
   }
 
@@ -374,13 +390,66 @@ export class GraphController {
         });
       }
 
-      // Transform to D3.js format
+      // CRITICAL FIX - Run pattern detection on center address and connected nodes
+      controllerLogger.info('Running pattern detection on graph nodes');
+      const patternDetectionTimer = startPerformanceTimer('pattern_detection');
+      const nodePatterns = new Map();
+
+      try {
+        // Always detect patterns for the center address
+        const centerPatterns = await this._runPatternDetection(address);
+        nodePatterns.set(address, centerPatterns);
+
+        // If risk scores are requested, detect patterns for connected nodes (sample to avoid performance issues)
+        if (includeRiskScores && graphData.nodes.length > 1) {
+          // Sample up to 10 highest-degree nodes for pattern detection
+          const nodesToCheck = graphData.nodes
+            .filter(n => n.address !== address)
+            .sort((a, b) => (b.degree || 0) - (a.degree || 0))
+            .slice(0, 10);
+
+          controllerLogger.debug('Running pattern detection on connected nodes', {
+            totalNodes: graphData.nodes.length,
+            nodesBeingChecked: nodesToCheck.length
+          });
+
+          // Run pattern detection in parallel for performance
+          await Promise.all(
+            nodesToCheck.map(async (node) => {
+              try {
+                const patterns = await this._runPatternDetection(node.address);
+                nodePatterns.set(node.address, patterns);
+              } catch (err) {
+                controllerLogger.warn('Failed to detect patterns for node', {
+                  address: node.address,
+                  error: err.message
+                });
+              }
+            })
+          );
+        }
+
+        controllerLogger.info('Pattern detection completed for graph nodes', {
+          nodesAnalyzed: nodePatterns.size,
+          centerRiskScore: centerPatterns.riskScore,
+          highRiskNodes: Array.from(nodePatterns.values()).filter(p => p.riskScore > 70).length
+        });
+      } catch (error) {
+        controllerLogger.warn('Pattern detection failed, continuing without patterns', {
+          error: error.message
+        });
+      }
+
+      endPerformanceTimer(patternDetectionTimer, 'pattern_detection');
+
+      // Transform to D3.js format (now with pattern data)
       controllerLogger.debug('=== Transforming to D3.js format ===');
       controllerLogger.debug('Graph data before transformation:', {
         nodeCount: graphData?.nodes?.length || 0,
         edgeCount: graphData?.edges?.length || 0,
         hasMetadata: !!graphData?.metadata,
-        dataSource: graphData?.metadata?.source || 'unknown'
+        dataSource: graphData?.metadata?.source || 'unknown',
+        hasPatternData: nodePatterns.size > 0
       });
 
       const d3Graph = await this._transformToD3Format(graphData, {
@@ -389,14 +458,16 @@ export class GraphController {
         filters,
         layout,
         enableClustering,
-        clusteringAlgorithm
+        clusteringAlgorithm,
+        nodePatterns // CRITICAL FIX - pass pattern data to transform
       });
 
       controllerLogger.debug('D3 graph after transformation:', {
         nodeCount: d3Graph?.nodes?.length || 0,
         edgeCount: d3Graph?.edges?.length || 0,
         hasLayout: !!d3Graph?.layout,
-        hasClusters: !!d3Graph?.clusters
+        hasClusters: !!d3Graph?.clusters,
+        nodesWithRiskScores: d3Graph?.nodes?.filter(n => n.riskScore > 0).length || 0
       });
 
       // Validate graph data before sending to frontend
@@ -421,6 +492,9 @@ export class GraphController {
         controllerLogger.warn('Failed to calculate clustering coefficient', { error: error.message });
       }
 
+      // CRITICAL FIX - Calculate pattern detection statistics for metadata
+      const patternStats = this._calculatePatternStats(nodePatterns, d3Graph.nodes);
+
       d3Graph.metadata = {
         ...(d3Graph.metadata || {}),
         totalNodes: d3Graph.nodes.length,
@@ -436,6 +510,17 @@ export class GraphController {
         edgesOmitted: 0,
         renderingComplexity: this._calculateRenderingComplexity(d3Graph.nodes.length, d3Graph.edges.length),
         suggestedLayout: this._suggestLayout(d3Graph.nodes.length, d3Graph.edges.length),
+        // CRITICAL FIX - Add pattern detection statistics
+        patternAnalysis: {
+          enabled: nodePatterns.size > 0,
+          nodesAnalyzed: nodePatterns.size,
+          highRiskNodeCount: patternStats.highRisk,
+          mediumRiskNodeCount: patternStats.mediumRisk,
+          lowRiskNodeCount: patternStats.lowRisk,
+          centerNodeRiskScore: nodePatterns.get(address)?.riskScore || 0,
+          patternsDetected: patternStats.totalPatterns,
+          patternBreakdown: patternStats.patternBreakdown
+        },
         highRiskNodeCount: d3Graph.nodes.filter(n => n.riskScore && n.riskScore > 70).length,
         suspiciousEdgeCount: d3Graph.edges.filter(e => e.suspiciousPattern).length,
         earliestTransfer: d3Graph.edges.length > 0 ? Math.min(...d3Graph.edges.map(e => e.firstTransfer || Date.now())) : null,
@@ -701,21 +786,275 @@ export class GraphController {
   }
 
   /**
+   * Run comprehensive pattern detection using PatternDetector service
+   * CRITICAL FIX - Use the proper PatternDetector instead of basic inline detection
+   * @private
+   */
+  async _runPatternDetection(address) {
+    const cacheKey = `patterns:${address}`;
+
+    // Check cache first
+    const cached = this.patternCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < this.patternCacheTTL) {
+      controllerLogger.debug('Pattern detection cache hit', { address });
+      return cached.data;
+    }
+
+    if (!this.patternDetector) {
+      controllerLogger.warn('Pattern detector not available, skipping pattern detection', { address });
+      return {
+        patterns: [],
+        riskScore: 0,
+        riskFactors: []
+      };
+    }
+
+    try {
+      controllerLogger.info('Running comprehensive pattern detection', { address });
+      const startTime = Date.now();
+
+      // Run all pattern detection methods in parallel for performance
+      const [
+        rapidMovement,
+        circularFlow,
+        layering,
+        mixingPatterns,
+        unusualTiming,
+        roundNumbers
+      ] = await Promise.all([
+        this.patternDetector.detectRapidMovement(address).catch(err => {
+          controllerLogger.warn('Rapid movement detection failed', { address, error: err.message });
+          return { patternType: 'RAPID_MOVEMENT', confidence: 0, evidence: [], severity: 'low' };
+        }),
+        this.patternDetector.detectCircularFlow(address).catch(err => {
+          controllerLogger.warn('Circular flow detection failed', { address, error: err.message });
+          return { patternType: 'CIRCULAR_FLOW', confidence: 0, evidence: [], severity: 'low' };
+        }),
+        this.patternDetector.detectLayering(address).catch(err => {
+          controllerLogger.warn('Layering detection failed', { address, error: err.message });
+          return { patternType: 'LAYERING', confidence: 0, evidence: [], severity: 'low' };
+        }),
+        this.patternDetector.detectMixingPatterns(address).catch(err => {
+          controllerLogger.warn('Mixing patterns detection failed', { address, error: err.message });
+          return { patternType: 'MIXING_PATTERNS', confidence: 0, evidence: [], severity: 'low' };
+        }),
+        this.patternDetector.detectUnusualTiming(address).catch(err => {
+          controllerLogger.warn('Unusual timing detection failed', { address, error: err.message });
+          return { patternType: 'UNUSUAL_TIMING', confidence: 0, evidence: [], severity: 'low' };
+        }),
+        this.patternDetector.detectRoundNumbers(address).catch(err => {
+          controllerLogger.warn('Round numbers detection failed', { address, error: err.message });
+          return { patternType: 'ROUND_NUMBERS', confidence: 0, evidence: [], severity: 'low' };
+        })
+      ]);
+
+      // Collect all detected patterns
+      const allPatterns = [
+        rapidMovement,
+        circularFlow,
+        layering,
+        mixingPatterns,
+        unusualTiming,
+        roundNumbers
+      ];
+
+      // Filter to only patterns with confidence > 0
+      const detectedPatterns = allPatterns.filter(p => p.confidence > 0);
+
+      // Calculate overall risk score (0-100) from pattern confidences
+      const riskScore = this._calculateRiskScore(detectedPatterns);
+
+      // Extract risk factors
+      const riskFactors = detectedPatterns.map(p => ({
+        type: p.patternType,
+        confidence: p.confidence,
+        severity: p.severity
+      }));
+
+      const result = {
+        patterns: detectedPatterns,
+        riskScore,
+        riskFactors,
+        detectedAt: new Date().toISOString(),
+        analysisTime: Date.now() - startTime
+      };
+
+      // Cache the result
+      this.patternCache.set(cacheKey, {
+        data: result,
+        timestamp: Date.now()
+      });
+
+      controllerLogger.info('Pattern detection completed', {
+        address,
+        detectedPatterns: detectedPatterns.length,
+        riskScore,
+        analysisTime: result.analysisTime
+      });
+
+      // Store in database for historical tracking
+      await this._storePatternResults(address, result).catch(err => {
+        controllerLogger.warn('Failed to store pattern results', { address, error: err.message });
+      });
+
+      return result;
+    } catch (error) {
+      controllerLogger.error('Pattern detection failed', {
+        address,
+        error: error.message,
+        stack: error.stack
+      });
+      return {
+        patterns: [],
+        riskScore: 0,
+        riskFactors: [],
+        error: 'Pattern detection failed'
+      };
+    }
+  }
+
+  /**
+   * Calculate pattern detection statistics for metadata
+   * @private
+   */
+  _calculatePatternStats(nodePatterns, nodes) {
+    if (!nodePatterns || nodePatterns.size === 0) {
+      return {
+        highRisk: 0,
+        mediumRisk: 0,
+        lowRisk: 0,
+        totalPatterns: 0,
+        patternBreakdown: {}
+      };
+    }
+
+    const stats = {
+      highRisk: 0,
+      mediumRisk: 0,
+      lowRisk: 0,
+      totalPatterns: 0,
+      patternBreakdown: {}
+    };
+
+    // Count nodes by risk level
+    nodes.forEach(node => {
+      const riskScore = node.riskScore || 0;
+      if (riskScore >= 70) {
+        stats.highRisk++;
+      } else if (riskScore >= 30) {
+        stats.mediumRisk++;
+      } else if (riskScore > 0) {
+        stats.lowRisk++;
+      }
+    });
+
+    // Count pattern types across all analyzed nodes
+    nodePatterns.forEach(patternData => {
+      if (patternData.patterns && Array.isArray(patternData.patterns)) {
+        patternData.patterns.forEach(pattern => {
+          stats.totalPatterns++;
+          const type = pattern.patternType;
+          if (!stats.patternBreakdown[type]) {
+            stats.patternBreakdown[type] = 0;
+          }
+          stats.patternBreakdown[type]++;
+        });
+      }
+    });
+
+    return stats;
+  }
+
+  /**
+   * Calculate overall risk score from detected patterns
+   * @private
+   */
+  _calculateRiskScore(patterns) {
+    if (!patterns || patterns.length === 0) {
+      return 0;
+    }
+
+    // Weight patterns by severity and confidence
+    const severityWeights = {
+      high: 30,
+      medium: 15,
+      low: 5
+    };
+
+    let weightedScore = 0;
+    patterns.forEach(pattern => {
+      const weight = severityWeights[pattern.severity] || 5;
+      const contribution = weight * pattern.confidence;
+      weightedScore += contribution;
+    });
+
+    // Normalize to 0-100 scale and cap at 100
+    return Math.min(100, Math.round(weightedScore));
+  }
+
+  /**
+   * Store pattern detection results in database
+   * @private
+   */
+  async _storePatternResults(address, results) {
+    if (!this.db || !this.db.db) {
+      return;
+    }
+
+    try {
+      const stmt = this.db.db.prepare(`
+        INSERT INTO patterns (
+          address, pattern_type, confidence, severity,
+          evidence_count, detected_at, metadata
+        ) VALUES (?, ?, ?, ?, ?, datetime('now'), ?)
+      `);
+
+      const transaction = this.db.db.transaction((patterns) => {
+        for (const pattern of patterns) {
+          const evidenceCount = Array.isArray(pattern.evidence)
+            ? pattern.evidence.length
+            : (pattern.evidence?.unusualTransfers?.length || 0);
+
+          stmt.run(
+            address,
+            pattern.patternType,
+            pattern.confidence,
+            pattern.severity,
+            evidenceCount,
+            JSON.stringify({
+              metadata: pattern.metadata || {},
+              riskFactors: results.riskFactors || []
+            })
+          );
+        }
+      });
+
+      transaction(results.patterns);
+
+      controllerLogger.debug('Pattern results stored in database', {
+        address,
+        patternCount: results.patterns.length
+      });
+    } catch (error) {
+      controllerLogger.warn('Failed to store pattern results in database', {
+        address,
+        error: error.message
+      });
+    }
+  }
+
+  /**
    * Detect suspicious patterns for an address
    * GET /api/graph/patterns/:address
+   * UPDATED to use PatternDetector service
    */
   async detectPatterns(req, res) {
     const startTime = Date.now();
 
     try {
       const { address } = req.params;
-      const {
-        depth = 2,
-        timeWindow = 86400,
-        sensitivity = 'medium'
-      } = req.query;
 
-      logger.info(`Detecting patterns for ${address}`, { depth, timeWindow, sensitivity });
+      logger.info(`Detecting patterns for ${address} using PatternDetector service`);
 
       // Validate address exists
       const account = this.db.getAccount(address);
@@ -730,75 +1069,35 @@ export class GraphController {
         });
       }
 
-      const patterns = [];
+      // Use the comprehensive pattern detection method
+      const patternResults = await this._runPatternDetection(address);
 
-      // Detect circular flows
-      const circularFlows = this.graphQueries.detectCircularFlows(address, {
-        maxDepth: parseInt(depth),
-        minVolume: '1000000000' // 1 DOT minimum
-      });
-
-      if (circularFlows.circularPaths.length > 0) {
-        patterns.push({
-          type: 'circular_flow',
-          confidence: 0.92,
-          severity: 'high',
-          description: `Funds returned to origin through ${circularFlows.circularPaths[0].path_length} hops`,
-          evidence: {
-            path: circularFlows.circularPaths[0].circular_path.split('->'),
-            volume: circularFlows.circularPaths[0].min_volume_in_path,
-            timeElapsed: 'unknown' // Would need additional temporal analysis
-          },
-          timestamp: Math.floor(Date.now() / 1000)
-        });
-      }
-
-      // Detect rapid sequential transfers
-      const rapidTransfers = await this._detectRapidTransfers(address, parseInt(timeWindow));
-      if (rapidTransfers.length > 0) {
-        patterns.push({
-          type: 'rapid_sequential',
-          confidence: 0.85,
-          severity: 'medium',
-          description: 'Rapid sequential transfers detected',
-          evidence: {
-            transferCount: rapidTransfers.length,
-            timeSpan: parseInt(timeWindow),
-            totalVolume: rapidTransfers.reduce((sum, t) => BigInt(sum) + BigInt(t.volume), BigInt(0)).toString(),
-            addresses: rapidTransfers.map(t => t.target).slice(0, 5)
-          },
-          timestamp: Math.floor(Date.now() / 1000)
-        });
-      }
-
-      // Detect unusual transaction amounts (round numbers)
-      const roundNumberPatterns = await this._detectRoundNumberPatterns(address);
-      if (roundNumberPatterns.suspiciousCount > 5) {
-        patterns.push({
-          type: 'round_number_pattern',
-          confidence: 0.65,
-          severity: 'low',
-          description: 'Frequent round number transfers detected',
-          evidence: {
-            roundTransferCount: roundNumberPatterns.suspiciousCount,
-            totalTransfers: roundNumberPatterns.totalCount,
-            percentage: Math.round((roundNumberPatterns.suspiciousCount / roundNumberPatterns.totalCount) * 100)
-          },
-          timestamp: Math.floor(Date.now() / 1000)
-        });
-      }
-
-      // Calculate overall risk assessment
-      const riskAssessment = this._calculateRiskAssessment(patterns, address);
-
+      // Format response
       const result = {
         address,
-        patterns,
-        riskAssessment
+        patterns: patternResults.patterns.map(p => ({
+          type: p.patternType,
+          confidence: p.confidence,
+          severity: p.severity,
+          description: this._getPatternDescription(p),
+          evidence: p.evidence,
+          metadata: p.metadata,
+          timestamp: Math.floor(Date.now() / 1000)
+        })),
+        riskAssessment: {
+          overallRisk: patternResults.riskScore,
+          riskFactors: patternResults.riskFactors.map(rf => rf.type),
+          recommendation: this._getRecommendation(patternResults.riskScore)
+        },
+        analysisTime: patternResults.analysisTime,
+        detectedAt: patternResults.detectedAt
       };
 
       const executionTime = Date.now() - startTime;
-      logger.info(`Pattern detection completed in ${executionTime}ms for ${address}`);
+      logger.info(`Pattern detection completed in ${executionTime}ms for ${address}`, {
+        patternsFound: result.patterns.length,
+        riskScore: result.riskAssessment.overallRisk
+      });
 
       res.json(result);
 
@@ -811,6 +1110,37 @@ export class GraphController {
           status: 500
         }
       });
+    }
+  }
+
+  /**
+   * Get human-readable description for a pattern
+   * @private
+   */
+  _getPatternDescription(pattern) {
+    const descriptions = {
+      RAPID_MOVEMENT: `Rapid sequential transfers detected (avg ${pattern.metadata?.averageMinutesBetweenTransfers?.toFixed(1) || 'N/A'} min between transfers)`,
+      CIRCULAR_FLOW: `Circular flow detected with average path length of ${pattern.metadata?.averagePathLength?.toFixed(1) || 'N/A'} hops`,
+      LAYERING: `Layering pattern with ${pattern.metadata?.layeringPathsFound || 0} similar paths`,
+      MIXING_PATTERNS: `Connected to ${pattern.metadata?.highRiskConnections || 0} high-risk nodes and ${pattern.metadata?.mixerConnections || 0} mixers`,
+      UNUSUAL_TIMING: `Unusual timing patterns detected (${pattern.evidence?.statistics?.nightPercentage || 0}% night, ${pattern.evidence?.statistics?.weekendPercentage || 0}% weekend)`,
+      ROUND_NUMBERS: `${pattern.evidence?.statistics?.perfectRoundPercentage || 0}% of transfers use round numbers`
+    };
+
+    return descriptions[pattern.patternType] || `Pattern detected: ${pattern.patternType}`;
+  }
+
+  /**
+   * Get recommendation based on risk score
+   * @private
+   */
+  _getRecommendation(riskScore) {
+    if (riskScore < 30) {
+      return 'monitor';
+    } else if (riskScore < 70) {
+      return 'investigate';
+    } else {
+      return 'flag_for_review';
     }
   }
 
@@ -1012,10 +1342,13 @@ export class GraphController {
    * @private
    */
   async _transformToD3Format(graphData, options) {
-    const { includeRiskScores } = options;
+    const { includeRiskScores, nodePatterns } = options;
 
     // Transform nodes
     const d3Nodes = await Promise.all(graphData.nodes.map(async (node) => {
+      // CRITICAL FIX - Get pattern data for this node if available
+      const patternData = nodePatterns?.get(node.address);
+
       const d3Node = {
         // Core properties - D3.js requires id field
         id: node.address,
@@ -1044,9 +1377,18 @@ export class GraphController {
         outDegree: node.metrics?.outDegree || 0,
         totalVolume: node.metrics?.totalVolume || '0',
 
-        // Visual hints
+        // CRITICAL FIX - Add risk data from pattern detection
+        riskScore: patternData?.riskScore || node.riskScore || 0,
+        riskFactors: patternData?.riskFactors || node.riskFactors || [],
+        detectedPatterns: patternData?.patterns?.map(p => ({
+          type: p.patternType,
+          confidence: p.confidence,
+          severity: p.severity
+        })) || [],
+
+        // Visual hints (update colors based on risk score)
         suggestedSize: this._calculateNodeSize(node),
-        suggestedColor: this._getNodeColor(node),
+        suggestedColor: this._getNodeColorWithRisk(node, patternData?.riskScore),
 
         // Temporal data (only if available from real data)
         firstSeen: node.firstSeen || null,
@@ -1060,11 +1402,14 @@ export class GraphController {
         merkle: node.merkle || null
       };
 
-      // Add risk data if requested
-      if (includeRiskScores) {
-        d3Node.riskScore = node.riskScore || 0;
-        d3Node.riskFactors = node.riskFactors || [];
-        d3Node.importanceScore = 100 - (node.riskScore || 0);
+      // Add extended risk data if requested
+      if (includeRiskScores && patternData) {
+        d3Node.patternAnalysis = {
+          analysisTime: patternData.analysisTime,
+          detectedAt: patternData.detectedAt,
+          patterns: patternData.patterns
+        };
+        d3Node.importanceScore = 100 - (patternData.riskScore || 0);
       }
 
       return d3Node;
@@ -1321,6 +1666,33 @@ export class GraphController {
       case 'center': return '#2196F3';
       default: return '#9E9E9E';
     }
+  }
+
+  /**
+   * Get node color with risk score consideration
+   * CRITICAL FIX - Color nodes based on detected risk
+   * @private
+   */
+  _getNodeColorWithRisk(node, riskScore) {
+    // Check for exchange identification from Merkle Science (highest priority)
+    if (node.merkle?.tag_type === 'Exchange') {
+      return '#E91E63'; // Bright pink/magenta for exchanges
+    }
+
+    // Color by node type for special nodes
+    if (node.nodeType === 'validator') return '#4CAF50';
+    if (node.nodeType === 'mixer') return '#F44336';
+    if (node.nodeType === 'center') return '#2196F3';
+
+    // CRITICAL FIX - Color by risk score for regular nodes
+    if (riskScore !== undefined && riskScore !== null) {
+      if (riskScore >= 70) return '#D32F2F'; // High risk - dark red
+      if (riskScore >= 30) return '#FF9800'; // Medium risk - orange
+      if (riskScore > 0) return '#FFC107'; // Low risk - yellow/amber
+    }
+
+    // Default color for regular nodes with no risk
+    return '#9E9E9E';
   }
 
   /**

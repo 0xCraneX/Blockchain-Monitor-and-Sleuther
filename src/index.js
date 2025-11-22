@@ -11,6 +11,7 @@ import apiRouter from './api/index.js';
 import { DatabaseService } from './services/DatabaseService.js';
 import { BlockchainService } from './services/BlockchainService.js';
 import { GraphWebSocket } from './services/GraphWebSocket.js';
+import { PatternDetector } from './services/PatternDetector.js';
 import {
   configureSecurityHeaders,
   globalLimiter,
@@ -187,6 +188,16 @@ async function initialize() {
     await db.initialize();
     logger.info('[INIT] Database initialized successfully');
 
+    // Initialize pattern detector (CRITICAL FIX - was missing!)
+    logger.info('[INIT] Initializing pattern detector service');
+    const patternDetector = new PatternDetector(db);
+    logger.info('[INIT] Pattern detector initialized successfully', {
+      hasPatternDetector: !!patternDetector,
+      patternTypes: Object.keys(patternDetector.patternTypes),
+      availableMethods: Object.getOwnPropertyNames(Object.getPrototypeOf(patternDetector))
+        .filter(m => typeof patternDetector[m] === 'function' && m !== 'constructor')
+    });
+
     // Initialize blockchain connection
     logger.info('[INIT] Initializing blockchain service');
     const blockchain = new BlockchainService();
@@ -208,12 +219,14 @@ async function initialize() {
     app.locals.blockchain = blockchain;
     app.locals.io = io;
     app.locals.graphWebSocket = graphWebSocket;
+    app.locals.patternDetector = patternDetector; // CRITICAL FIX - make pattern detector available
 
     logger.info('[INIT] Services set in app.locals', {
       hasDb: !!app.locals.db,
       hasBlockchain: !!app.locals.blockchain,
       hasIo: !!app.locals.io,
       hasGraphWebSocket: !!app.locals.graphWebSocket,
+      hasPatternDetector: !!app.locals.patternDetector,
       appLocalsKeys: Object.keys(app.locals)
     });
 
