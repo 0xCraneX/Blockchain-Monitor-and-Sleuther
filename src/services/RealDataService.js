@@ -1,5 +1,6 @@
 import { createLogger } from '../utils/logger.js';
 import { subscanService } from './SubscanService.js';
+import { RPCBatchTraverser } from './RPCBatchTraverser.js';
 
 const logger = createLogger('RealDataService');
 
@@ -21,6 +22,9 @@ export class RealDataService {
     this.cacheTimeout = 5 * 60 * 1000; // 5 minutes
     this.serviceId = Math.random().toString(36).substring(7); // Unique ID for tracking this instance
 
+    // CRITICAL FIX - Initialize RPC batch traverser for high-performance depth 5 traversal
+    this.rpcTraverser = new RPCBatchTraverser(blockchainService, databaseService);
+
     // Log all methods that will be available
     const methods = Object.getOwnPropertyNames(Object.getPrototypeOf(this));
     logger.debug('[CONSTRUCTOR] RealDataService initialized', {
@@ -28,7 +32,8 @@ export class RealDataService {
       serviceId: this.serviceId,
       availableMethods: methods.filter(m => typeof this[m] === 'function' && m !== 'constructor'),
       hasBuildGraphData: methods.includes('buildGraphData'),
-      buildGraphDataType: typeof this.buildGraphData
+      buildGraphDataType: typeof this.buildGraphData,
+      hasRPCTraverser: !!this.rpcTraverser
     });
   }
 
@@ -53,19 +58,12 @@ export class RealDataService {
     logger.debug('Account data not in cache, fetching...', { address });
 
     try {
-      // Try Subscan first for richer data
-      logger.debug('Attempting to fetch from Subscan', { address });
-      let accountInfo = await subscanService.getAccountInfo(address);
+      // CRITICAL FIX - Try blockchain RPC FIRST for high throughput (100k req/min)
+      logger.debug('Attempting to fetch from blockchain RPC', { address });
+      let accountInfo = null;
 
-      logger.debug('Subscan response', {
-        address,
-        hasAccountInfo: !!accountInfo,
-        accountInfoKeys: accountInfo ? Object.keys(accountInfo) : null
-      });
-
-      // Fallback to blockchain RPC if Subscan fails
-      if (!accountInfo && this.blockchain?.api) {
-        logger.debug('Subscan failed, trying blockchain RPC', { address });
+      if (this.blockchain?.api) {
+        logger.debug('Fetching from blockchain RPC', { address });
         try {
           const account = await this.blockchain.api.query.system.account(address);
           let identity = null;
@@ -113,6 +111,23 @@ export class RealDataService {
             address,
             error: blockchainError.message,
             stack: blockchainError.stack
+          });
+        }
+      }
+
+      // OPTIONAL: Enrich with Subscan data only if RPC succeeded (for additional metadata)
+      if (accountInfo && process.env.ENABLE_SUBSCAN_ENRICHMENT === 'true') {
+        try {
+          const subscanData = await subscanService.getAccountInfo(address);
+          if (subscanData) {
+            // Merge Subscan enrichment data (merkle, tags, etc.)
+            accountInfo.merkle = subscanData.merkle || accountInfo.merkle;
+            accountInfo.tags = subscanData.tags || [];
+          }
+        } catch (subscanError) {
+          logger.debug('Subscan enrichment failed, continuing with RPC data', {
+            address,
+            error: subscanError.message
           });
         }
       }
@@ -276,24 +291,38 @@ export class RealDataService {
 
   /**
    * Build graph data for visualization
+   * CRITICAL FIX - Use RPC batch traverser for depth 5 support at 100k req/min
    */
   async buildGraphData(centerAddress, depth = 2, options = {}) {
     let {
-      maxNodes = 50, // Reduced from 100 to avoid rate limiting
+      maxNodes = Infinity, // REMOVED artificial limit - RPC can handle it
       minVolume = '0',
       progressive = false,
       onProgress = null
     } = options;
-    
-    // Limit depth to prevent exponential API calls
-    if (depth > 3 && maxNodes > 200) {
-      logger.warn('Large depth with high node limit detected, reducing maxNodes', {
-        requestedDepth: depth,
-        requestedMaxNodes: maxNodes,
-        adjustedMaxNodes: 200
+
+    // CRITICAL FIX - Support depth 5 with RPC batch traverser
+    if (depth >= 4 || maxNodes > 1000) {
+      logger.info('Using high-performance RPC batch traverser for depth 5', {
+        depth,
+        maxNodes,
+        centerAddress
       });
-      maxNodes = 200;
+
+      // Use the optimized RPC batch traverser
+      return await this.rpcTraverser.buildGraphDepth5(centerAddress, depth, {
+        minVolume,
+        maxNodes: maxNodes === Infinity ? undefined : maxNodes,
+        onProgress
+      });
     }
+
+    // For depth 1-3, use existing sequential method (fallback)
+    logger.info('Using sequential traverser for depth <= 3', {
+      depth,
+      maxNodes,
+      centerAddress
+    });
 
     logger.info('[METHOD] buildGraphData called', {
       centerAddress,
